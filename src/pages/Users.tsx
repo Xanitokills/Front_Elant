@@ -9,7 +9,7 @@ interface UserType {
 
 interface Sex {
   ID_SEXO: number;
-  DETALLE: string;
+  DESCRIPCION: string;
 }
 
 interface FormData {
@@ -27,7 +27,6 @@ interface FormData {
   observaciones: string;
   comite: boolean;
   usuario: string;
-  contrasena: string;
 }
 
 const Users = () => {
@@ -51,7 +50,6 @@ const Users = () => {
     observaciones: "",
     comite: false,
     usuario: "",
-    contrasena: "",
   });
 
   // Estado para mensajes de éxito o error
@@ -117,7 +115,7 @@ const Users = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validaciones básicas
+    // Validaciones de campos requeridos
     if (
       !formData.nombres ||
       !formData.apellidos ||
@@ -126,23 +124,25 @@ const Users = () => {
       !formData.celular ||
       !formData.id_tipo_usuario ||
       !formData.id_sexo ||
-      !formData.usuario ||
-      !formData.contrasena
+      !formData.usuario
     ) {
-      setMessage({ text: "Por favor, completa todos los campos requeridos", type: "error" });
+      setMessage({ text: "Por favor, completa todos los campos requeridos (*)", type: "error" });
       return;
     }
 
+    // Validación del DNI (8 dígitos)
     if (!/^[0-9]{8}$/.test(formData.dni)) {
-      setMessage({ text: "El DNI debe tener 8 dígitos", type: "error" });
+      setMessage({ text: "El DNI debe tener exactamente 8 dígitos", type: "error" });
       return;
     }
 
+    // Validación del celular (comienza con 9, 9 dígitos)
     if (!/^[9][0-9]{8}$/.test(formData.celular)) {
       setMessage({ text: "El celular debe comenzar con 9 y tener 9 dígitos", type: "error" });
       return;
     }
 
+    // Validación del contacto de emergencia (si se proporciona)
     if (formData.contacto_emergencia && !/^[9][0-9]{8}$/.test(formData.contacto_emergencia)) {
       setMessage({
         text: "El contacto de emergencia debe comenzar con 9 y tener 9 dígitos",
@@ -151,6 +151,7 @@ const Users = () => {
       return;
     }
 
+    // Validación del correo
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo)) {
       setMessage({ text: "Formato de correo inválido", type: "error" });
       return;
@@ -161,7 +162,7 @@ const Users = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // Enviar el token en el encabezado
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           nro_dpto: formData.nro_dpto ? parseInt(formData.nro_dpto) : null,
@@ -178,14 +179,13 @@ const Users = () => {
           observaciones: formData.observaciones || null,
           comite: formData.comite ? 1 : 0,
           usuario: formData.usuario,
-          contrasena: formData.contrasena,
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setMessage({ text: "Usuario registrado exitosamente", type: "success" });
+        setMessage({ text: "Usuario registrado exitosamente. La contraseña por defecto es el DNI.", type: "success" });
         // Resetear el formulario
         setFormData({
           nro_dpto: "",
@@ -202,7 +202,6 @@ const Users = () => {
           observaciones: "",
           comite: false,
           usuario: "",
-          contrasena: "",
         });
       } else {
         setMessage({ text: data.message || "Error al registrar el usuario", type: "error" });
@@ -350,7 +349,7 @@ const Users = () => {
               <option value="">Seleccione un sexo</option>
               {sexes.map((sex) => (
                 <option key={sex.ID_SEXO} value={sex.ID_SEXO}>
-                  {sex.DETALLE}
+                  {sex.DESCRIPCION}
                 </option>
               ))}
             </select>
@@ -376,7 +375,7 @@ const Users = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Pertenece al Comité</label>
+            <label className="block text-sm font-medium text-gray-700">Pertenece al Comité *</label>
             <input
               type="checkbox"
               name="comite"
@@ -391,17 +390,6 @@ const Users = () => {
               type="text"
               name="usuario"
               value={formData.usuario}
-              onChange={handleInputChange}
-              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Contraseña *</label>
-            <input
-              type="password"
-              name="contrasena"
-              value={formData.contrasena}
               onChange={handleInputChange}
               className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
               required
