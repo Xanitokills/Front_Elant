@@ -1,5 +1,5 @@
-import { Link } from "react-router-dom";
-import { FaTachometerAlt, FaSignOutAlt, FaUser, FaChartBar, FaCog } from "react-icons/fa";
+import { NavLink } from "react-router-dom";
+import { FaTachometerAlt, FaUsers, FaList, FaCog, FaSignOutAlt, FaDoorOpen } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 
 interface SidebarProps {
@@ -15,76 +15,84 @@ const Sidebar = ({ closeSidebar }: SidebarProps) => {
   };
 
   return (
-    <div className="w-64 h-screen bg-white shadow-lg flex flex-col">
-      <div className="p-4">
-        <h2 className="text-xl font-bold text-gray-700">Menú</h2>
+    <div className="w-64 bg-gray-900 text-white h-screen p-4 flex flex-col">
+      <div className="flex items-center mb-6">
+        <img
+          src="https://randomuser.me/api/portraits/men/75.jpg"
+          alt="Logo"
+          className="w-12 h-12 rounded-full mr-3"
+        />
+        <h1 className="text-xl font-bold">Mi App</h1>
       </div>
       <nav className="flex-1">
-        <ul>
-          <li>
-            <Link
-              to="/dashboard"
-              className="flex items-center p-4 text-gray-700 hover:bg-gray-100"
-              onClick={closeSidebar}
-            >
-              <FaTachometerAlt className="mr-3" /> Dashboard
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/personal/movimientos"
-              className="flex items-center p-4 text-gray-700 hover:bg-gray-100"
-              onClick={closeSidebar}
-            >
-              <FaTachometerAlt className="mr-3" /> Ingresos y Salidas
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/users"
-              className="flex items-center p-4 text-gray-700 hover:bg-gray-100"
-              onClick={closeSidebar}
-            >
-              <FaUser className="mr-3" /> Usuarios
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/profile"
-              className="flex items-center p-4 text-gray-700 hover:bg-gray-100"
-              onClick={closeSidebar}
-            >
-              <FaUser className="mr-3" /> Perfil
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/statistics"
-              className="flex items-center p-4 text-gray-700 hover:bg-gray-100"
-              onClick={closeSidebar}
-            >
-              <FaChartBar className="mr-3" /> Estadísticas
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/settings/general"
-              className="flex items-center p-4 text-gray-700 hover:bg-gray-100"
-              onClick={closeSidebar}
-            >
-              <FaCog className="mr-3" /> Configuración
-            </Link>
-          </li>
-        </ul>
-      </nav>
-      <div className="p-4">
-        <button
-          className="flex items-center p-4 text-gray-700 hover:bg-gray-100 w-full"
-          onClick={handleLogout}
+        <NavLink
+          to="/dashboard"
+          className={({ isActive }) =>
+            `flex items-center p-3 rounded-lg mb-2 ${
+              isActive ? "bg-gray-700" : "hover:bg-gray-800"
+            }`
+          }
+          onClick={closeSidebar}
         >
-          <FaSignOutAlt className="mr-3" /> Cerrar Sesión
-        </button>
-      </div>
+          <FaTachometerAlt className="mr-3" />
+          Dashboard
+        </NavLink>
+        <NavLink
+          to="/users"
+          className={({ isActive }) =>
+            `flex items-center p-3 rounded-lg mb-2 ${
+              isActive ? "bg-gray-700" : "hover:bg-gray-800"
+            }`
+          }
+          onClick={closeSidebar}
+        >
+          <FaUsers className="mr-3" />
+          Registrar Usuarios
+        </NavLink>
+        <NavLink
+          to="/user-list"
+          className={({ isActive }) =>
+            `flex items-center p-3 rounded-lg mb-2 ${
+              isActive ? "bg-gray-700" : "hover:bg-gray-800"
+            }`
+          }
+          onClick={closeSidebar}
+        >
+          <FaList className="mr-3" />
+          Lista de Usuarios
+        </NavLink>
+        <NavLink
+          to="/movements-list"
+          className={({ isActive }) =>
+            `flex items-center p-3 rounded-lg mb-2 ${
+              isActive ? "bg-gray-700" : "hover:bg-gray-800"
+            }`
+          }
+          onClick={closeSidebar}
+        >
+          <FaDoorOpen className="mr-3" />
+          Control de Ingresos y Salidas
+        </NavLink>
+        <NavLink
+          to="/settings/general"
+          className={({ isActive }) =>
+            `flex items-center p-3 rounded-lg mb-2 ${
+              isActive ? "bg-gray-700" : "hover:bg-gray-800"
+            }`
+          }
+          onClick={closeSidebar}
+        >
+          <FaCog className="mr-3" />
+          Configuración
+        </NavLink>
+      </nav>
+      <button
+        onClick={handleLogout}
+        className="flex items-center p-3 rounded-lg hover:bg-gray-800 mt-auto"
+      >
+        <FaSignOutAlt className="mr-3" />
+        Cerrar Sesión
+      </button>
     </div>
   );
 };

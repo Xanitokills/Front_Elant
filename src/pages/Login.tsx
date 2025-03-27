@@ -39,12 +39,22 @@ const Login = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500">
+    <div
+  className="relative flex items-center justify-center min-h-screen bg-center"
+  style={{
+    backgroundImage: `url('/images/fachada_canada.jpg')`,
+    backgroundSize: "75%", // Adjust this percentage to make the image smaller
+  }}
+>
+      {/* Black overlay with opacity */}
+      <div className="absolute inset-0 bg-black opacity-50"></div>
+
+      {/* Content */}
       <motion.div
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full"
+        className="relative bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full z-10" // z-10 ensures the form is above the overlay
       >
         <h2 className="text-4xl font-extrabold text-center text-gray-700 mb-6">Bienvenido</h2>
         {error && <p className="text-red-500 text-center mb-4">{error}</p>}

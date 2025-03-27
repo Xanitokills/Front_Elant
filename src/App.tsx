@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from "r
 import Sidebar from "./components/Sidebar.tsx";
 import Movements from "./components/Movements.tsx";
 import Users from "./pages/Users";
+import UserList from "./pages/UserList";
+import MovementsList from "./components/Movements.tsx"; // Import the new page
 import Dashboard from "./pages/Dashboard.tsx";
 import Login from "./pages/Login.tsx";
 import { FaBars } from "react-icons/fa";
@@ -101,6 +103,8 @@ const App = () => {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/personal/movimientos" element={<Movements />} />
           <Route path="/users" element={<Users />} />
+          <Route path="/user-list" element={<UserList />} />
+          <Route path="/movements-list" element={<MovementsList />} /> {/* Nueva ruta */}
           <Route
             path="/profile"
             element={
