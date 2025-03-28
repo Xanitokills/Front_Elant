@@ -12,6 +12,7 @@ interface Movimiento {
   EXITO: number;
   MOTIVO_FALLO: string | null;
   puerta: string;
+  descripcion: string;
 }
 
 const Movements = () => {
@@ -60,7 +61,7 @@ const Movements = () => {
     const headers = "ID Acceso,ID Usuario,Nombre,Correo,Nro Dpto,Fecha Acceso,Éxito,Motivo Fallo,Puerta\n";
     const rows = movimientos
       .map((mov) =>
-        `${mov.ID_ACCESO},${mov.ID_USUARIO},${mov.nombre},${mov.CORREO},${mov.NRO_DPTO ?? "-"},${mov.FECHA_ACCESO},${mov.EXITO ? "Sí" : "No"},${mov.MOTIVO_FALLO ?? "-"},${mov.puerta}`
+        `${mov.ID_ACCESO},${mov.ID_USUARIO},${mov.nombre},${mov.CORREO},${mov.NRO_DPTO ?? "-"},${mov.FECHA_ACCESO},${mov.EXITO ? "Sí" : "No"},${mov.MOTIVO_FALLO ?? "-"},${mov.puerta} ,${mov.descripcion}`
       )
       .join("\n");
     const csv = headers + rows;
@@ -138,6 +139,8 @@ const Movements = () => {
               <th className="p-3">Éxito</th>
               <th className="p-3">Motivo Fallo</th>
               <th className="p-3">Puerta</th>
+              <th className="p-3">Descripcion</th>
+              
             </tr>
           </thead>
           <tbody>
@@ -152,6 +155,7 @@ const Movements = () => {
                 <td className="p-3">{mov.EXITO ? "Sí" : "No"}</td>
                 <td className="p-3">{mov.MOTIVO_FALLO ?? "-"}</td>
                 <td className="p-3">{mov.puerta}</td>
+                <td className="p-3">{mov.descripcion}</td>
               </tr>
             ))}
           </tbody>
