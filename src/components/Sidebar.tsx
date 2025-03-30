@@ -1,5 +1,12 @@
 import { NavLink } from "react-router-dom";
-import { FaTachometerAlt, FaUsers, FaList, FaCog, FaSignOutAlt, FaDoorOpen } from "react-icons/fa";
+import {
+  FaTachometerAlt,
+  FaUsers,
+  FaList,
+  FaCog,
+  FaSignOutAlt,
+  FaDoorOpen,
+} from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 
 interface SidebarProps {
@@ -15,7 +22,7 @@ const Sidebar = ({ closeSidebar }: SidebarProps) => {
   };
 
   return (
-    <div className="w-64 bg-gray-900 text-white h-screen p-4 flex flex-col">
+    <div className="w-64 bg-gray-900 text-white h-screen p-4 flex flex-col fixed lg:sticky top-0 left-0 z-50">
       <div className="flex items-center mb-6">
         <img
           src="https://randomuser.me/api/portraits/men/75.jpg"
