@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import {  FaFileExport } from "react-icons/fa";
+const API_URL = import.meta.env.VITE_API_URL;
 
 // Define the interface for a movement (based on the backend response)
 interface Movimiento {
@@ -32,7 +33,8 @@ const Movements = () => {
   // Fetch movements from the backend
   const fetchMovements = async () => {
     try {
-      const response = await fetch("https://sntps2jn-4000.brs.devtunnels.ms/api/movements");
+      const response = await fetch(`${API_URL}/movements`);
+
       if (!response.ok) {
         throw new Error("Error al obtener los movimientos");
       }

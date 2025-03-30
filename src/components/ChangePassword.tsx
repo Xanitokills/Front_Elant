@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
+const API_URL = import.meta.env.VITE_API_URL;
 
 const ChangePassword = () => {
   const [formData, setFormData] = useState({
@@ -43,7 +44,7 @@ const ChangePassword = () => {
     }
 
     try {
-      const response = await fetch("https://sntps2jn-4000.brs.devtunnels.ms/api/change-password", {
+      const response = await fetch(`${API_URL}/change-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

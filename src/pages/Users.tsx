@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
+const API_URL = import.meta.env.VITE_API_URL;
 
 // Interfaces para los datos
 interface UserType {
@@ -65,7 +66,7 @@ const Users = () => {
   useEffect(() => {
     const fetchUserTypes = async () => {
       try {
-        const response = await fetch("https://sntps2jn-4000.brs.devtunnels.ms/api/user-types", {
+        const response = await fetch(`${API_URL}/user-types`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -78,10 +79,10 @@ const Users = () => {
         setMessage({ text: "Error al cargar tipos de usuario", type: "error" });
       }
     };
-
+  
     const fetchSexes = async () => {
       try {
-        const response = await fetch("https://sntps2jn-4000.brs.devtunnels.ms/api/sexes", {
+        const response = await fetch(`${API_URL}/sexes`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -94,10 +95,11 @@ const Users = () => {
         setMessage({ text: "Error al cargar sexos", type: "error" });
       }
     };
-
+  
     fetchUserTypes();
     fetchSexes();
   }, [token]);
+  
 
   // Manejar cambios en los inputs
   const handleInputChange = (
@@ -158,7 +160,7 @@ const Users = () => {
     }
 
     try {
-      const response = await fetch("https://sntps2jn-4000.brs.devtunnels.ms/api/register", {
+      const response = await fetch(`${API_URL}/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

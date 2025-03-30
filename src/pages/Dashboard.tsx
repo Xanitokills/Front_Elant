@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
+const API_URL = import.meta.env.VITE_API_URL; // Cargar la URL desde .env
+
 const Dashboard = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -11,7 +13,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchActiveUsers = async () => {
       try {
-        const response = await fetch("https://sntps2jn-4000.brs.devtunnels.ms/api/users", {
+        const response = await fetch(`${API_URL}/users`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -30,7 +32,7 @@ const Dashboard = () => {
         }
 
         const data = await response.json();
-        setActiveUsers(data.length); // Count the number of active users
+        setActiveUsers(data.length);
       } catch (error) {
         console.error("Error al cargar los usuarios:", error);
       }
