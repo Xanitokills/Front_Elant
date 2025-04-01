@@ -1,23 +1,107 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+/* Estilos globales */
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Arial', sans-serif;
+  overflow-x: hidden; /* Evita el desplazamiento horizontal */
+  height: 100%; /* Asegura que el body ocupe toda la altura */
 }
 
+/* Sidebar - Fijo */
+.sidebar {
+  position: fixed; /* Fija el sidebar en su lugar */
+  top: 0;
+  left: 0;
+  z-index: 50;
+  width: 250px;
+  height: 100%;
+  background-color: #1a202c; /* Fondo oscuro */
+  transition: transform 0.3s ease;
+  overflow-y: auto; /* Permite hacer scroll dentro del sidebar si es necesario */
+}
+
+.sidebar.open {
+  transform: translateX(0); /* Sidebar visible cuando está abierto */
+}
+
+.sidebar.closed {
+  transform: translateX(-100%); /* Sidebar oculto */
+}
+
+.main-content {
+  margin-left: 250px; /* Deja espacio para el sidebar fijo */
+  padding: 2rem;
+  transition: margin-left 0.3s ease; /* Transición suave */
+  overflow-y: auto; /* Permite hacer scroll en el contenido */
+  height: 100vh; /* Asegura que el contenido no se solape */
+}
+
+/* Overlay para pantalla móvil */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* Fondo oscuro */
+  z-index: 40;
+}
+
+.backdrop-blur-md {
+  backdrop-filter: blur(5px); /* Aplica un desenfoque en el fondo cuando el sidebar está activo */
+}
+
+/* Estilo para la tabla */
+table {
+  table-layout: fixed;
+  width: 100%; /* Asegura que la tabla ocupe todo el ancho disponible */
+}
+
+th, td {
+  padding: 10px;
+  word-wrap: break-word; /* Permite que el texto largo se ajuste a varias líneas */
+}
+
+/* Estilo para el Logo */
 .logo {
   height: 6em;
   padding: 1.5em;
   will-change: filter;
   transition: filter 300ms;
 }
+
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
+
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
 
+/* Ajuste para pantallas pequeñas */
+@media (max-width: 768px) {
+  .sidebar {
+    left: -250px; /* Sidebar oculto cuando la pantalla es pequeña */
+  }
+
+  .sidebar.open {
+    left: 0; /* Mueve el sidebar a la izquierda cuando está abierto */
+  }
+
+  .main-content {
+    margin-left: 0; /* El contenido no se moverá */
+  }
+
+  .overlay {
+    display: none; /* El overlay solo se activa cuando el sidebar está abierto */
+  }
+
+  .backdrop-blur-md {
+    backdrop-filter: blur(10px); /* Aplica el desenfoque */
+  }
+}
+
+/* Animación del logo */
 @keyframes logo-spin {
   from {
     transform: rotate(0deg);
@@ -27,16 +111,17 @@
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
 .card {
   padding: 2em;
 }
 
 .read-the-docs {
   color: #888;
+}
+
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
 }

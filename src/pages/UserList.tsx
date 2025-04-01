@@ -253,7 +253,7 @@ const handleDelete = async (id: number) => {
 
       {/* Tabla de usuarios */}
       <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
-        <table className="min-w-full table-auto">
+        <table className="min-w-full table-auto" style={{ tableLayout: 'fixed', width: '100%' }}>
           <thead>
             <tr className="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
               <th className="py-3 px-6 text-left">ID</th>
