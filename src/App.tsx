@@ -1,4 +1,4 @@
-import { useState} from "react";
+import { useState } from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import Sidebar from "./components/Sidebar.tsx";
 import Movements from "./components/Movements.tsx";
@@ -49,7 +49,8 @@ const App = () => {
       )}
 
       {/* Contenido Principal */}
-      <div className="flex-1">
+      <div className={`flex-1 overflow-auto ${location.pathname !== "/login" ? "" : ""}`}>
+        {/* El contenido principal no se moverá con el sidebar */}
         <Routes>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/personal/movimientos" element={<Movements />} />
