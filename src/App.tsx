@@ -2,9 +2,10 @@ import { useState, useMemo } from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import Sidebar from "./components/Sidebar.tsx";
 import Movements from "./components/Movements.tsx";
+import Visits from "./components/visits.tsx"; // Import the new Visits component
 import Users from "./pages/Users";
 import UserList from "./pages/UserList";
-import MovementsList from "./components/Movements.tsx"; // Import the new page
+import MovementsList from "./components/Movements.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Login from "./pages/Login.tsx";
 import { FaBars } from "react-icons/fa";
@@ -68,12 +69,10 @@ const App = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { isAuthenticated, userName, isLoading } = useAuth();
 
-  // Memoizar hideSidebar para evitar cálculos innecesarios
   const hideSidebar = useMemo(() => {
     return location.pathname === "/" || location.pathname === "/login";
   }, [location.pathname]);
 
-  // Si está cargando, no renderizar nada todavía
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -82,7 +81,6 @@ const App = () => {
     );
   }
 
-  // Si el usuario no está autenticado y no está en la página de login, redirigir a /login
   if (!isAuthenticated && location.pathname !== "/login") {
     console.log("Usuario no autenticado, redirigiendo a /login...");
     return <Navigate to="/login" replace />;
@@ -97,14 +95,14 @@ const App = () => {
         userName={userName}
       />
 
-      {/* Contenido Principal */}
       <div className="flex-1">
         <Routes>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/personal/movimientos" element={<Movements />} />
           <Route path="/users" element={<Users />} />
           <Route path="/user-list" element={<UserList />} />
-          <Route path="/movements-list" element={<MovementsList />} /> {/* Nueva ruta */}
+          <Route path="/movements-list" element={<MovementsList />} />
+          <Route path="/visits" element={<Visits />} /> {/* New Route */}
           <Route
             path="/profile"
             element={

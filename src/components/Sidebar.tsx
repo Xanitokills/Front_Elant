@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { FaTachometerAlt, FaUsers, FaList, FaCog, FaSignOutAlt, FaDoorOpen } from "react-icons/fa";
+import { FaTachometerAlt, FaUsers, FaList, FaCog, FaSignOutAlt, FaDoorOpen, FaUserFriends } from "react-icons/fa"; // Added FaUserFriends for Visitas
 import { useAuth } from "../context/AuthContext";
 
 interface SidebarProps {
@@ -72,6 +72,19 @@ const Sidebar = ({ closeSidebar }: SidebarProps) => {
         >
           <FaDoorOpen className="mr-3" />
           Control de Ingresos y Salidas
+        </NavLink>
+        {/* New Visitas Link */}
+        <NavLink
+          to="/visits"
+          className={({ isActive }) =>
+            `flex items-center p-3 rounded-lg mb-2 ${
+              isActive ? "bg-gray-700" : "hover:bg-gray-800"
+            }`
+          }
+          onClick={closeSidebar}
+        >
+          <FaUserFriends className="mr-3" />
+          Visitas
         </NavLink>
         <NavLink
           to="/settings/general"

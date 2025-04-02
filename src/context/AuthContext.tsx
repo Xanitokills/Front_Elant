@@ -1,81 +1,72 @@
-import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  userRole: string | null;
   userName: string | null;
+  userId: number | null; // Add userId
+  role: string | null;
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const hasValidatedSession = useRef(false);
-  const justLoggedIn = useRef(false);
-  const navigate = useNavigate();
+  const [userId, setUserId] = useState<number | null>(null); // Add userId state
+  const [role, setRole] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Validar la sesión al montar el componente (sin usar /api/validate-session)
   useEffect(() => {
-    if (hasValidatedSession.current) return;
-    hasValidatedSession.current = true;
-
     const validateSession = async () => {
-      console.log("Iniciando validación de sesión...");
-      setIsLoading(true);
       const token = localStorage.getItem("token");
-      console.log("Token encontrado en localStorage:", token);
-      if (!token) {
-        console.log("No hay token, estableciendo isAuthenticated en false");
-        setIsAuthenticated(false);
-        setIsLoading(false);
-        return;
-      }
-
-      // Si hay un token, asumir que el usuario está autenticado
-      const role = localStorage.getItem("role");
-      const name = localStorage.getItem("userName");
-      if (role && name) {
-        console.log("Token presente, estableciendo isAuthenticated en true");
-        setIsAuthenticated(true);
-        setUserRole(role);
-        setUserName(name);
+      console.log("Validating session, token found:", token);
+      if (token) {
+        try {
+          const response = await fetch("https://sntps2jn-4000.brs.devtunnels.ms/api/validate", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            console.log("Session validated successfully:", data);
+            setIsAuthenticated(true);
+            setUserName(localStorage.getItem("userName"));
+            setUserId(data.user.id); // Set userId from the validate response
+            setRole(localStorage.getItem("role"));
+          } else {
+            console.log("Session validation failed, removing token...");
+            localStorage.removeItem("token");
+            localStorage.removeItem("userName");
+            localStorage.removeItem("role");
+            setIsAuthenticated(false);
+            setUserId(null);
+          }
+        } catch (error) {
+          console.error("Error validating session:", error);
+          localStorage.removeItem("token");
+          localStorage.removeItem("userName");
+          localStorage.removeItem("role");
+          setIsAuthenticated(false);
+          setUserId(null);
+        }
       } else {
-        console.log("Faltan role o userName, limpiando localStorage");
-        localStorage.removeItem("token");
-        localStorage.removeItem("role");
-        localStorage.removeItem("userName");
+        console.log("No token found, setting isAuthenticated to false");
         setIsAuthenticated(false);
-        setUserRole(null);
-        setUserName(null);
+        setUserId(null);
       }
-
-      console.log("Finalizando validación de sesión, estableciendo isLoading en false");
       setIsLoading(false);
     };
 
     validateSession();
   }, []);
 
-  // Redirigir a /dashboard solo después del login
-  useEffect(() => {
-    if (isAuthenticated && !isLoading && justLoggedIn.current) {
-      console.log("isAuthenticated cambió a true después del login, redirigiendo a /dashboard...");
-      justLoggedIn.current = false; // Resetear la bandera para evitar redirecciones futuras
-      navigate("/dashboard", { replace: true });
-    }
-  }, [isAuthenticated, isLoading, navigate]);
-
   const login = async (email: string, password: string) => {
-    console.log("Iniciando login con email:", email);
     try {
-      const response = await fetch("http://localhost:4000/api/login", {
+      const response = await fetch("https://sntps2jn-4000.brs.devtunnels.ms/api/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -83,49 +74,54 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
-      console.log("Respuesta de /api/login:", response.status, data);
-
-      if (response.ok) {
-        console.log("Login exitoso, guardando datos en localStorage...");
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("role", data.role);
-        localStorage.setItem("userName", data.userName);
-        setIsAuthenticated(true);
-        setUserRole(data.role);
-        setUserName(data.userName);
-        justLoggedIn.current = true; // Establecer la bandera para redirigir
-      } else {
-        console.log("Error en el login:", data.message);
-        throw new Error(data.message || "Error al iniciar sesión");
+      if (!response.ok) {
+        throw new Error("Error al iniciar sesión");
       }
+
+      const data = await response.json();
+      console.log("Login successful, storing token and updating state:", data);
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("userName", data.userName);
+      localStorage.setItem("role", data.role);
+
+      // Fetch user ID by validating the token immediately after login
+      const validateResponse = await fetch("https://sntps2jn-4000.brs.devtunnels.ms/api/validate", {
+        headers: {
+          Authorization: `Bearer ${data.token}`,
+        },
+      });
+      if (!validateResponse.ok) {
+        throw new Error("Error al validar el token después del login");
+      }
+      const validateData = await validateResponse.json();
+      setUserId(validateData.user.id); // Set userId from the validate response
+
+      setIsAuthenticated(true);
+      setUserName(data.userName);
+      setRole(data.role);
+      console.log("isAuthenticated set to true");
     } catch (error) {
-      console.error("Error en el login:", error);
+      console.error("Error al iniciar sesión:", error);
       throw error;
     }
   };
 
   const logout = () => {
-    console.log("Cerrando sesión...");
+    console.log("Logging out, clearing localStorage and resetting state...");
     localStorage.removeItem("token");
-    localStorage.removeItem("role");
     localStorage.removeItem("userName");
+    localStorage.removeItem("role");
     setIsAuthenticated(false);
-    setUserRole(null);
     setUserName(null);
-    justLoggedIn.current = false;
-    navigate("/login", { replace: true });
+    setUserId(null);
+    setRole(null);
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, userRole, userName, login, logout, isLoading }}>
-      {isLoading ? (
-        <div className="flex items-center justify-center min-h-screen">
-          <p className="text-white text-xl">Cargando...</p>
-        </div>
-      ) : (
-        children
-      )}
+    <AuthContext.Provider
+      value={{ isAuthenticated, userName, userId, role, isLoading, login, logout }}
+    >
+      {children}
     </AuthContext.Provider>
   );
 };

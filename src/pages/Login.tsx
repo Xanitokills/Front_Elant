@@ -1,100 +1,77 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login } = useAuth();
+  const [error, setError] = useState("");
+  const { login, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setIsSubmitting(true);
-
-    if (!email || !password) {
-      setError("Por favor, completa todos los campos");
-      setIsSubmitting(false);
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError("Por favor, introduce un correo válido");
-      setIsSubmitting(false);
-      return;
-    }
+    setError("");
 
     try {
       await login(email, password);
-    } catch (error) {
-      const err = error as Error;
-      console.error("Error al iniciar sesión:", err);
-      setError(err.message || "Error al conectar con el servidor");
-    } finally {
-      setIsSubmitting(false);
+    } catch (err) {
+      setError("Credenciales inválidas");
+      console.error("Login error:", err);
     }
   };
 
+  // Watch for changes in isAuthenticated and navigate to dashboard
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/dashboard");
+    }
+  }, [isAuthenticated, navigate]);
+
   return (
     <div
-  className="relative flex items-center justify-center min-h-screen bg-center"
-  style={{
-    backgroundImage: `url('/images/fachada_canada.jpg')`,
-    backgroundSize: "75%", // Adjust this percentage to make the image smaller
-  }}
->
-      {/* Black overlay with opacity */}
-      <div className="absolute inset-0 bg-black opacity-50"></div>
-
-      {/* Content */}
-      <motion.div
-        initial={{ opacity: 0, y: -50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className="relative bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full z-10" // z-10 ensures the form is above the overlay
-      >
-        <h2 className="text-4xl font-extrabold text-center text-gray-700 mb-6">Bienvenido</h2>
-        {error && <p className="text-red-500 text-center mb-4">{error}</p>}
-        <form onSubmit={handleLogin}>
-          <div className="mb-5">
-            <label className="block text-lg font-medium text-gray-600">Correo</label>
+      className="min-h-screen flex items-center justify-center bg-cover bg-center"
+      style={{
+        backgroundImage:
+          "url('https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')",
+      }}
+    >
+      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+        <h1 className="text-2xl font-bold mb-6 text-center">Bienvenido</h1>
+        {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700">
+              Correo
+            </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Introduce tu correo"
-              className="w-full mt-2 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300 hover:shadow-md"
-              disabled={isSubmitting}
+              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              placeholder="Correo electrónico"
             />
           </div>
-
-          <div className="mb-5">
-            <label className="block text-lg font-medium text-gray-600">Contraseña</label>
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700">
+              Contraseña
+            </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Introduce tu contraseña"
-              className="w-full mt-2 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300 hover:shadow-md"
-              disabled={isSubmitting}
+              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              placeholder="Contraseña"
             />
           </div>
-          <motion.button
+          <button
             type="submit"
-            whileHover={{ scale: isSubmitting ? 1 : 1.05 }}
-            whileTap={{ scale: isSubmitting ? 1 : 0.95 }}
-            className={`w-full py-3 bg-blue-600 text-white text-xl font-semibold rounded-lg transition duration-300 shadow-lg ${
-              isSubmitting ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700"
-            }`}
-            disabled={isSubmitting}
+            className="w-full bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition duration-300"
           >
-            {isSubmitting ? "Iniciando sesión..." : "Iniciar Sesión"}
-          </motion.button>
+            Iniciar Sesión
+          </button>
         </form>
-      </motion.div>
+      </div>
     </div>
   );
 };
