@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { FaSearch, FaSave, FaFileExport } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 
+const API_URL = import.meta.env.VITE_API_URL; // Agregado API_URL
+
 interface Visitante {
   ID_VISITA: number;
   NRO_DPTO: number | null;
@@ -17,20 +19,20 @@ interface Visitante {
 const Visits = () => {
   const [dni, setDni] = useState("");
   const [nombreVisitante, setNombreVisitante] = useState("");
-  const [nroDpto, setNroDpto] = useState(""); // New state for department number
+  const [nroDpto, setNroDpto] = useState(""); // Nuevo estado para el número de departamento
   const [motivo, setMotivo] = useState("");
   const [visitas, setVisitas] = useState<Visitante[]>([]);
   const [filter, setFilter] = useState({ nombre: "", fecha: "" });
   const [error, setError] = useState("");
 
-  const { userId } = useAuth(); // Assuming you add userId to AuthContext
+  const { userId } = useAuth(); // Suponiendo que se agrega userId en AuthContext
   const now = new Date();
   const currentDate = now.toISOString().slice(0, 10);
 
-  // Fetch visits from the backend
+  // Obtener visitas desde el backend
   const fetchVisits = async () => {
     try {
-      const response = await fetch("https://sntps2jn-4000.brs.devtunnels.ms/api/visits", {
+      const response = await fetch(`${API_URL}/visits`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -49,7 +51,7 @@ const Visits = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Handle DNI search
+  // Manejar la búsqueda por DNI
   const handleSearchDni = async () => {
     if (!/^[0-9]{8}$/.test(dni)) {
       setError("El DNI debe tener exactamente 8 dígitos numéricos");
@@ -58,7 +60,7 @@ const Visits = () => {
     setError("");
     try {
       const response = await fetch(
-        `https://sntps2jn-4000.brs.devtunnels.ms/api/dni?dni=${dni}`,
+        `${API_URL}/dni?dni=${dni}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -74,16 +76,15 @@ const Visits = () => {
     }
   };
 
-  // Handle saving a visit
-// Handle saving a visit
-const handleSaveVisit = async () => {
+  // Manejar el guardado de una visita
+  const handleSaveVisit = async () => {
     if (!nombreVisitante || !motivo || !nroDpto) {
       setError("Por favor, complete todos los campos");
       return;
     }
     setError("");
     try {
-      const response = await fetch("https://sntps2jn-4000.brs.devtunnels.ms/api/visits", {
+      const response = await fetch(`${API_URL}/visits`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -103,26 +104,25 @@ const handleSaveVisit = async () => {
         const errorData = await response.json();
         throw new Error(errorData.message || "Error al grabar la visita");
       }
-      fetchVisits(); // Refresh the list
+      fetchVisits(); // Actualizar la lista de visitas
       setDni("");
       setNombreVisitante("");
       setNroDpto("");
       setMotivo("");
     } catch (err) {
-      // Type the error as Error
       const error = err as Error;
       setError(error.message || "Error al grabar la visita");
       console.error("Error al grabar la visita:", error);
     }
   };
 
-  // Handle filter changes
+  // Manejar los cambios en los filtros
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFilter((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Filter visits
+  // Filtrar las visitas
   const filteredVisitas = visitas.filter((visita) => {
     const fechaIngreso = new Date(visita.FECHA_INGRESO).toISOString().slice(0, 10);
     return (
@@ -132,7 +132,7 @@ const handleSaveVisit = async () => {
     );
   });
 
-  // Export to CSV
+  // Exportar a CSV
   const exportToCSV = () => {
     const headers = "ID Visita,Número Dpto,Nombre Visitante,DNI,Fecha Ingreso,Fecha Salida,Motivo,Estado\n";
     const rows = filteredVisitas

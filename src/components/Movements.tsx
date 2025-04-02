@@ -65,18 +65,18 @@ const Movements = () => {
 
   const handleBuscarPorDNI = async () => {
     if (!dni) return Swal.fire("Advertencia", "Por favor, ingresa un DNI válido", "warning");
-
+  
     try {
       const response = await fetch(`${API_URL}/usuarios/${dni}`);
       if (!response.ok) throw new Error("Usuario no encontrado");
       const data = await response.json();
-
+  
       const content = `
         <p><strong>Nombre:</strong> ${data.nombre}</p>
         <p><strong>Correo:</strong> ${data.CORREO}</p>
         <p><strong>Dpto:</strong> ${data.NRO_DPTO ?? "-"}</p>
       `;
-
+  
       const result = await Swal.fire({
         title: "¿Registrar este ingreso?",
         html: content,
@@ -85,16 +85,16 @@ const Movements = () => {
         confirmButtonText: "Registrar",
         cancelButtonText: "Cancelar",
       });
-
+  
       if (result.isConfirmed) {
         const postResponse = await fetch(`${API_URL}/movements/registrar-acceso`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ dni }),
         });
-
+  
         const resultData = await postResponse.json();
-
+  
         if (resultData.success) {
           Swal.fire("¡Registrado!", resultData.message, "success");
           setDni(""); // Limpia DNI
@@ -106,12 +106,13 @@ const Movements = () => {
       } else {
         setDni(""); // Limpia si se cancela
       }
-
+  
     } catch (error) {
       Swal.fire("Error", "No se encontró un usuario con ese DNI", "error");
       setDni("");
     }
   };
+  
 
   const filteredMovimientos = movimientos.filter((mov) => {
     const fechaAcceso = new Date(mov.FECHA_ACCESO).toISOString().slice(0, 10);
