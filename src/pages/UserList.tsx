@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { FaExclamationCircle, FaCheckCircle, FaEdit, FaSave, FaTrash, FaPlus, FaTimes } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+const API_URL = import.meta.env.VITE_API_URL; 
 
 interface User {
   ID_USUARIO: number;
@@ -30,6 +31,7 @@ const UserList = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
+
   // Fetch users on component mount
   const fetchUsers = async () => {
     if (!token) {
@@ -37,14 +39,14 @@ const UserList = () => {
       navigate("/login");
       return;
     }
-
+  
     try {
-      const response = await fetch("https://sntps2jn-4000.brs.devtunnels.ms/api/users", {
+      const response = await fetch(`${API_URL}/users`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-
+  
       if (response.status === 401) {
         localStorage.removeItem("token");
         localStorage.removeItem("userName");
@@ -53,15 +55,15 @@ const UserList = () => {
         navigate("/login");
         return;
       }
-
+  
       if (response.status === 404) {
         throw new Error("El endpoint de usuarios no fue encontrado en el servidor");
       }
-
+  
       if (!response.ok) {
         throw new Error("Error al obtener los usuarios");
       }
-
+  
       const data = await response.json();
       setUsers(data);
       setMessage({ text: "Usuarios cargados exitosamente", type: "success" });
@@ -71,6 +73,7 @@ const UserList = () => {
       setMessage({ text: errorMessage, type: "error" });
     }
   };
+  
 
   useEffect(() => {
     fetchUsers();
@@ -126,7 +129,7 @@ const UserList = () => {
         throw new Error("Usuario no encontrado");
       }
 
-      const response = await fetch(`https://sntps2jn-4000.brs.devtunnels.ms/api/users/${id}`, {
+      const response = await fetch(`${API_URL}/users/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -149,6 +152,7 @@ const UserList = () => {
           usuario: editedUser.USUARIO || userToUpdate.USUARIO,
         }),
       });
+      
 
       if (response.status === 401) {
         localStorage.removeItem("token");
@@ -179,44 +183,44 @@ const UserList = () => {
     }
   };
 
-  // Handle delete button click
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("¿Estás seguro de que deseas eliminar este usuario?")) return;
+// Handle delete button click
+const handleDelete = async (id: number) => {
+  if (!window.confirm("¿Estás seguro de que deseas eliminar este usuario?")) return;
 
-    try {
-      const response = await fetch(`https://sntps2jn-4000.brs.devtunnels.ms/api/users/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+  try {
+    const response = await fetch(`${API_URL}/users/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-      if (response.status === 401) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("userName");
-        localStorage.removeItem("role");
-        setMessage({ text: "Sesión expirada. Por favor, inicia sesión nuevamente.", type: "error" });
-        navigate("/login");
-        return;
-      }
-
-      if (response.status === 404) {
-        throw new Error("El endpoint para eliminar usuarios no fue encontrado en el servidor");
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error al eliminar el usuario");
-      }
-
-      setMessage({ text: "Usuario eliminado exitosamente", type: "success" });
-      fetchUsers();
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Error al eliminar el usuario";
-      console.error("Error al eliminar el usuario:", error);
-      setMessage({ text: errorMessage, type: "error" });
+    if (response.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("userName");
+      localStorage.removeItem("role");
+      setMessage({ text: "Sesión expirada. Por favor, inicia sesión nuevamente.", type: "error" });
+      navigate("/login");
+      return;
     }
-  };
+
+    if (response.status === 404) {
+      throw new Error("El endpoint para eliminar usuarios no fue encontrado en el servidor");
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Error al eliminar el usuario");
+    }
+
+    setMessage({ text: "Usuario eliminado exitosamente", type: "success" });
+    fetchUsers();
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Error al eliminar el usuario";
+    console.error("Error al eliminar el usuario:", error);
+    setMessage({ text: errorMessage, type: "error" });
+  }
+};
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
@@ -249,7 +253,7 @@ const UserList = () => {
 
       {/* Tabla de usuarios */}
       <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
-        <table className="min-w-full table-auto">
+        <table className="min-w-full table-auto" style={{ tableLayout: 'fixed', width: '100%' }}>
           <thead>
             <tr className="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
               <th className="py-3 px-6 text-left">ID</th>

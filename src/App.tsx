@@ -1,77 +1,20 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import Sidebar from "./components/Sidebar.tsx";
 import Movements from "./components/Movements.tsx";
-import Visits from "./components/visits.tsx"; // Import the new Visits component
+import Visits from "./components/Visits.tsx"; // Import the new Visits component
 import Users from "./pages/Users";
 import UserList from "./pages/UserList";
 import MovementsList from "./components/Movements.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Login from "./pages/Login.tsx";
-import { FaBars } from "react-icons/fa";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-
-// Componente separado para el navbar y sidebar
-const MobileNavbarAndSidebar = ({
-  hideSidebar,
-  sidebarOpen,
-  setSidebarOpen,
-  userName,
-}: {
-  hideSidebar: boolean;
-  sidebarOpen: boolean;
-  setSidebarOpen: (open: boolean) => void;
-  userName: string | null;
-}) => {
-  return (
-    <>
-      {/* Navbar para móviles */}
-      {!hideSidebar && (
-        <div className="w-full bg-gray-900 text-white flex justify-between items-center p-4 md:hidden">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-white text-2xl">
-            <FaBars />
-          </button>
-          <div className="flex items-center">
-            <img
-              src="https://randomuser.me/api/portraits/men/75.jpg"
-              alt="Usuario"
-              className="w-10 h-10 rounded-full border-2 border-white mr-2"
-            />
-            <span className="text-lg font-semibold">{userName || "Usuario"}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Fondo oscuro para cerrar sidebar en móviles */}
-      {sidebarOpen && !hideSidebar && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 md:hidden z-40"
-          onClick={() => setSidebarOpen(false)}
-        ></div>
-      )}
-
-      {/* Sidebar */}
-      {!hideSidebar && (
-        <div
-          className={`absolute md:relative ${
-            sidebarOpen ? "left-0" : "-left-72"
-          } md:left-0 transition-all duration-300 z-50`}
-        >
-          <Sidebar closeSidebar={() => setSidebarOpen(false)} />
-        </div>
-      )}
-    </>
-  );
-};
+import { FaBars } from "react-icons/fa";
 
 const App = () => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { isAuthenticated, userName, isLoading } = useAuth();
-
-  const hideSidebar = useMemo(() => {
-    return location.pathname === "/" || location.pathname === "/login";
-  }, [location.pathname]);
+  const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -82,50 +25,43 @@ const App = () => {
   }
 
   if (!isAuthenticated && location.pathname !== "/login") {
-    console.log("Usuario no autenticado, redirigiendo a /login...");
     return <Navigate to="/login" replace />;
   }
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-100 relative">
-      <MobileNavbarAndSidebar
-        hideSidebar={hideSidebar}
-        sidebarOpen={sidebarOpen}
-        setSidebarOpen={setSidebarOpen}
-        userName={userName}
-      />
-
-      <div className="flex-1">
+      {location.pathname !== "/login" && (
+        <Sidebar closeSidebar={() => setSidebarOpen(false)} sidebarOpen={sidebarOpen} />
+      )}
+      {location.pathname !== "/login" && (
+        <div className="md:hidden flex justify-between p-4 bg-gray-900 text-white">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="text-2xl"
+          >
+            <FaBars />
+          </button>
+        </div>
+      )}
+      <div className="flex-1 overflow-auto">
         <Routes>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/personal/movimientos" element={<Movements />} />
           <Route path="/users" element={<Users />} />
           <Route path="/user-list" element={<UserList />} />
           <Route path="/movements-list" element={<MovementsList />} />
-          <Route path="/visits" element={<Visits />} /> {/* New Route */}
+          <Route path="/visits" element={<Visits />} />
           <Route
             path="/profile"
-            element={
-              <div className="p-6">
-                <h1 className="text-2xl font-bold">Perfil</h1>
-              </div>
-            }
+            element={<div className="p-6"><h1 className="text-2xl font-bold">Perfil</h1></div>}
           />
           <Route
             path="/statistics"
-            element={
-              <div className="p-6">
-                <h1 className="text-2xl font-bold">Estadísticas</h1>
-              </div>
-            }
+            element={<div className="p-6"><h1 className="text-2xl font-bold">Estadísticas</h1></div>}
           />
           <Route
             path="/settings/:section"
-            element={
-              <div className="p-6">
-                <h1 className="text-2xl font-bold">Configuración</h1>
-              </div>
-            }
+            element={<div className="p-6"><h1 className="text-2xl font-bold">Configuración</h1></div>}
           />
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -136,12 +72,14 @@ const App = () => {
   );
 };
 
-const AppWrapper = () => (
-  <Router>
-    <AuthProvider>
-      <App />
-    </AuthProvider>
-  </Router>
-);
+const AppWrapper = () => {
+  return (
+    <Router>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </Router>
+  );
+};
 
 export default AppWrapper;

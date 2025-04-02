@@ -1,3 +1,4 @@
+/* Estilo global */
 #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -11,13 +12,27 @@
   will-change: filter;
   transition: filter 300ms;
 }
+
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
+
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
 
+/* Estilo para la tabla */
+table {
+  table-layout: fixed;
+  width: 100%; /* Asegura que la tabla ocupe todo el ancho disponible */
+}
+
+th, td {
+  padding: 10px; /* Ajusta el padding de las celdas si es necesario */
+  word-wrap: break-word; /* Permite que el texto largo se ajuste a varias líneas si es necesario */
+}
+
+/* Animación de logo */
 @keyframes logo-spin {
   from {
     transform: rotate(0deg);
@@ -39,4 +54,113 @@
 
 .read-the-docs {
   color: #888;
+}
+
+/* Estilo para el Sidebar */
+html, body {
+  overflow-x: hidden; /* Evita el desplazamiento horizontal */
+}
+
+/* Sidebar en dispositivos móviles */
+@media (max-width: 768px) {
+  .transform.transition-transform.duration-300 {
+    transition: transform 0.3s ease; /* Animación para el sidebar */
+  }
+
+  .-translate-x-full {
+    transform: translateX(-100%); /* Sidebar oculto */
+  }
+
+  .translate-x-0 {
+    transform: translateX(0); /* Sidebar visible */
+  }
+
+  .backdrop-blur-md {
+    backdrop-filter: blur(10px); /* Aplica el desenfoque */
+  }
+
+  /* Asegura que el contenido se vea correctamente sin desbordarse */
+  .backdrop-blur-md {
+    backdrop-filter: blur(5px); /* Aplica un efecto de desenfoque en el fondo cuando el sidebar está activo */
+  }
+}
+
+/* Asegurar que el contenido se ajuste correctamente cuando el sidebar esté visible */
+@media (min-width: 768px) {
+  .transform {
+    transition: transform 0.3s ease;
+  }
+
+  .md\:translate-x-0 {
+    transform: translateX(0);
+  }
+
+  .md\:relative {
+    position: relative;
+  }
+}
+
+/* Sidebar en pantallas grandes debe ser fijo */
+.sidebar {
+  position: fixed; /* Sidebar fijo en la pantalla */
+  top: 0;
+  left: 0;
+  z-index: 50;
+  height: 100vh;
+  width: 250px;
+  background-color: #1a202c; /* Fondo oscuro */
+  padding: 1rem;
+  transition: transform 0.3s ease; /* Transición suave para animación */
+  overflow-y: auto; /* Permite scroll interno en el sidebar */
+}
+
+/* Asegura que el contenido no se solape con el sidebar */
+.main-content {
+  margin-left: 250px; /* Da espacio al sidebar */
+  padding: 2rem;
+  transition: margin-left 0.3s ease;
+  overflow-y: auto; /* Permite desplazamiento dentro del contenido */
+  height: 100vh;
+}
+
+/* Sidebar en pantallas pequeñas (móviles) se debe ocultar hasta que se haga click en el botón */
+@media (max-width: 767px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -250px; /* Sidebar fuera de la vista por defecto */
+    z-index: 50;
+    height: 100%;
+    width: 250px;
+    transition: all 0.3s ease;
+  }
+
+  .sidebar.open {
+    left: 0; /* El sidebar aparece cuando está abierto */
+  }
+
+  .main-content {
+    margin-left: 0; /* El contenido no se moverá */
+  }
+
+  .overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); /* Fondo oscuro para el overlay */
+    z-index: 40;
+  }
+}
+
+/* Fondo oscuro de overlay para cuando el sidebar está abierto */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 40;
 }
