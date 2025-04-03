@@ -3,12 +3,12 @@ import {
   FaExclamationCircle,
   FaCheckCircle,
   FaEdit,
-  FaSave,
   FaTrash,
   FaPlus,
   FaTimes,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import Modal from "react-modal";
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface User {
@@ -32,8 +32,7 @@ const ITEMS_PER_PAGE = 10;
 
 const UserList = () => {
   const [users, setUsers] = useState<User[]>([]);
-  const [editingUserId, setEditingUserId] = useState<number | null>(null);
-  const [editedUser, setEditedUser] = useState<Partial<User>>({});
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" | "" }>({
     text: "",
     type: "",
@@ -66,12 +65,10 @@ const UserList = () => {
         return;
       }
 
-      if (response.status === 404) throw new Error("El endpoint de usuarios no fue encontrado en el servidor");
       if (!response.ok) throw new Error("Error al obtener los usuarios");
 
       const data = await response.json();
       setUsers(data);
-      setMessage({ text: "Usuarios cargados exitosamente", type: "success" });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Error al cargar los usuarios";
       setMessage({ text: errorMessage, type: "error" });
@@ -96,21 +93,42 @@ const UserList = () => {
 
   const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
 
+  const handleUpdateUser = async () => {
+    if (!editingUser) return;
+
+    try {
+      const response = await fetch(`${API_URL}/users/${editingUser.ID_USUARIO}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(editingUser),
+      });
+
+      if (!response.ok) throw new Error("Error al actualizar el usuario");
+      setEditingUser(null);
+      fetchUsers();
+      setMessage({ text: "Usuario actualizado exitosamente", type: "success" });
+    } catch (error) {
+      setMessage({ text: "Error al actualizar el usuario", type: "error" });
+    }
+  };
+
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Lista de Usuarios</h1>
         <button
           onClick={() => navigate("/users")}
-          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition duration-300 flex items-center"
+          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center"
         >
-          <FaPlus className="mr-2" />
-          Agregar Usuario
+          <FaPlus className="mr-2" /> Agregar Usuario
         </button>
       </div>
 
       <h2 className="text-lg font-semibold mb-2">Buscar usuarios</h2>
-      <div className="flex items-center gap-4 mb-4">
+      <div className="flex flex-wrap gap-4 mb-4">
         <select
           value={searchField}
           onChange={(e) => setSearchField(e.target.value)}
@@ -127,17 +145,15 @@ const UserList = () => {
             setSearchValue(e.target.value);
             setCurrentPage(1);
           }}
-          className="p-2 border rounded-lg w-64"
+          className="p-2 border rounded-lg flex-1 min-w-[200px]"
           placeholder="Buscar..."
         />
       </div>
 
       {message.text && (
-        <div
-          className={`p-4 mb-6 rounded-lg flex items-center ${
-            message.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-          }`}
-        >
+        <div className={`p-4 mb-6 rounded-lg flex items-center ${
+          message.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+        }`}>
           {message.type === "success" ? <FaCheckCircle className="mr-2" /> : <FaExclamationCircle className="mr-2" />}
           {message.text}
         </div>
@@ -154,8 +170,8 @@ const UserList = () => {
                 <th className="py-3 px-4 text-left">DNI</th>
                 <th className="py-3 px-4 text-left">Correo</th>
                 <th className="py-3 px-4 text-left">Celular</th>
-                <th className="py-3 px-4 text-left">Nro. Dpto</th>
-                <th className="py-3 px-4 text-left">Fecha Nacimiento</th>
+                <th className="py-3 px-4 text-left">Dpto</th>
+                <th className="py-3 px-4 text-left">Nacimiento</th>
                 <th className="py-3 px-4 text-left">Comité</th>
                 <th className="py-3 px-4 text-left">Usuario</th>
                 <th className="py-3 px-4 text-left">Rol</th>
@@ -163,26 +179,26 @@ const UserList = () => {
                 <th className="py-3 px-4 text-left">Acciones</th>
               </tr>
             </thead>
-            <tbody className="text-gray-600 font-light">
+            <tbody>
               {paginatedUsers.map((user) => (
-                <tr key={user.ID_USUARIO} className="border-b border-gray-200 hover:bg-gray-100">
-                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.ID_USUARIO}</td>
-                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.NOMBRES}</td>
-                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.APELLIDOS}</td>
-                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.DNI}</td>
-                  <td className="py-3 px-4 text-left break-all">{user.CORREO}</td>
-                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.CELULAR}</td>
-                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.NRO_DPTO ?? "N/A"}</td>
-                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.FECHA_NACIMIENTO ? new Date(user.FECHA_NACIMIENTO).toLocaleDateString() : "N/A"}</td>
-                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.COMITE === 1 ? "Sí" : "No"}</td>
-                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.USUARIO}</td>
-                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.ROL}</td>
-                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.SEXO}</td>
-                  <td className="py-3 px-4 text-left flex space-x-2">
-                    <button onClick={() => setEditingUserId(user.ID_USUARIO)} className="text-blue-500 hover:text-blue-700">
+                <tr key={user.ID_USUARIO} className="border-b hover:bg-gray-100">
+                  <td className="py-3 px-4">{user.ID_USUARIO}</td>
+                  <td className="py-3 px-4">{user.NOMBRES}</td>
+                  <td className="py-3 px-4">{user.APELLIDOS}</td>
+                  <td className="py-3 px-4">{user.DNI}</td>
+                  <td className="py-3 px-4 break-all">{user.CORREO}</td>
+                  <td className="py-3 px-4">{user.CELULAR}</td>
+                  <td className="py-3 px-4">{user.NRO_DPTO ?? "N/A"}</td>
+                  <td className="py-3 px-4">{user.FECHA_NACIMIENTO ? new Date(user.FECHA_NACIMIENTO).toLocaleDateString() : "N/A"}</td>
+                  <td className="py-3 px-4">{user.COMITE === 1 ? "Sí" : "No"}</td>
+                  <td className="py-3 px-4">{user.USUARIO}</td>
+                  <td className="py-3 px-4">{user.ROL}</td>
+                  <td className="py-3 px-4">{user.SEXO}</td>
+                  <td className="py-3 px-4 flex space-x-2">
+                    <button onClick={() => setEditingUser(user)} className="text-blue-500 hover:text-blue-700">
                       <FaEdit />
                     </button>
-                    <button onClick={() => console.log("delete", user.ID_USUARIO)} className="text-red-500 hover:text-red-700">
+                    <button className="text-red-500 hover:text-red-700">
                       <FaTrash />
                     </button>
                   </td>
@@ -192,7 +208,6 @@ const UserList = () => {
           </table>
         </div>
 
-        {/* Paginación */}
         {totalPages > 1 && (
           <div className="flex justify-center mt-4 space-x-2">
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
@@ -209,6 +224,43 @@ const UserList = () => {
           </div>
         )}
       </div>
+
+      {/* Modal para editar */}
+      <Modal
+        isOpen={!!editingUser}
+        onRequestClose={() => setEditingUser(null)}
+        className="bg-white p-6 w-full max-w-2xl mx-auto mt-20 rounded-lg shadow-lg"
+        overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        ariaHideApp={false}
+      >
+        {editingUser && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h2 className="text-xl font-bold col-span-full">Editar Usuario</h2>
+            <input className="p-2 border rounded" value={editingUser.NOMBRES} onChange={(e) => setEditingUser({ ...editingUser, NOMBRES: e.target.value })} placeholder="Nombres" />
+            <input className="p-2 border rounded" value={editingUser.APELLIDOS} onChange={(e) => setEditingUser({ ...editingUser, APELLIDOS: e.target.value })} placeholder="Apellidos" />
+            <input className="p-2 border rounded" value={editingUser.DNI} onChange={(e) => setEditingUser({ ...editingUser, DNI: e.target.value })} placeholder="DNI" />
+            <input className="p-2 border rounded" value={editingUser.CORREO} onChange={(e) => setEditingUser({ ...editingUser, CORREO: e.target.value })} placeholder="Correo" />
+            <input className="p-2 border rounded" value={editingUser.CELULAR} onChange={(e) => setEditingUser({ ...editingUser, CELULAR: e.target.value })} placeholder="Celular" />
+            <input className="p-2 border rounded" value={editingUser.NRO_DPTO ?? ""} onChange={(e) => setEditingUser({ ...editingUser, NRO_DPTO: parseInt(e.target.value) || null })} placeholder="Dpto" />
+            <input className="p-2 border rounded" type="date" value={editingUser.FECHA_NACIMIENTO?.split("T")[0] || ""} onChange={(e) => setEditingUser({ ...editingUser, FECHA_NACIMIENTO: e.target.value })} placeholder="Nacimiento" />
+            <select className="p-2 border rounded" value={editingUser.COMITE} onChange={(e) => setEditingUser({ ...editingUser, COMITE: parseInt(e.target.value) })}>
+              <option value={0}>No</option>
+              <option value={1}>Sí</option>
+            </select>
+            <input className="p-2 border rounded" value={editingUser.USUARIO} onChange={(e) => setEditingUser({ ...editingUser, USUARIO: e.target.value })} placeholder="Usuario" />
+            <input className="p-2 border rounded" value={editingUser.ROL} onChange={(e) => setEditingUser({ ...editingUser, ROL: e.target.value })} placeholder="Rol" />
+            <input className="p-2 border rounded" value={editingUser.SEXO} onChange={(e) => setEditingUser({ ...editingUser, SEXO: e.target.value })} placeholder="Sexo" />
+            <div className="col-span-full flex justify-end gap-2">
+              <button onClick={() => setEditingUser(null)} className="px-4 py-2 bg-gray-300 rounded">
+                Cancelar
+              </button>
+              <button onClick={handleUpdateUser} className="px-4 py-2 bg-blue-600 text-white rounded">
+                Guardar
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
