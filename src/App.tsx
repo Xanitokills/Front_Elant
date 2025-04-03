@@ -1,13 +1,19 @@
 import { useState } from "react";
-import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from "react-router-dom";
-import Sidebar from "./components/Sidebar.tsx";
-import Movements from "./components/Movements.tsx";
-import Visits from "./components/Visits.tsx"; // Import the new Visits component
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+  Navigate,
+} from "react-router-dom";
+import Sidebar from "./components/Sidebar";
+import Movements from "./components/Movements";
+import Visits from "./components/Visits";
 import Users from "./pages/Users";
 import UserList from "./pages/UserList";
-import MovementsList from "./components/Movements.tsx";
-import Dashboard from "./pages/Dashboard.tsx";
-import Login from "./pages/Login.tsx";
+import MovementsList from "./components/Movements";
+import Dashboard from "./pages/Dashboard";
+import Login from "./pages/Login";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { FaBars } from "react-icons/fa";
 
@@ -28,22 +34,49 @@ const App = () => {
     return <Navigate to="/login" replace />;
   }
 
+  const isLoginPage = location.pathname === "/login";
+
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-gray-100 relative">
-      {location.pathname !== "/login" && (
-        <Sidebar closeSidebar={() => setSidebarOpen(false)} sidebarOpen={sidebarOpen} />
+    <div className="flex min-h-screen bg-gray-100 relative">
+      {/* Sidebar escritorio (fijo, sin fondo oscuro) */}
+      {!isLoginPage && (
+        <div className="hidden md:block fixed top-0 left-0 z-50">
+          <Sidebar closeSidebar={() => setSidebarOpen(false)} sidebarOpen={true} />
+        </div>
       )}
-      {location.pathname !== "/login" && (
-        <div className="md:hidden flex justify-between p-4 bg-gray-900 text-white">
+
+      {/* Sidebar móvil con overlay */}
+      {!isLoginPage && sidebarOpen && (
+        <>
+          {/* Fondo oscuro SOLO móvil */}
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            onClick={() => setSidebarOpen(false)}
+          ></div>
+          <div className="fixed top-0 left-0 z-50 md:hidden">
+            <Sidebar closeSidebar={() => setSidebarOpen(false)} sidebarOpen={sidebarOpen} />
+          </div>
+        </>
+      )}
+
+      {/* Botón hamburguesa en móvil */}
+      {!isLoginPage && (
+        <div className="md:hidden fixed top-4 left-4 z-50">
           <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-2xl"
+            onClick={() => setSidebarOpen(true)}
+            className="text-white bg-gray-900 p-2 rounded"
           >
-            <FaBars />
+            <FaBars size={20} />
           </button>
         </div>
       )}
-      <div className="flex-1 overflow-auto">
+
+      {/* Contenido principal */}
+      <div
+        className={`flex-1 overflow-y-auto transition-all duration-300 pt-4 px-4 w-full ${
+          !isLoginPage ? "md:ml-64" : ""
+        }`}
+      >
         <Routes>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/personal/movimientos" element={<Movements />} />
@@ -52,16 +85,12 @@ const App = () => {
           <Route path="/movements-list" element={<MovementsList />} />
           <Route path="/visits" element={<Visits />} />
           <Route
-            path="/profile"
-            element={<div className="p-6"><h1 className="text-2xl font-bold">Perfil</h1></div>}
-          />
-          <Route
-            path="/statistics"
-            element={<div className="p-6"><h1 className="text-2xl font-bold">Estadísticas</h1></div>}
-          />
-          <Route
             path="/settings/:section"
-            element={<div className="p-6"><h1 className="text-2xl font-bold">Configuración</h1></div>}
+            element={
+              <div className="p-6">
+                <h1 className="text-2xl font-bold">Configuración</h1>
+              </div>
+            }
           />
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -72,14 +101,12 @@ const App = () => {
   );
 };
 
-const AppWrapper = () => {
-  return (
-    <Router>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </Router>
-  );
-};
+const AppWrapper = () => (
+  <Router>
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  </Router>
+);
 
 export default AppWrapper;
