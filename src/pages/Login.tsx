@@ -2,12 +2,20 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import fachada from "../images/fachada_canada.jpg";
+
+const images = [
+  "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+   fachada,
+  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e"
+];
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [currentImage, setCurrentImage] = useState(0);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -26,6 +34,13 @@ const Login = () => {
       navigate("/dashboard");
     }
   }, [isAuthenticated, navigate]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImage((prev) => (prev + 1) % images.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row pt-10 md:pt-0">
@@ -83,13 +98,24 @@ const Login = () => {
         </div>
       </div>
 
-      {/* Lado derecho con imagen */}
-      <div className="hidden md:flex w-1/2 bg-cover bg-center justify-center items-center"
-        style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')",
-        }}
-      >
-        {/* Fondo decorativo */}
+      {/* Lado derecho con carrusel de imágenes */}
+      <div className="hidden md:flex w-1/2 flex-col items-center justify-center relative overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center transition-all duration-1000"
+          style={{ backgroundImage: `url('${images[currentImage]}')` }}
+        ></div>
+        {/* Paginación */}
+        <div className="relative z-10 flex justify-center mt-auto mb-6 space-x-2">
+          {images.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentImage(index)}
+              className={`h-3 w-3 rounded-full transition-all duration-300 ${
+                index === currentImage ? "bg-white" : "bg-white/50"
+              }`}
+            ></button>
+          ))}
+        </div>
       </div>
     </div>
   );
