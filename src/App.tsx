@@ -74,7 +74,7 @@ const App = () => {
       {/* Contenido principal */}
       <div
         className={`flex-1 overflow-y-auto transition-all duration-300 px-4 w-full ${
-          !isLoginPage ? "md:ml-64 pt-4 md:pt-4 pt-20" : ""
+          !isLoginPage ? "md:ml-64 pt-24 md:pt-4" : ""
         }`}
       >
         <Routes>
