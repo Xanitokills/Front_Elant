@@ -1,7 +1,15 @@
 import { useState, useEffect } from "react";
-import { FaExclamationCircle, FaCheckCircle, FaEdit, FaSave, FaTrash, FaPlus, FaTimes } from "react-icons/fa";
+import {
+  FaExclamationCircle,
+  FaCheckCircle,
+  FaEdit,
+  FaSave,
+  FaTrash,
+  FaPlus,
+  FaTimes,
+} from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-const API_URL = import.meta.env.VITE_API_URL; 
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface User {
   ID_USUARIO: number;
@@ -31,67 +39,53 @@ const UserList = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
-
-  // Fetch users on component mount
   const fetchUsers = async () => {
     if (!token) {
       setMessage({ text: "No se encontró un token. Por favor, inicia sesión.", type: "error" });
       navigate("/login");
       return;
     }
-  
+
     try {
       const response = await fetch(`${API_URL}/users`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-  
+
       if (response.status === 401) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("userName");
-        localStorage.removeItem("role");
+        localStorage.clear();
         setMessage({ text: "Sesión expirada. Por favor, inicia sesión nuevamente.", type: "error" });
         navigate("/login");
         return;
       }
-  
-      if (response.status === 404) {
-        throw new Error("El endpoint de usuarios no fue encontrado en el servidor");
-      }
-  
-      if (!response.ok) {
-        throw new Error("Error al obtener los usuarios");
-      }
-  
+
+      if (response.status === 404) throw new Error("El endpoint de usuarios no fue encontrado en el servidor");
+      if (!response.ok) throw new Error("Error al obtener los usuarios");
+
       const data = await response.json();
       setUsers(data);
       setMessage({ text: "Usuarios cargados exitosamente", type: "success" });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Error al cargar los usuarios";
-      console.error("Error al cargar los usuarios:", error);
       setMessage({ text: errorMessage, type: "error" });
     }
   };
-  
 
   useEffect(() => {
     fetchUsers();
   }, [token, navigate]);
 
-  // Handle edit button click
   const handleEdit = (user: User) => {
     setEditingUserId(user.ID_USUARIO);
     setEditedUser({ ...user });
   };
 
-  // Handle cancel button click
   const handleCancel = () => {
     setEditingUserId(null);
     setEditedUser({});
   };
 
-  // Handle input change during editing
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
@@ -101,22 +95,17 @@ const UserList = () => {
     }));
   };
 
-  // Client-side validation before saving
   const validateUserData = (user: Partial<User>): string | null => {
-    if (!user.NOMBRES || user.NOMBRES.trim() === "") return "El nombre es requerido";
-    if (!user.APELLIDOS || user.APELLIDOS.trim() === "") return "Los apellidos son requeridos";
-    if (!user.DNI || !/^[0-9]{8}$/.test(user.DNI)) return "El DNI debe tener exactamente 8 dígitos";
-    if (!user.CORREO || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.CORREO))
-      return "El correo debe ser válido";
-    if (!user.CELULAR || !/^[9][0-9]{8}$/.test(user.CELULAR))
-      return "El celular debe comenzar con 9 y tener 9 dígitos";
-    if (!user.USUARIO || user.USUARIO.trim() === "") return "El usuario es requerido";
+    if (!user.NOMBRES?.trim()) return "El nombre es requerido";
+    if (!user.APELLIDOS?.trim()) return "Los apellidos son requeridos";
+    if (!/^[0-9]{8}$/.test(user.DNI || "")) return "El DNI debe tener exactamente 8 dígitos";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.CORREO || "")) return "El correo debe ser válido";
+    if (!/^[9][0-9]{8}$/.test(user.CELULAR || "")) return "El celular debe comenzar con 9 y tener 9 dígitos";
+    if (!user.USUARIO?.trim()) return "El usuario es requerido";
     return null;
   };
 
-  // Handle save button click
   const handleSave = async (id: number) => {
-    // Validate user data
     const validationError = validateUserData(editedUser);
     if (validationError) {
       setMessage({ text: validationError, type: "error" });
@@ -125,9 +114,7 @@ const UserList = () => {
 
     try {
       const userToUpdate = users.find((u) => u.ID_USUARIO === id);
-      if (!userToUpdate) {
-        throw new Error("Usuario no encontrado");
-      }
+      if (!userToUpdate) throw new Error("Usuario no encontrado");
 
       const response = await fetch(`${API_URL}/users/${id}`, {
         method: "PUT",
@@ -152,19 +139,12 @@ const UserList = () => {
           usuario: editedUser.USUARIO || userToUpdate.USUARIO,
         }),
       });
-      
 
       if (response.status === 401) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("userName");
-        localStorage.removeItem("role");
+        localStorage.clear();
         setMessage({ text: "Sesión expirada. Por favor, inicia sesión nuevamente.", type: "error" });
         navigate("/login");
         return;
-      }
-
-      if (response.status === 404) {
-        throw new Error("El endpoint para actualizar usuarios no fue encontrado en el servidor");
       }
 
       if (!response.ok) {
@@ -178,49 +158,40 @@ const UserList = () => {
       fetchUsers();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Error al actualizar el usuario";
-      console.error("Error al actualizar el usuario:", error);
       setMessage({ text: errorMessage, type: "error" });
     }
   };
 
-// Handle delete button click
-const handleDelete = async (id: number) => {
-  if (!window.confirm("¿Estás seguro de que deseas eliminar este usuario?")) return;
+  const handleDelete = async (id: number) => {
+    if (!window.confirm("¿Estás seguro de que deseas eliminar este usuario?")) return;
 
-  try {
-    const response = await fetch(`${API_URL}/users/${id}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    try {
+      const response = await fetch(`${API_URL}/users/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-    if (response.status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("userName");
-      localStorage.removeItem("role");
-      setMessage({ text: "Sesión expirada. Por favor, inicia sesión nuevamente.", type: "error" });
-      navigate("/login");
-      return;
+      if (response.status === 401) {
+        localStorage.clear();
+        setMessage({ text: "Sesión expirada. Por favor, inicia sesión nuevamente.", type: "error" });
+        navigate("/login");
+        return;
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al eliminar el usuario");
+      }
+
+      setMessage({ text: "Usuario eliminado exitosamente", type: "success" });
+      fetchUsers();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Error al eliminar el usuario";
+      setMessage({ text: errorMessage, type: "error" });
     }
-
-    if (response.status === 404) {
-      throw new Error("El endpoint para eliminar usuarios no fue encontrado en el servidor");
-    }
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Error al eliminar el usuario");
-    }
-
-    setMessage({ text: "Usuario eliminado exitosamente", type: "success" });
-    fetchUsers();
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Error al eliminar el usuario";
-    console.error("Error al eliminar el usuario:", error);
-    setMessage({ text: errorMessage, type: "error" });
-  }
-};
+  };
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
@@ -235,210 +206,65 @@ const handleDelete = async (id: number) => {
         </button>
       </div>
 
-      {/* Mensaje de éxito o error */}
       {message.text && (
         <div
           className={`p-4 mb-6 rounded-lg flex items-center ${
             message.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
           }`}
         >
-          {message.type === "success" ? (
-            <FaCheckCircle className="mr-2" />
-          ) : (
-            <FaExclamationCircle className="mr-2" />
-          )}
+          {message.type === "success" ? <FaCheckCircle className="mr-2" /> : <FaExclamationCircle className="mr-2" />}
           {message.text}
         </div>
       )}
 
-      {/* Tabla de usuarios */}
       <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
-        <table className="min-w-full table-auto" style={{ tableLayout: 'fixed', width: '100%' }}>
-          <thead>
-            <tr className="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
-              <th className="py-3 px-6 text-left">ID</th>
-              <th className="py-3 px-6 text-left">Nombres</th>
-              <th className="py-3 px-6 text-left">Apellidos</th>
-              <th className="py-3 px-6 text-left">DNI</th>
-              <th className="py-3 px-6 text-left">Correo</th>
-              <th className="py-3 px-6 text-left">Celular</th>
-              <th className="py-3 px-6 text-left">Nro. Dpto</th>
-              <th className="py-3 px-6 text-left">Fecha Nacimiento</th>
-              <th className="py-3 px-6 text-left">Comité</th>
-              <th className="py-3 px-6 text-left">Usuario</th>
-              <th className="py-3 px-6 text-left">Rol</th>
-              <th className="py-3 px-6 text-left">Sexo</th>
-              <th className="py-3 px-6 text-left">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="text-gray-600 text-sm font-light">
-            {users.map((user) => (
-              <tr key={user.ID_USUARIO} className="border-b border-gray-200 hover:bg-gray-100">
-                <td className="py-3 px-6 text-left">{user.ID_USUARIO}</td>
-                <td className="py-3 px-6 text-left">
-                  {editingUserId === user.ID_USUARIO ? (
-                    <input
-                      type="text"
-                      name="NOMBRES"
-                      value={editedUser.NOMBRES ?? user.NOMBRES}
-                      onChange={handleInputChange}
-                      className="w-full p-1 border rounded-lg"
-                    />
-                  ) : (
-                    user.NOMBRES
-                  )}
-                </td>
-                <td className="py-3 px-6 text-left">
-                  {editingUserId === user.ID_USUARIO ? (
-                    <input
-                      type="text"
-                      name="APELLIDOS"
-                      value={editedUser.APELLIDOS ?? user.APELLIDOS}
-                      onChange={handleInputChange}
-                      className="w-full p-1 border rounded-lg"
-                    />
-                  ) : (
-                    user.APELLIDOS
-                  )}
-                </td>
-                <td className="py-3 px-6 text-left">
-                  {editingUserId === user.ID_USUARIO ? (
-                    <input
-                      type="text"
-                      name="DNI"
-                      value={editedUser.DNI ?? user.DNI}
-                      onChange={handleInputChange}
-                      className="w-full p-1 border rounded-lg"
-                    />
-                  ) : (
-                    user.DNI
-                  )}
-                </td>
-                <td className="py-3 px-6 text-left">
-                  {editingUserId === user.ID_USUARIO ? (
-                    <input
-                      type="email"
-                      name="CORREO"
-                      value={editedUser.CORREO ?? user.CORREO}
-                      onChange={handleInputChange}
-                      className="w-full p-1 border rounded-lg"
-                    />
-                  ) : (
-                    user.CORREO
-                  )}
-                </td>
-                <td className="py-3 px-6 text-left">
-                  {editingUserId === user.ID_USUARIO ? (
-                    <input
-                      type="text"
-                      name="CELULAR"
-                      value={editedUser.CELULAR ?? user.CELULAR}
-                      onChange={handleInputChange}
-                      className="w-full p-1 border rounded-lg"
-                    />
-                  ) : (
-                    user.CELULAR
-                  )}
-                </td>
-                <td className="py-3 px-6 text-left">
-                  {editingUserId === user.ID_USUARIO ? (
-                    <input
-                      type="number"
-                      name="NRO_DPTO"
-                      value={editedUser.NRO_DPTO ?? user.NRO_DPTO ?? ""}
-                      onChange={handleInputChange}
-                      className="w-full p-1 border rounded-lg"
-                    />
-                  ) : (
-                    user.NRO_DPTO ?? "N/A"
-                  )}
-                </td>
-                <td className="py-3 px-6 text-left">
-                  {editingUserId === user.ID_USUARIO ? (
-                    <input
-                      type="date"
-                      name="FECHA_NACIMIENTO"
-                      value={
-                        editedUser.FECHA_NACIMIENTO
-                          ? new Date(editedUser.FECHA_NACIMIENTO).toISOString().split("T")[0]
-                          : user.FECHA_NACIMIENTO
-                          ? new Date(user.FECHA_NACIMIENTO).toISOString().split("T")[0]
-                          : ""
-                      }
-                      onChange={handleInputChange}
-                      className="w-full p-1 border rounded-lg"
-                    />
-                  ) : user.FECHA_NACIMIENTO ? (
-                    new Date(user.FECHA_NACIMIENTO).toLocaleDateString()
-                  ) : (
-                    "N/A"
-                  )}
-                </td>
-                <td className="py-3 px-6 text-left">
-                  {editingUserId === user.ID_USUARIO ? (
-                    <input
-                      type="checkbox"
-                      name="COMITE"
-                      checked={editedUser.COMITE !== undefined ? editedUser.COMITE === 1 : user.COMITE === 1}
-                      onChange={handleInputChange}
-                      className="h-5 w-5 text-blue-500"
-                    />
-                  ) : user.COMITE === 1 ? (
-                    "Sí"
-                  ) : (
-                    "No"
-                  )}
-                </td>
-                <td className="py-3 px-6 text-left">
-                  {editingUserId === user.ID_USUARIO ? (
-                    <input
-                      type="text"
-                      name="USUARIO"
-                      value={editedUser.USUARIO ?? user.USUARIO}
-                      onChange={handleInputChange}
-                      className="w-full p-1 border rounded-lg"
-                    />
-                  ) : (
-                    user.USUARIO
-                  )}
-                </td>
-                <td className="py-3 px-6 text-left">{user.ROL}</td>
-                <td className="py-3 px-6 text-left">{user.SEXO}</td>
-                <td className="py-3 px-6 text-left flex space-x-2">
-                  {editingUserId === user.ID_USUARIO ? (
-                    <>
-                      <button
-                        onClick={() => handleSave(user.ID_USUARIO)}
-                        className="text-green-500 hover:text-green-700"
-                      >
-                        <FaSave />
-                      </button>
-                      <button
-                        onClick={handleCancel}
-                        className="text-gray-500 hover:text-gray-700"
-                      >
-                        <FaTimes />
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => handleEdit(user)}
-                      className="text-blue-500 hover:text-blue-700"
-                    >
+        <div className="min-w-[1200px]">
+          <table className="w-full table-auto text-sm">
+            <thead>
+              <tr className="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
+                <th className="py-3 px-4 text-left">ID</th>
+                <th className="py-3 px-4 text-left">Nombres</th>
+                <th className="py-3 px-4 text-left">Apellidos</th>
+                <th className="py-3 px-4 text-left">DNI</th>
+                <th className="py-3 px-4 text-left">Correo</th>
+                <th className="py-3 px-4 text-left">Celular</th>
+                <th className="py-3 px-4 text-left">Nro. Dpto</th>
+                <th className="py-3 px-4 text-left">Fecha Nacimiento</th>
+                <th className="py-3 px-4 text-left">Comité</th>
+                <th className="py-3 px-4 text-left">Usuario</th>
+                <th className="py-3 px-4 text-left">Rol</th>
+                <th className="py-3 px-4 text-left">Sexo</th>
+                <th className="py-3 px-4 text-left">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="text-gray-600 font-light">
+              {users.map((user) => (
+                <tr key={user.ID_USUARIO} className="border-b border-gray-200 hover:bg-gray-100">
+                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.ID_USUARIO}</td>
+                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.NOMBRES}</td>
+                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.APELLIDOS}</td>
+                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.DNI}</td>
+                  <td className="py-3 px-4 text-left break-all">{user.CORREO}</td>
+                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.CELULAR}</td>
+                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.NRO_DPTO ?? "N/A"}</td>
+                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.FECHA_NACIMIENTO ? new Date(user.FECHA_NACIMIENTO).toLocaleDateString() : "N/A"}</td>
+                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.COMITE === 1 ? "Sí" : "No"}</td>
+                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.USUARIO}</td>
+                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.ROL}</td>
+                  <td className="py-3 px-4 text-left whitespace-nowrap">{user.SEXO}</td>
+                  <td className="py-3 px-4 text-left flex space-x-2">
+                    <button onClick={() => handleEdit(user)} className="text-blue-500 hover:text-blue-700">
                       <FaEdit />
                     </button>
-                  )}
-                  <button
-                    onClick={() => handleDelete(user.ID_USUARIO)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <FaTrash />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    <button onClick={() => handleDelete(user.ID_USUARIO)} className="text-red-500 hover:text-red-700">
+                      <FaTrash />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
