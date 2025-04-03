@@ -28,6 +28,8 @@ interface User {
   ID_SEXO: number;
 }
 
+const ITEMS_PER_PAGE = 10;
+
 const UserList = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
@@ -36,6 +38,10 @@ const UserList = () => {
     text: "",
     type: "",
   });
+  const [searchField, setSearchField] = useState("NOMBRES");
+  const [searchValue, setSearchValue] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
@@ -76,122 +82,19 @@ const UserList = () => {
     fetchUsers();
   }, [token, navigate]);
 
-  const handleEdit = (user: User) => {
-    setEditingUserId(user.ID_USUARIO);
-    setEditedUser({ ...user });
-  };
+  const filteredUsers = users.filter((user) => {
+    const target = searchField === "NOMBRES"
+      ? `${user.NOMBRES} ${user.APELLIDOS}`.toLowerCase()
+      : String(user[searchField as keyof User] ?? "").toLowerCase();
+    return target.includes(searchValue.toLowerCase());
+  });
 
-  const handleCancel = () => {
-    setEditingUserId(null);
-    setEditedUser({});
-  };
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    const checked = (e.target as HTMLInputElement).checked;
-    setEditedUser((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? (checked ? 1 : 0) : value,
-    }));
-  };
-
-  const validateUserData = (user: Partial<User>): string | null => {
-    if (!user.NOMBRES?.trim()) return "El nombre es requerido";
-    if (!user.APELLIDOS?.trim()) return "Los apellidos son requeridos";
-    if (!/^[0-9]{8}$/.test(user.DNI || "")) return "El DNI debe tener exactamente 8 dígitos";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.CORREO || "")) return "El correo debe ser válido";
-    if (!/^[9][0-9]{8}$/.test(user.CELULAR || "")) return "El celular debe comenzar con 9 y tener 9 dígitos";
-    if (!user.USUARIO?.trim()) return "El usuario es requerido";
-    return null;
-  };
-
-  const handleSave = async (id: number) => {
-    const validationError = validateUserData(editedUser);
-    if (validationError) {
-      setMessage({ text: validationError, type: "error" });
-      return;
-    }
-
-    try {
-      const userToUpdate = users.find((u) => u.ID_USUARIO === id);
-      if (!userToUpdate) throw new Error("Usuario no encontrado");
-
-      const response = await fetch(`${API_URL}/users/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          nro_dpto: editedUser.NRO_DPTO || null,
-          nombres: editedUser.NOMBRES || userToUpdate.NOMBRES,
-          apellidos: editedUser.APELLIDOS || userToUpdate.APELLIDOS,
-          dni: editedUser.DNI || userToUpdate.DNI,
-          correo: editedUser.CORREO || userToUpdate.CORREO,
-          celular: editedUser.CELULAR || userToUpdate.CELULAR,
-          contacto_emergencia: null,
-          fecha_nacimiento: editedUser.FECHA_NACIMIENTO || null,
-          id_tipo_usuario: userToUpdate.ID_TIPO_USUARIO,
-          id_sexo: userToUpdate.ID_SEXO,
-          detalle: null,
-          observaciones: null,
-          comite: editedUser.COMITE !== undefined ? editedUser.COMITE : userToUpdate.COMITE,
-          usuario: editedUser.USUARIO || userToUpdate.USUARIO,
-        }),
-      });
-
-      if (response.status === 401) {
-        localStorage.clear();
-        setMessage({ text: "Sesión expirada. Por favor, inicia sesión nuevamente.", type: "error" });
-        navigate("/login");
-        return;
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error al actualizar el usuario");
-      }
-
-      setMessage({ text: "Usuario actualizado exitosamente", type: "success" });
-      setEditingUserId(null);
-      setEditedUser({});
-      fetchUsers();
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Error al actualizar el usuario";
-      setMessage({ text: errorMessage, type: "error" });
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("¿Estás seguro de que deseas eliminar este usuario?")) return;
-
-    try {
-      const response = await fetch(`${API_URL}/users/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.status === 401) {
-        localStorage.clear();
-        setMessage({ text: "Sesión expirada. Por favor, inicia sesión nuevamente.", type: "error" });
-        navigate("/login");
-        return;
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error al eliminar el usuario");
-      }
-
-      setMessage({ text: "Usuario eliminado exitosamente", type: "success" });
-      fetchUsers();
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Error al eliminar el usuario";
-      setMessage({ text: errorMessage, type: "error" });
-    }
-  };
+  const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
@@ -204,6 +107,29 @@ const UserList = () => {
           <FaPlus className="mr-2" />
           Agregar Usuario
         </button>
+      </div>
+
+      <h2 className="text-lg font-semibold mb-2">Buscar usuarios</h2>
+      <div className="flex items-center gap-4 mb-4">
+        <select
+          value={searchField}
+          onChange={(e) => setSearchField(e.target.value)}
+          className="p-2 border rounded-lg"
+        >
+          <option value="NOMBRES">Nombre o Apellido</option>
+          <option value="DNI">DNI</option>
+          <option value="NRO_DPTO">Nro. Dpto</option>
+        </select>
+        <input
+          type="text"
+          value={searchValue}
+          onChange={(e) => {
+            setSearchValue(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="p-2 border rounded-lg w-64"
+          placeholder="Buscar..."
+        />
       </div>
 
       {message.text && (
@@ -238,7 +164,7 @@ const UserList = () => {
               </tr>
             </thead>
             <tbody className="text-gray-600 font-light">
-              {users.map((user) => (
+              {paginatedUsers.map((user) => (
                 <tr key={user.ID_USUARIO} className="border-b border-gray-200 hover:bg-gray-100">
                   <td className="py-3 px-4 text-left whitespace-nowrap">{user.ID_USUARIO}</td>
                   <td className="py-3 px-4 text-left whitespace-nowrap">{user.NOMBRES}</td>
@@ -253,10 +179,10 @@ const UserList = () => {
                   <td className="py-3 px-4 text-left whitespace-nowrap">{user.ROL}</td>
                   <td className="py-3 px-4 text-left whitespace-nowrap">{user.SEXO}</td>
                   <td className="py-3 px-4 text-left flex space-x-2">
-                    <button onClick={() => handleEdit(user)} className="text-blue-500 hover:text-blue-700">
+                    <button onClick={() => setEditingUserId(user.ID_USUARIO)} className="text-blue-500 hover:text-blue-700">
                       <FaEdit />
                     </button>
-                    <button onClick={() => handleDelete(user.ID_USUARIO)} className="text-red-500 hover:text-red-700">
+                    <button onClick={() => console.log("delete", user.ID_USUARIO)} className="text-red-500 hover:text-red-700">
                       <FaTrash />
                     </button>
                   </td>
@@ -265,6 +191,23 @@ const UserList = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Paginación */}
+        {totalPages > 1 && (
+          <div className="flex justify-center mt-4 space-x-2">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`px-3 py-1 rounded-lg border ${
+                  page === currentPage ? "bg-blue-500 text-white" : "bg-white text-blue-500"
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
