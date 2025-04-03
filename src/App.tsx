@@ -38,7 +38,7 @@ const App = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-100 relative">
-      {/* Sidebar escritorio (fijo, sin fondo oscuro) */}
+      {/* Sidebar escritorio */}
       {!isLoginPage && (
         <div className="hidden md:block fixed top-0 left-0 z-50">
           <Sidebar closeSidebar={() => setSidebarOpen(false)} sidebarOpen={true} />
@@ -48,7 +48,6 @@ const App = () => {
       {/* Sidebar móvil con overlay */}
       {!isLoginPage && sidebarOpen && (
         <>
-          {/* Fondo oscuro SOLO móvil */}
           <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40"
             onClick={() => setSidebarOpen(false)}
@@ -59,22 +58,23 @@ const App = () => {
         </>
       )}
 
-      {/* Botón hamburguesa en móvil */}
+      {/* Header móvil */}
       {!isLoginPage && (
-        <div className="md:hidden fixed top-4 left-4 z-50">
+        <div className="md:hidden fixed top-0 left-0 z-40 w-full bg-gray-900 p-4 flex items-center justify-between text-white">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="text-white bg-gray-900 p-2 rounded"
+            className="text-white text-2xl"
           >
-            <FaBars size={20} />
+            <FaBars />
           </button>
+          <h1 className="text-lg font-semibold">Mi App</h1>
         </div>
       )}
 
       {/* Contenido principal */}
       <div
-        className={`flex-1 overflow-y-auto transition-all duration-300 pt-4 px-4 w-full ${
-          !isLoginPage ? "md:ml-64" : ""
+        className={`flex-1 overflow-y-auto transition-all duration-300 px-4 w-full ${
+          !isLoginPage ? "md:ml-64 pt-4 md:pt-4 pt-20" : ""
         }`}
       >
         <Routes>
