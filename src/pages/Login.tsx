@@ -86,7 +86,7 @@ const Login = () => {
       {/* Lado derecho con imagen */}
       <div className="hidden md:flex w-1/2 bg-cover bg-center justify-center items-center"
         style={{
-          backgroundImage: "url('https://seedprod.com/wp-content/uploads/2021/10/login-page-background-rocket.png')",
+          backgroundImage: "url('https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')",
         }}
       >
         {/* Fondo decorativo */}
