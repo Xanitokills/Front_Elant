@@ -296,7 +296,7 @@ const UserList = () => {
                   <td className="py-3 px-4">{user.NOMBRES}</td>
                   <td className="py-3 px-4">{user.APELLIDOS}</td>
                   <td className="py-3 px-4">{user.DNI}</td>
-                  <td className="py-3 px-4 break-all">{user.CORREO}</td>
+                  <td className="py-3 px-4">{user.CORREO}</td>
                   <td className="py-3 px-4">{user.CELULAR}</td>
                   <td className="py-3 px-4">{user.NRO_DPTO ?? "N/A"}</td>
                   <td className="py-3 px-4">
