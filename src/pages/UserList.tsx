@@ -10,6 +10,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import Modal from "react-modal";
 import Swal from "sweetalert2";
+import dayjs from "dayjs";
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface User {
@@ -108,6 +109,35 @@ const UserList = () => {
   const handleUpdateUser = async () => {
     if (!editingUser) return;
 
+    const payload = {
+      nombres: editingUser.NOMBRES?.trim(),
+      apellidos: editingUser.APELLIDOS?.trim(),
+      dni: editingUser.DNI?.trim(),
+      correo: editingUser.CORREO?.trim(),
+      celular: editingUser.CELULAR?.trim(),
+      fecha_nacimiento: editingUser.FECHA_NACIMIENTO?.split("T")[0],
+      id_tipo_usuario: editingUser.ID_TIPO_USUARIO,
+      id_sexo: editingUser.ID_SEXO,
+      usuario: editingUser.USUARIO?.trim(),
+      nro_dpto: editingUser.NRO_DPTO,
+      comite: editingUser.COMITE ? 1 : 0,
+    };
+
+    const camposFaltantes = Object.entries(payload).filter(
+      ([_, value]) => value === undefined || value === null || value === ""
+    );
+
+    if (camposFaltantes.length > 0) {
+      await Swal.fire({
+        icon: "error",
+        title: "Campos incompletos",
+        text: `Faltan campos requeridos: ${camposFaltantes
+          .map(([key]) => key)
+          .join(", ")}`,
+      });
+      return;
+    }
+
     try {
       const response = await fetch(
         `${API_URL}/users/${editingUser.ID_USUARIO}`,
@@ -117,16 +147,32 @@ const UserList = () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(editingUser),
+          body: JSON.stringify(payload),
         }
       );
 
-      if (!response.ok) throw new Error("Error al actualizar el usuario");
-      setEditingUser(null);
-      fetchUsers();
-      setMessage({ text: "Usuario actualizado exitosamente", type: "success" });
-    } catch (error) {
-      setMessage({ text: "Error al actualizar el usuario", type: "error" });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Error al actualizar el usuario");
+      }
+
+      await Swal.fire({
+        icon: "success",
+        title: "Éxito",
+        text: "Usuario actualizado correctamente",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+
+      setEditingUser(null); // ❗ Cierra el modal
+      fetchUsers(); // ❗ Refresca la lista
+    } catch (error: any) {
+      await Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: error.message || "Error desconocido",
+      });
     }
   };
 
@@ -162,12 +208,7 @@ const UserList = () => {
       reverseButtons: true,
     }).then((result) => {
       if (result.isConfirmed) {
-        handleUpdateUser(); // Llama la función que guarda los cambios
-        Swal.fire(
-          "Guardado!",
-          "Los cambios se han guardado correctamente.",
-          "success"
-        );
+        handleUpdateUser(); // ya incluye cierre de modal y mensajes
       }
     });
   };
@@ -260,7 +301,10 @@ const UserList = () => {
                   <td className="py-3 px-4">{user.NRO_DPTO ?? "N/A"}</td>
                   <td className="py-3 px-4">
                     {user.FECHA_NACIMIENTO
-                      ? new Date(user.FECHA_NACIMIENTO).toLocaleDateString()
+                      ? user.FECHA_NACIMIENTO.split("T")[0]
+                          .split("-")
+                          .reverse()
+                          .join("/")
                       : "N/A"}
                   </td>
                   <td className="py-3 px-4">
@@ -306,11 +350,10 @@ const UserList = () => {
       </div>
 
       {/* Modal para editar */}
-
       <Modal
         isOpen={!!editingUser}
         onRequestClose={() => setEditingUser(null)}
-        className="bg-white p-6 w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl mx-auto mt-20 rounded-lg shadow-lg max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200"
+        className="bg-white p-6 w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto mt-20 rounded-lg shadow-lg max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200"
         overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
         ariaHideApp={false}
       >
@@ -463,22 +506,23 @@ const UserList = () => {
               />
             </div>
 
-            {/* Cambio aquí: ahora "Sexo" es un combo box */}
             <div>
               <label className="block font-semibold text-gray-700">Sexo</label>
               <select
                 className="p-2 border rounded w-full"
-                value={editingUser.SEXO}
+                value={editingUser.ID_SEXO}
                 onChange={(e) =>
-                  setEditingUser({ ...editingUser, SEXO: e.target.value })
+                  setEditingUser({
+                    ...editingUser,
+                    ID_SEXO: parseInt(e.target.value),
+                  })
                 }
               >
-                <option value="Masculino">Masculino</option>
-                <option value="Femenino">Femenino</option>
+                <option value={1}>Masculino</option>
+                <option value={2}>Femenino</option>
               </select>
             </div>
 
-            {/* Botón "Reiniciar Contraseña" como input */}
             <div>
               <label className="block font-semibold text-gray-700">
                 Reiniciar Contraseña
@@ -491,7 +535,6 @@ const UserList = () => {
               />
             </div>
 
-            {/* Botones de acción */}
             <div className="col-span-full flex justify-end gap-2">
               <button
                 onClick={() => setEditingUser(null)}
@@ -499,7 +542,6 @@ const UserList = () => {
               >
                 Cancelar
               </button>
-
               <button
                 onClick={handleSaveUser}
                 className="px-4 py-2 bg-blue-600 text-white rounded"
