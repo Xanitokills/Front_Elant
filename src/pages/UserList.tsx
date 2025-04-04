@@ -9,6 +9,7 @@ import {
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import Modal from "react-modal";
+import Swal from "sweetalert2";
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface User {
@@ -127,6 +128,48 @@ const UserList = () => {
     } catch (error) {
       setMessage({ text: "Error al actualizar el usuario", type: "error" });
     }
+  };
+
+  const handleResetPassword = () => {
+    Swal.fire({
+      title: "¿Estás seguro?",
+      text: "Esto reiniciará la contraseña del usuario.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, reiniciar",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Aquí puedes agregar la lógica para reiniciar la contraseña
+        Swal.fire(
+          "Reiniciado!",
+          "La contraseña ha sido reiniciada.",
+          "success"
+        );
+      }
+    });
+  };
+
+  const handleSaveUser = () => {
+    Swal.fire({
+      title: "¿Estás seguro?",
+      text: "¿Quieres guardar los cambios realizados?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, guardar",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        handleUpdateUser(); // Llama la función que guarda los cambios
+        Swal.fire(
+          "Guardado!",
+          "Los cambios se han guardado correctamente.",
+          "success"
+        );
+      }
+    });
   };
 
   return (
@@ -263,116 +306,192 @@ const UserList = () => {
       </div>
 
       {/* Modal para editar */}
+
       <Modal
         isOpen={!!editingUser}
         onRequestClose={() => setEditingUser(null)}
-        className="bg-white p-6 w-full max-w-2xl mx-auto mt-20 rounded-lg shadow-lg"
+        className="bg-white p-6 w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl mx-auto mt-20 rounded-lg shadow-lg max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200"
         overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
         ariaHideApp={false}
       >
         {editingUser && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <h2 className="text-xl font-bold col-span-full">Editar Usuario</h2>
-            <input
-              className="p-2 border rounded"
-              value={editingUser.NOMBRES}
-              onChange={(e) =>
-                setEditingUser({ ...editingUser, NOMBRES: e.target.value })
-              }
-              placeholder="Nombres"
-            />
-            <input
-              className="p-2 border rounded"
-              value={editingUser.APELLIDOS}
-              onChange={(e) =>
-                setEditingUser({ ...editingUser, APELLIDOS: e.target.value })
-              }
-              placeholder="Apellidos"
-            />
-            <input
-              className="p-2 border rounded"
-              value={editingUser.DNI}
-              onChange={(e) =>
-                setEditingUser({ ...editingUser, DNI: e.target.value })
-              }
-              placeholder="DNI"
-            />
-            <input
-              className="p-2 border rounded"
-              value={editingUser.CORREO}
-              onChange={(e) =>
-                setEditingUser({ ...editingUser, CORREO: e.target.value })
-              }
-              placeholder="Correo"
-            />
-            <input
-              className="p-2 border rounded"
-              value={editingUser.CELULAR}
-              onChange={(e) =>
-                setEditingUser({ ...editingUser, CELULAR: e.target.value })
-              }
-              placeholder="Celular"
-            />
-            <input
-              className="p-2 border rounded"
-              value={editingUser.NRO_DPTO ?? ""}
-              onChange={(e) =>
-                setEditingUser({
-                  ...editingUser,
-                  NRO_DPTO: parseInt(e.target.value) || null,
-                })
-              }
-              placeholder="Dpto"
-            />
-            <input
-              className="p-2 border rounded"
-              type="date"
-              value={editingUser.FECHA_NACIMIENTO?.split("T")[0] || ""}
-              onChange={(e) =>
-                setEditingUser({
-                  ...editingUser,
-                  FECHA_NACIMIENTO: e.target.value,
-                })
-              }
-              placeholder="Nacimiento"
-            />
-            <select
-              className="p-2 border rounded"
-              value={editingUser.COMITE}
-              onChange={(e) =>
-                setEditingUser({
-                  ...editingUser,
-                  COMITE: parseInt(e.target.value),
-                })
-              }
-            >
-              <option value={0}>No</option>
-              <option value={1}>Sí</option>
-            </select>
-            <input
-              className="p-2 border rounded"
-              value={editingUser.USUARIO}
-              onChange={(e) =>
-                setEditingUser({ ...editingUser, USUARIO: e.target.value })
-              }
-              placeholder="Usuario"
-            />
-            <input
-              className="p-2 border rounded"
-              value={editingUser.ROL}
-              onChange={(e) =>
-                setEditingUser({ ...editingUser, ROL: e.target.value })
-              }
-              placeholder="Rol"
-            />
-            <input
-              className="p-2 border rounded"
-              value={editingUser.SEXO}
-              onChange={(e) =>
-                setEditingUser({ ...editingUser, SEXO: e.target.value })
-              }
-              placeholder="Sexo"
-            />
+
+            <div>
+              <label className="block font-semibold text-gray-700">
+                Nombres
+              </label>
+              <input
+                className="p-2 border rounded w-full"
+                value={editingUser.NOMBRES}
+                onChange={(e) =>
+                  setEditingUser({ ...editingUser, NOMBRES: e.target.value })
+                }
+                placeholder="Nombres"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-gray-700">
+                Apellidos
+              </label>
+              <input
+                className="p-2 border rounded w-full"
+                value={editingUser.APELLIDOS}
+                onChange={(e) =>
+                  setEditingUser({ ...editingUser, APELLIDOS: e.target.value })
+                }
+                placeholder="Apellidos"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-gray-700">DNI</label>
+              <input
+                className="p-2 border rounded w-full"
+                value={editingUser.DNI}
+                onChange={(e) =>
+                  setEditingUser({ ...editingUser, DNI: e.target.value })
+                }
+                placeholder="DNI"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-gray-700">
+                Correo
+              </label>
+              <input
+                className="p-2 border rounded w-full"
+                value={editingUser.CORREO}
+                onChange={(e) =>
+                  setEditingUser({ ...editingUser, CORREO: e.target.value })
+                }
+                placeholder="Correo"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-gray-700">
+                Celular
+              </label>
+              <input
+                className="p-2 border rounded w-full"
+                value={editingUser.CELULAR}
+                onChange={(e) =>
+                  setEditingUser({ ...editingUser, CELULAR: e.target.value })
+                }
+                placeholder="Celular"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-gray-700">Dpto</label>
+              <input
+                className="p-2 border rounded w-full"
+                value={editingUser.NRO_DPTO ?? ""}
+                onChange={(e) =>
+                  setEditingUser({
+                    ...editingUser,
+                    NRO_DPTO: parseInt(e.target.value) || null,
+                  })
+                }
+                placeholder="Dpto"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-gray-700">
+                Fecha de Nacimiento
+              </label>
+              <input
+                className="p-2 border rounded w-full"
+                type="date"
+                value={editingUser.FECHA_NACIMIENTO?.split("T")[0] || ""}
+                onChange={(e) =>
+                  setEditingUser({
+                    ...editingUser,
+                    FECHA_NACIMIENTO: e.target.value,
+                  })
+                }
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-gray-700">
+                Comité
+              </label>
+              <select
+                className="p-2 border rounded w-full"
+                value={editingUser.COMITE}
+                onChange={(e) =>
+                  setEditingUser({
+                    ...editingUser,
+                    COMITE: parseInt(e.target.value),
+                  })
+                }
+              >
+                <option value={0}>No</option>
+                <option value={1}>Sí</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-gray-700">
+                Usuario
+              </label>
+              <input
+                className="p-2 border rounded w-full"
+                value={editingUser.USUARIO}
+                onChange={(e) =>
+                  setEditingUser({ ...editingUser, USUARIO: e.target.value })
+                }
+                placeholder="Usuario"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-gray-700">Rol</label>
+              <input
+                className="p-2 border rounded w-full"
+                value={editingUser.ROL}
+                onChange={(e) =>
+                  setEditingUser({ ...editingUser, ROL: e.target.value })
+                }
+                placeholder="Rol"
+              />
+            </div>
+
+            {/* Cambio aquí: ahora "Sexo" es un combo box */}
+            <div>
+              <label className="block font-semibold text-gray-700">Sexo</label>
+              <select
+                className="p-2 border rounded w-full"
+                value={editingUser.SEXO}
+                onChange={(e) =>
+                  setEditingUser({ ...editingUser, SEXO: e.target.value })
+                }
+              >
+                <option value="Masculino">Masculino</option>
+                <option value="Femenino">Femenino</option>
+              </select>
+            </div>
+
+            {/* Botón "Reiniciar Contraseña" como input */}
+            <div>
+              <label className="block font-semibold text-gray-700">
+                Reiniciar Contraseña
+              </label>
+              <input
+                type="button"
+                value="Reiniciar Contraseña"
+                onClick={handleResetPassword}
+                className="p-2 border rounded w-full bg-gray-200 text-gray-700 hover:bg-gray-300 cursor-pointer"
+              />
+            </div>
+
+            {/* Botones de acción */}
             <div className="col-span-full flex justify-end gap-2">
               <button
                 onClick={() => setEditingUser(null)}
@@ -380,8 +499,9 @@ const UserList = () => {
               >
                 Cancelar
               </button>
+
               <button
-                onClick={handleUpdateUser}
+                onClick={handleSaveUser}
                 className="px-4 py-2 bg-blue-600 text-white rounded"
               >
                 Guardar
