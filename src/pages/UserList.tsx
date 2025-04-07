@@ -178,6 +178,8 @@ const UserList = () => {
   };
 
   const handleResetPassword = async (id) => {
+    setIsLoading(true);  // Activa el estado de carga
+
     try {
       const response = await fetch(`${API_URL}/users/change-password/${id}`, {
         method: "PUT",  // Cambiado a PUT para actualizar
@@ -185,21 +187,26 @@ const UserList = () => {
           "Content-Type": "application/json",
         },
       });
-  
+
       const data = await response.json();
-  
+
       if (response.ok) {
+        // Mostrar mensaje de éxito y cerrar el modal
         Swal.fire({
           icon: "success",
           title: "Éxito",
-          text: "Se ha enviado un correo con la nueva contraseña.",
+          text: "Se ha actualizado la contraseña correctamente.",
+        }).then(() => {
+          setEditingUser(null);  // Cierra el modal después del éxito
+          setIsLoading(false);  // Desactiva el estado de carga
         });
       } else {
         Swal.fire({
           icon: "error",
           title: "Error",
-          text: data.message || "Hubo un error al enviar el correo.",
+          text: data.message || "Hubo un error al actualizar la contraseña.",
         });
+        setIsLoading(false);  // Desactiva el estado de carga
       }
     } catch (error) {
       Swal.fire({
@@ -207,6 +214,7 @@ const UserList = () => {
         title: "Error",
         text: "Hubo un error inesperado.",
       });
+      setIsLoading(false);  // Desactiva el estado de carga
     }
   };
   
@@ -545,9 +553,10 @@ const UserList = () => {
               </label>
               <input
                 type="button"
-                value="Reiniciar Contraseña"
+                value={isLoading ? "Cargando..." : "Reiniciar Contraseña"}
                 onClick={() => handleResetPassword(editingUser.ID_USUARIO)}
-                className="p-2 border rounded w-full bg-gray-200 text-gray-700 hover:bg-gray-300 cursor-pointer"
+                className={`p-2 border rounded w-full ${isLoading ? "bg-gray-400" : "bg-gray-200"} text-gray-700 hover:bg-gray-300 cursor-pointer`}
+                disabled={isLoading}
               />
             </div>
 
