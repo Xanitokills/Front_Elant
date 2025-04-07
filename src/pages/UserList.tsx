@@ -35,6 +35,7 @@ const ITEMS_PER_PAGE = 10;
 const UserList = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(false);  // Nuevo estado para manejar el estado de carga
   const [message, setMessage] = useState<{
     text: string;
     type: "success" | "error" | "";
@@ -176,26 +177,41 @@ const UserList = () => {
     }
   };
 
-  const handleResetPassword = () => {
-    Swal.fire({
-      title: "¿Estás seguro?",
-      text: "Esto reiniciará la contraseña del usuario.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Sí, reiniciar",
-      cancelButtonText: "Cancelar",
-      reverseButtons: true,
-    }).then((result) => {
-      if (result.isConfirmed) {
-        // Aquí puedes agregar la lógica para reiniciar la contraseña
-        Swal.fire(
-          "Reiniciado!",
-          "La contraseña ha sido reiniciada.",
-          "success"
-        );
+  const handleResetPassword = async (id) => {
+    try {
+      const response = await fetch(`${API_URL}/users/change-password/${id}`, {
+        method: "PUT",  // Cambiado a PUT para actualizar
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+  
+      const data = await response.json();
+  
+      if (response.ok) {
+        Swal.fire({
+          icon: "success",
+          title: "Éxito",
+          text: "Se ha enviado un correo con la nueva contraseña.",
+        });
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: data.message || "Hubo un error al enviar el correo.",
+        });
       }
-    });
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Hubo un error inesperado.",
+      });
+    }
   };
+  
+
+
 
   const handleSaveUser = () => {
     Swal.fire({
@@ -530,7 +546,7 @@ const UserList = () => {
               <input
                 type="button"
                 value="Reiniciar Contraseña"
-                onClick={handleResetPassword}
+                onClick={() => handleResetPassword(editingUser.ID_USUARIO)}
                 className="p-2 border rounded w-full bg-gray-200 text-gray-700 hover:bg-gray-300 cursor-pointer"
               />
             </div>
