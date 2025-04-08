@@ -196,6 +196,8 @@ const UserList = () => {
           icon: "success",
           title: "Éxito",
           text: "Se ha actualizado la contraseña correctamente.",
+          timer: 2000,
+          showConfirmButton: false,
         }).then(() => {
           setEditingUser(null);  // Cierra el modal después del éxito
           setIsLoading(false);  // Desactiva el estado de carga
