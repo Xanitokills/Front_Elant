@@ -14,6 +14,7 @@ import UserList from "./pages/UserList";
 import MovementsList from "./components/Movements";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
+import LoginConfig from "./components/LoginConfig"; 
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { FaBars } from "react-icons/fa";
 
@@ -41,7 +42,10 @@ const App = () => {
       {/* Sidebar escritorio */}
       {!isLoginPage && (
         <div className="hidden md:block fixed top-0 left-0 z-50">
-          <Sidebar closeSidebar={() => setSidebarOpen(false)} sidebarOpen={true} />
+          <Sidebar
+            closeSidebar={() => setSidebarOpen(false)}
+            sidebarOpen={true}
+          />
         </div>
       )}
 
@@ -53,7 +57,10 @@ const App = () => {
             onClick={() => setSidebarOpen(false)}
           ></div>
           <div className="fixed top-0 left-0 z-50 md:hidden">
-            <Sidebar closeSidebar={() => setSidebarOpen(false)} sidebarOpen={sidebarOpen} />
+            <Sidebar
+              closeSidebar={() => setSidebarOpen(false)}
+              sidebarOpen={sidebarOpen}
+            />
           </div>
         </>
       )}
@@ -84,6 +91,9 @@ const App = () => {
           <Route path="/user-list" element={<UserList />} />
           <Route path="/movements-list" element={<MovementsList />} />
           <Route path="/visits" element={<Visits />} />
+          {/* Ruta para la configuración de login */}
+          <Route path="/LoginConfig" element={<LoginConfig />} />{" "}
+          {/* Añadida esta línea */}
           <Route
             path="/settings/:section"
             element={

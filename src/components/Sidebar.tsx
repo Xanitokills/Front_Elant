@@ -31,7 +31,7 @@ const sidebarStructure = [
   {
     title: "Configuración",
     items: [
-      { label: "Configuración", path: "/settings/general", icon: <FaCog /> },
+      { label: "Login", path: "/LoginConfig", icon: <FaCog /> }, 
     ],
   },
 ];
