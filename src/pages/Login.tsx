@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import fachada from "../images/fachada_canada.jpg";
-
+import logoSoftHome from "../../public/LogoSoftHome/Logo_SoftHome_1.png";
 const images = [
   "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-   fachada,
-  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e"
+  fachada,
+  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e",
 ];
 
 const Login = () => {
@@ -46,15 +46,23 @@ const Login = () => {
     <div className="min-h-screen flex flex-col md:flex-row pt-10 md:pt-0">
       {/* Lado izquierdo */}
       <div className="flex flex-col justify-center items-center bg-white p-8 w-full md:w-1/2 shadow-md z-10">
+        {/* Logo de la empresa */}
+        <img
+          src={logoSoftHome}
+          alt="Logo SoftHome"
+          className="mb-2 w-48 h-auto"
+        />{" "}
+        {/* Ajusta el tamaño */}
         <div className="w-full max-w-sm">
-          <h1 className="text-3xl font-bold mb-4 text-gray-800">Iniciar Sesión</h1>
-          <p className="text-sm mb-6 text-gray-500">
-            ¿No tienes una cuenta? <a className="text-blue-600 hover:underline" href="#">Regístrate ahora</a>
-          </p>
+          <h1 className="text-3xl font-bold mb-4 text-gray-800">
+            Iniciar Sesión
+          </h1>
           {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-700">Correo Electrónico</label>
+              <label className="block text-sm text-gray-700">
+                Correo Electrónico
+              </label>
               <input
                 type="email"
                 value={email}
@@ -86,11 +94,13 @@ const Login = () => {
               <label className="flex items-center">
                 <input type="checkbox" className="mr-2" /> Recordarme
               </label>
-              <a href="#" className="text-blue-600 hover:underline">¿Olvidaste tu contraseña?</a>
+              <a href="#" className="text-blue-600 hover:underline">
+                ¿Olvidaste tu contraseña?
+              </a>
             </div>
             <button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition"
+              className="w-full bg-[rgb(47,140,152)] hover:bg-[rgb(35,105,115)] text-white py-2 px-4 rounded-lg shadow-md transition"
             >
               Iniciar Sesión
             </button>
