@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useAuth } from "../context/AuthContext"; // Importar el contexto
 import axios from "axios";
 
 const LoginConfigPage = () => {
   const [imageFile, setImageFile] = useState<File | null>(null); // Guardar el archivo de la imagen
   const [imagePreview, setImagePreview] = useState<string | null>(null); // Para la vista previa de la imagen
   const [error, setError] = useState<string>("");  // Para manejar errores
+  const { userId } = useAuth(); // Obtener el userId desde el contexto de autenticación
 
   // Función para manejar la selección de la imagen
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -31,9 +33,14 @@ const LoginConfigPage = () => {
       return;
     }
   
+    if (!userId) {
+      setError("No se ha encontrado el userId.");
+      return;
+    }
+  
     const formData = new FormData();
     formData.append("image", imageFile); // Se añade el archivo de imagen
-    formData.append("userId", "valor_del_userId"); // Asegúrate de enviar el userId
+    formData.append("userId", userId.toString()); // Se añade el userId dinámicamente, asegurándonos de enviarlo como string
   
     try {
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/upload-login-images`, formData, {
