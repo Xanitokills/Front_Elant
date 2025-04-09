@@ -10,8 +10,8 @@ const LoginConfigPage = () => {
     width: number;
     height: number;
   } | null>(null);
-  const [customImageName, setCustomImageName] = useState<string>("");
   const [images, setImages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false); // Para el estado de carga de las imágenes
   const { userId } = useAuth();
   const [currentPage, setCurrentPage] = useState(1);
   const imagesPerPage = 5;
@@ -23,6 +23,8 @@ const LoginConfigPage = () => {
 
   const fetchImages = async () => {
     try {
+      setLoading(true); // Iniciar la carga
+
       const response = await axios.get(
         `${import.meta.env.VITE_API_URL}/get-login-images`
       );
@@ -35,18 +37,39 @@ const LoginConfigPage = () => {
       }
     } catch (error) {
       console.error("Error al cargar las imágenes:", error);
+    } finally {
+      setLoading(false); // Finalizar la carga
     }
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+
+    if (images.length >= 3) {
+      Swal.fire("Error", "Solo se pueden cargar hasta 3 imágenes.", "error");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+
     if (file) {
       if (!file.type.startsWith("image/")) {
-        Swal.fire("Error", "Seleccione un archivo de imagen válido.", "error");
+        Swal.fire(
+          "Error",
+          "Seleccione un archivo de imagen válido.",
+          "error"
+        ).then(() => {
+          setImageFile(null);
+          setImagePreview(null);
+          setImageDimensions(null);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
+        });
         return;
       }
-      setImageFile(file);
-      setCustomImageName(file.name.replace(/\.[^/.]+$/, ""));
+
       const reader = new FileReader();
       reader.onloadend = () => {
         const result = reader.result as string;
@@ -54,12 +77,74 @@ const LoginConfigPage = () => {
 
         const img = new Image();
         img.onload = () => {
-          setImageDimensions({ width: img.width, height: img.height });
+          const width = img.width;
+          const height = img.height;
+
+          if (width < 1024 || height < 1520 || width > 2874 || height > 3582) {
+            Swal.fire(
+              "Error",
+              "Las dimensiones de la imagen no son válidas. Debe estar entre 1280x1600 y 2874x3582.",
+              "error"
+            ).then(() => {
+              setImageFile(null);
+              setImagePreview(null);
+              setImageDimensions(null);
+              if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+              }
+            });
+            return;
+          }
+
+          setImageDimensions({ width, height });
         };
         img.src = result;
       };
       reader.readAsDataURL(file);
+      setImageFile(file);
     }
+  };
+
+  const resizeImage = (file: File) => {
+    return new Promise<File>((resolve) => {
+      const img = new Image();
+      const reader = new FileReader();
+
+      reader.onloadend = () => {
+        img.src = reader.result as string;
+      };
+
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+
+        const maxWidth = 1437;
+        const maxHeight = 1791;
+
+        const scaleFactor = Math.min(
+          maxWidth / img.width,
+          maxHeight / img.height
+        );
+        const newWidth = img.width * scaleFactor;
+        const newHeight = img.height * scaleFactor;
+
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+
+        ctx?.drawImage(img, 0, 0, newWidth, newHeight);
+
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const resizedFile = new File([blob], file.name, {
+              type: file.type,
+            });
+            resolve(resizedFile);
+          }
+        }, file.type);
+      };
+
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleSaveImage = async () => {
@@ -72,21 +157,13 @@ const LoginConfigPage = () => {
       return;
     }
 
-    Swal.fire({
-      title: "Subiendo imagen...",
-      text: "Por favor espere",
-      allowOutsideClick: false,
-      allowEscapeKey: false,
-      didOpen: () => {
-        Swal.showLoading();
-      },
-    });
+    const resizedImage = await resizeImage(imageFile);
 
     try {
       const formData = new FormData();
-      formData.append("image", imageFile);
+      formData.append("image", resizedImage);
       formData.append("userId", userId.toString());
-      formData.append("customName", customImageName);
+      formData.append("customName", `imagen_${images.length + 1}`);
 
       await axios.post(
         `${import.meta.env.VITE_API_URL}/upload-login-images`,
@@ -96,7 +173,6 @@ const LoginConfigPage = () => {
         }
       );
 
-      Swal.close();
       Swal.fire({
         icon: "success",
         title: "Éxito",
@@ -107,11 +183,11 @@ const LoginConfigPage = () => {
       setImageFile(null);
       setImagePreview(null);
       setImageDimensions(null);
-      setCustomImageName("");
-      if (fileInputRef.current) fileInputRef.current.value = "";
       fetchImages();
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     } catch (error: any) {
-      Swal.close();
       Swal.fire(
         "Error",
         error?.response?.data?.message || "Fallo al subir imagen",
@@ -178,19 +254,20 @@ const LoginConfigPage = () => {
             accept="image/*"
             onChange={handleImageChange}
             ref={fileInputRef}
-            className="mb-4 p-2 border rounded md:mb-0"
+            className="mb-4 p-2 border rounded w-full md:w-2/5"
+            disabled={loading} // Deshabilitar si la carga está en proceso
           />
 
           {imagePreview && (
-            <div className="flex flex-col md:flex-row md:items-start md:gap-6 w-full">
-              <div className="flex-shrink-0 w-full md:w-1/2">
+            <div className="flex flex-col md:flex-row md:gap-6 w-full md:w-3/5">
+              <div className="flex-shrink-0 w-full md:w-1/4">
                 <img
                   src={imagePreview}
                   alt="Vista previa"
-                  className="w-full max-w-full h-auto object-contain border"
+                  className="w-full h-auto object-contain border"
                 />
               </div>
-              <div className="text-sm text-gray-700 mt-4 md:mt-0 w-full">
+              <div className="text-sm text-gray-700 mt-4 md:mt-0 md:w-2/3">
                 <p>
                   <strong>Nombre del archivo:</strong>{" "}
                   {imageFile?.name.replace(/\.[^/.]+$/, "")}
@@ -205,28 +282,20 @@ const LoginConfigPage = () => {
                     {imageDimensions.height} px
                   </p>
                 )}
-                <div className="mt-2">
-                  <label className="block text-sm font-semibold text-gray-600 mb-1">
-                    Cambiar nombre:
-                  </label>
-                  <input
-                    type="text"
-                    value={customImageName}
-                    onChange={(e) => setCustomImageName(e.target.value)}
-                    className="border px-2 py-1 rounded w-full"
-                  />
-                </div>
                 <p className="text-blue-600 italic mt-2">
-                  Recomendación: Usar imágenes de 1600px x 1000px
+                  Importante: Usar imágenes de 1024px x 1520px{" "}
                 </p>
               </div>
             </div>
           )}
 
-          <div className="mt-4 md:mt-0">
+          <div className="mt-4 md:mt-0 w-full md:w-auto">
             <button
               onClick={handleSaveImage}
-              className="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 w-full md:w-auto"
+              className={`bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 w-full md:w-auto ${
+                loading ? "cursor-not-allowed opacity-50" : ""
+              }`}
+              disabled={loading || images.length === 0} // Deshabilitar el botón mientras se carga o si no hay imágenes
             >
               Guardar Imagen
             </button>
@@ -242,28 +311,34 @@ const LoginConfigPage = () => {
               </tr>
             </thead>
             <tbody>
-              {currentImages.map((img, idx) => (
-                <tr key={idx}>
-                  <td className="py-2 px-4 border">
-                    {img.imageName.replace(/\.[^/.]+$/, "")}
-                  </td>
-                  <td className="py-2 px-4 border space-x-2">
-                    <button
-                      onClick={() => handleViewImage(img.imageData)}
-                      className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
-                    >
-                      Ver
-                    </button>
-                    <button
-                      onClick={() => handleDeleteImage(img.id)}
-                      className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                    >
-                      Eliminar
-                    </button>
+              {loading ? (
+                <tr>
+                  <td colSpan={2} className="text-center py-4">
+                    Cargando imágenes...
                   </td>
                 </tr>
-              ))}
-              {currentImages.length === 0 && (
+              ) : (
+                currentImages.map((img, idx) => (
+                  <tr key={idx}>
+                    <td className="py-2 px-4 border">{`imagen_${idx + 1}`}</td>
+                    <td className="py-2 px-4 border space-x-2">
+                      <button
+                        onClick={() => handleViewImage(img.imageData)}
+                        className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
+                      >
+                        Ver
+                      </button>
+                      <button
+                        onClick={() => handleDeleteImage(img.id)}
+                        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                      >
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+              {currentImages.length === 0 && !loading && (
                 <tr>
                   <td colSpan={2} className="text-center py-4">
                     No hay imágenes cargadas.
