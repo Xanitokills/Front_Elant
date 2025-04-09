@@ -1,76 +1,86 @@
 import { useState } from "react";
+import axios from "axios";
 
 const LoginConfigPage = () => {
-  const [images, setImages] = useState<string[]>([]);  // Guardar las URLs de las imágenes
-  const [imageUrl, setImageUrl] = useState<string>("");  // Almacenar el URL ingresado por el usuario
+  const [imageFile, setImageFile] = useState<File | null>(null); // Guardar el archivo de la imagen
+  const [imagePreview, setImagePreview] = useState<string | null>(null); // Para la vista previa de la imagen
   const [error, setError] = useState<string>("");  // Para manejar errores
 
-  // Función para agregar la URL de la imagen
-  const handleAddImage = () => {
-    if (imageUrl.trim() === "") {
-      setError("Por favor, ingrese una URL válida.");
-      return;
+  // Función para manejar la selección de la imagen
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type.startsWith("image/")) {
+        setImageFile(file);
+
+        // Crear vista previa de la imagen
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImagePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setError("Por favor, seleccione un archivo de imagen válido.");
+      }
     }
-    setImages((prevImages) => [...prevImages, imageUrl]);
-    setImageUrl("");  // Limpiar el campo de texto
-    setError("");  // Limpiar errores
   };
 
-  // Función para eliminar una imagen de la lista
-  const handleRemoveImage = (index: number) => {
-    setImages((prevImages) => prevImages.filter((_, i) => i !== index));
+  const handleSaveImage = async () => {
+    if (!imageFile) {
+      setError("Debe seleccionar una imagen.");
+      return;
+    }
+  
+    const formData = new FormData();
+    formData.append("image", imageFile); // Se añade el archivo de imagen
+    formData.append("userId", "valor_del_userId"); // Asegúrate de enviar el userId
+  
+    try {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/upload-login-images`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      console.log(response.data); // Si la imagen se sube correctamente
+      setError(""); // Limpiar cualquier error
+    } catch (error: any) {
+      console.error("Error al subir la imagen:", error);
+      if (error.response) {
+        setError(`Error al subir la imagen: ${error.response.data.message || error.response.statusText}`);
+      } else {
+        setError("Error de red o no se recibió respuesta del servidor.");
+      }
+    }
   };
+  
 
   return (
     <div className="p-6">
       <h2 className="text-xl font-bold mb-4">Configuración de Imágenes de Login</h2>
 
-      {/* Formulario de entrada para agregar URL de imagen */}
+      {/* Selector de imagen */}
       <div className="mb-4">
         <input
-          type="url"
-          placeholder="Agregar URL de imagen"
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
+          type="file"
+          accept="image/*"
+          onChange={handleImageChange}
           className="mb-4 p-2 border rounded"
         />
+        {imagePreview && (
+          <div className="mb-4">
+            <img src={imagePreview} alt="Vista previa" className="w-32 h-32 object-cover" />
+          </div>
+        )}
         <button
-          onClick={handleAddImage}
+          onClick={handleSaveImage}
           className="bg-blue-500 text-white py-2 px-4 rounded"
         >
-          Agregar Imagen
+          Guardar Imagen
         </button>
       </div>
 
       {/* Mostrar errores si hay */}
       {error && <div className="text-red-500 mb-4">{error}</div>}
-
-      {/* Lista de imágenes configuradas */}
-      <div className="mb-4">
-        <h3 className="font-semibold">Imágenes configuradas:</h3>
-        <ul>
-          {images.map((url, index) => (
-            <li key={index} className="flex justify-between mb-2">
-              <div className="flex items-center gap-2">
-                {/* Aquí puedes mostrar una vista previa de la imagen */}
-                <img src={url} alt="Imagen configurada" className="w-16 h-16 object-cover" />
-                <span>{url}</span>
-              </div>
-              <button
-                onClick={() => handleRemoveImage(index)}
-                className="text-red-500"
-              >
-                Eliminar
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Botón para guardar la configuración */}
-      <button className="bg-green-500 text-white py-2 px-4 rounded">
-        Guardar Configuración
-      </button>
     </div>
   );
 };

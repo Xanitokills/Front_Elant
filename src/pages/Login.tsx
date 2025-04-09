@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import axios from 'axios';  // Importa axios para hacer solicitudes HTTP
-import logoSoftHome from "../../public/LogoSoftHome/Logo_SoftHome_1.png";  // Logo fijo
+import axios from "axios"; // Importa axios para hacer solicitudes HTTP
+import logoSoftHome from "../../public/LogoSoftHome/Logo_SoftHome_1.png"; // Logo fijo
+import ImagenLoginDefault from "../images/fachada_canada.jpg"; // Imagen predeterminada importada
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -11,7 +12,9 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [currentImage, setCurrentImage] = useState(0);
-  const [images, setImages] = useState<string[]>([]); // Estado para almacenar las imágenes de anuncios
+  const [images, setImages] = useState<
+    { imageData: string; imageName: string }[]
+  >([]); // Estado para almacenar las imágenes de anuncios
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -33,22 +36,31 @@ const Login = () => {
 
   // Obtener las imágenes configuradas para anuncios desde el backend
   useEffect(() => {
-    axios.get("/api/get-login-images")  // Reemplaza con la URL correcta de tu API
-      .then(response => {
-        setImages(response.data.images);  // Suponiendo que la respuesta contiene un array de URLs de imágenes
+    axios
+      .get(`${import.meta.env.VITE_API_URL}/get-login-images`) // Aquí usas la URL de la API desde la variable de entorno
+      .then((response) => {
+        if (Array.isArray(response.data.images)) {
+          setImages(response.data.images); // Si las imágenes son válidas, las configuramos en el estado
+        } else {
+          console.error("Respuesta no válida para imágenes", response.data);
+          setImages([]); // Si la respuesta no es un arreglo, configuramos un arreglo vacío
+        }
       })
-      .catch(error => {
+      .catch((error) => {
         console.error("Error al obtener las imágenes: ", error);
-        setImages([]); // Si hay error, se establece un arreglo vacío
+        setImages([]); // Si ocurre un error, configuramos un arreglo vacío
       });
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentImage((prev) => (prev + 1) % images.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [images]);  // Dependencia añadida para que el intervalo se actualice cuando cambien las imágenes
+    if (images.length > 0) {
+      // Solo configuramos el intervalo si hay imágenes
+      const interval = setInterval(() => {
+        setCurrentImage((prev) => (prev + 1) % images.length);
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [images]); // Dependencia añadida para que el intervalo se actualice cuando cambien las imágenes
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row pt-10 md:pt-0">
@@ -56,7 +68,7 @@ const Login = () => {
       <div className="flex flex-col justify-center items-center bg-white p-8 w-full md:w-1/2 shadow-md z-10">
         {/* Logo de la empresa */}
         <img
-          src={logoSoftHome}  // Logo fijo
+          src={logoSoftHome} // Logo fijo
           alt="Logo SoftHome"
           className="mb-2 w-48 h-auto"
         />
@@ -67,7 +79,9 @@ const Login = () => {
           {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-700">Correo Electrónico</label>
+              <label className="block text-sm text-gray-700">
+                Correo Electrónico
+              </label>
               <input
                 type="email"
                 value={email}
@@ -115,24 +129,32 @@ const Login = () => {
 
       {/* Lado derecho - Carrusel de imágenes (Anuncios) */}
       <div className="hidden md:flex w-1/2 flex-col items-center justify-center relative overflow-hidden">
-        {images.length > 0 && (
-          <div
-            className="absolute inset-0 bg-cover bg-center transition-all duration-1000"
-            style={{ backgroundImage: `url('${images[currentImage]}')` }}
-          ></div>
-        )}
+        {/* Si no hay imágenes, mostramos la imagen predeterminada */}
+        <div
+          className="absolute inset-0 bg-cover bg-center transition-all duration-1000"
+          style={{
+            backgroundImage: `url('${
+              images.length > 0
+                ? images[currentImage].imageData
+                : ImagenLoginDefault // Usamos la imagen importada
+            }')`,
+          }}
+        ></div>
+
         {/* Paginación */}
-        <div className="relative z-10 flex justify-center mt-auto mb-6 space-x-2">
-          {images.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentImage(index)}
-              className={`h-3 w-3 rounded-full transition-all duration-300 ${
-                index === currentImage ? "bg-white" : "bg-white/50"
-              }`}
-            ></button>
-          ))}
-        </div>
+        {images.length > 0 && (
+          <div className="relative z-10 flex justify-center mt-auto mb-6 space-x-2">
+            {images.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentImage(index)}
+                className={`h-3 w-3 rounded-full transition-all duration-300 ${
+                  index === currentImage ? "bg-white" : "bg-white/50"
+                }`}
+              ></button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
