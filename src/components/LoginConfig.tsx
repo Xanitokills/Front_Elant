@@ -2,6 +2,39 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
 import Swal from "sweetalert2";
+import styled, { keyframes } from "styled-components";
+
+// Animación para los puntos
+const dotsAnimation = keyframes`
+  0% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+`;
+
+const Dots = styled.span`
+  display: inline-block;
+  position: relative;
+`;
+
+const Dot = styled.span`
+  display: inline-block;
+  animation: ${dotsAnimation} 1.5s steps(5, end) infinite;
+  font-size: 30px;
+  margin: 0 5px;
+  color: #000;
+
+  &:nth-child(1) {
+    animation-delay: 0s;
+  }
+
+  &:nth-child(2) {
+    animation-delay: 0.3s;
+  }
+
+  &:nth-child(3) {
+    animation-delay: 0.6s;
+  }
+`;
 
 const LoginConfigPage = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -314,7 +347,12 @@ const LoginConfigPage = () => {
               {loading ? (
                 <tr>
                   <td colSpan={2} className="text-center py-4">
-                    Cargando imágenes...
+                    Cargando imágenes
+                    <Dots>
+                      <Dot>.</Dot>
+                      <Dot>.</Dot>
+                      <Dot>.</Dot>
+                    </Dots>
                   </td>
                 </tr>
               ) : (
