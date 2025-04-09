@@ -167,7 +167,7 @@ const LoginConfigPage = () => {
   const totalPages = Math.ceil(images.length / imagesPerPage);
 
   return (
-    <div className="p-4 md:p-6 max-w-full sm:max-w-4xl lg:max-w-6xl mx-auto">
+    <div className="p-4 md:p-6 w-full max-w-[1440px] mx-auto">
       <h2 className="text-2xl font-bold mb-4 text-center md:text-left">
         Configuración de Imágenes de Login
       </h2>
