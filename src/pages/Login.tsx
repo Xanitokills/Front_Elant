@@ -2,13 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
-import fachada from "../images/fachada_canada.jpg";
-import logoSoftHome from "../../public/LogoSoftHome/Logo_SoftHome_1.png";
-const images = [
-  "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-  fachada,
-  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e",
-];
+import axios from 'axios';  // Importa axios para hacer solicitudes HTTP
+import logoSoftHome from "../../public/LogoSoftHome/Logo_SoftHome_1.png";  // Logo fijo
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -16,6 +11,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [currentImage, setCurrentImage] = useState(0);
+  const [images, setImages] = useState<string[]>([]); // Estado para almacenar las imágenes de anuncios
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
@@ -35,24 +31,35 @@ const Login = () => {
     }
   }, [isAuthenticated, navigate]);
 
+  // Obtener las imágenes configuradas para anuncios desde el backend
+  useEffect(() => {
+    axios.get("/api/get-login-images")  // Reemplaza con la URL correcta de tu API
+      .then(response => {
+        setImages(response.data.images);  // Suponiendo que la respuesta contiene un array de URLs de imágenes
+      })
+      .catch(error => {
+        console.error("Error al obtener las imágenes: ", error);
+        setImages([]); // Si hay error, se establece un arreglo vacío
+      });
+  }, []);
+
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentImage((prev) => (prev + 1) % images.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [images]);  // Dependencia añadida para que el intervalo se actualice cuando cambien las imágenes
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row pt-10 md:pt-0">
-      {/* Lado izquierdo */}
+      {/* Lado izquierdo - Logo y Formulario */}
       <div className="flex flex-col justify-center items-center bg-white p-8 w-full md:w-1/2 shadow-md z-10">
         {/* Logo de la empresa */}
         <img
-          src={logoSoftHome}
+          src={logoSoftHome}  // Logo fijo
           alt="Logo SoftHome"
           className="mb-2 w-48 h-auto"
-        />{" "}
-        {/* Ajusta el tamaño */}
+        />
         <div className="w-full max-w-sm">
           <h1 className="text-3xl font-bold mb-4 text-gray-800">
             Iniciar Sesión
@@ -60,9 +67,7 @@ const Login = () => {
           {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-700">
-                Correo Electrónico
-              </label>
+              <label className="block text-sm text-gray-700">Correo Electrónico</label>
               <input
                 type="email"
                 value={email}
@@ -108,12 +113,14 @@ const Login = () => {
         </div>
       </div>
 
-      {/* Lado derecho con carrusel de imágenes */}
+      {/* Lado derecho - Carrusel de imágenes (Anuncios) */}
       <div className="hidden md:flex w-1/2 flex-col items-center justify-center relative overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover bg-center transition-all duration-1000"
-          style={{ backgroundImage: `url('${images[currentImage]}')` }}
-        ></div>
+        {images.length > 0 && (
+          <div
+            className="absolute inset-0 bg-cover bg-center transition-all duration-1000"
+            style={{ backgroundImage: `url('${images[currentImage]}')` }}
+          ></div>
+        )}
         {/* Paginación */}
         <div className="relative z-10 flex justify-center mt-auto mb-6 space-x-2">
           {images.map((_, index) => (
