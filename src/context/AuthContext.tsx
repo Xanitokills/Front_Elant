@@ -27,18 +27,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [role, setRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Validar sesión al iniciar la app o sincronizar con localStorage
+  // Validar sesión al iniciar la app
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const storedUserId = localStorage.getItem("userId");
-
-    if (!token || !storedUserId) {
-      setIsAuthenticated(false);
-      setIsLoading(false);
-      return;
-    }
-
     const validateSession = async () => {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        setIsAuthenticated(false);
+        setUserId(null);
+        setIsLoading(false);
+        return;
+      }
+
       try {
         const response = await fetch(`${API_URL}/validate`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -47,8 +47,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (response.ok) {
           const data = await response.json();
           setIsAuthenticated(true);
-          setUserName(data.userName || localStorage.getItem("userName"));
-          setRole(data.role || localStorage.getItem("role"));
+          setUserName(data.userName);
+          setRole(data.role);
           setUserId(data.user.id);
 
           console.log("✅ Sesión validada. userId:", data.user.id);
@@ -84,15 +84,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem("token", data.token);
       localStorage.setItem("userName", data.userName);
       localStorage.setItem("role", data.role);
-      localStorage.setItem("userId", String(data.userId));
+      localStorage.setItem("userId", String(data.user.id));
 
-      // Actualizar el estado inmediatamente
+      // Actualizar el estado de React inmediatamente
       setIsAuthenticated(true);
       setUserName(data.userName);
       setRole(data.role);
-      setUserId(data.userId);
-
-      console.log("🔐 Login exitoso. userId:", data.userId);
+      setUserId(data.user.id);
     } catch (error) {
       console.error("Error al iniciar sesión:", error);
       throw error;

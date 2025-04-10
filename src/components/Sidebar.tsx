@@ -18,6 +18,7 @@ const Sidebar = ({ closeSidebar, sidebarOpen }) => {
   const [openSections, setOpenSections] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
   const [sidebarStructure, setSidebarStructure] = useState([]);
+  const [hasFetched, setHasFetched] = useState(false);
 
   const toggleSection = (title) => {
     setOpenSections((prev) => ({ ...prev, [title]: !prev[title] }));
@@ -61,15 +62,16 @@ const Sidebar = ({ closeSidebar, sidebarOpen }) => {
         }));
 
         setSidebarStructure(structure);
+        setHasFetched(true);
       } catch (err) {
         console.error("❌ Error al obtener el menú:", err);
       }
     };
 
-    if (!isLoading && isAuthenticated && userId && sidebarStructure.length === 0) {
+    if (!isLoading && isAuthenticated && userId && !hasFetched) {
       fetchSidebar();
     }
-  }, [isLoading, isAuthenticated, userId]);
+  }, [isLoading, isAuthenticated, userId, hasFetched]);
 
   if (isLoading || !isAuthenticated || !userId) {
     console.log("⏳ Esperando a que el contexto esté listo...");
