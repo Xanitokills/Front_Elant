@@ -10,7 +10,8 @@ import {
 import { useAuth } from "../context/AuthContext";
 
 const getIconComponent = (iconName) => {
-  return FaIcons[iconName] || null;
+  const Icon = FaIcons[iconName];
+  return Icon ? <Icon /> : null;
 };
 
 const Sidebar = ({ closeSidebar, sidebarOpen }) => {
@@ -122,7 +123,7 @@ const Sidebar = ({ closeSidebar, sidebarOpen }) => {
               className="w-full flex justify-between items-center font-bold text-sm mb-1 px-2 py-1 rounded hover:bg-gray-800"
             >
               <span className="flex items-center gap-2">
-                {section.icon && <span>{section.icon}</span>}
+                {section.icon}
                 {section.title}
               </span>
               <FaChevronDown
@@ -141,7 +142,7 @@ const Sidebar = ({ closeSidebar, sidebarOpen }) => {
                       ${isActive ? "bg-gray-700" : "hover:bg-gray-800"}`
                     }
                   >
-                    {item.icon && <span>{item.icon}</span>}
+                    {item.icon}
                     {item.label}
                   </NavLink>
                 ))}
