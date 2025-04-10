@@ -1,4 +1,10 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -16,24 +22,23 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [userName, setUserName] = useState<string | null>(localStorage.getItem("userName"));
-  const [userId, setUserId] = useState<number | null>(
-    localStorage.getItem("userId") ? Number(localStorage.getItem("userId")) : null
-  );
-  const [role, setRole] = useState<string | null>(localStorage.getItem("role"));
+  const [userName, setUserName] = useState<string | null>(null);
+  const [userId, setUserId] = useState<number | null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  // Validar sesión al iniciar la app o sincronizar con localStorage
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    const storedUserId = localStorage.getItem("userId");
+
+    if (!token || !storedUserId) {
+      setIsAuthenticated(false);
+      setIsLoading(false);
+      return;
+    }
+
     const validateSession = async () => {
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        setIsAuthenticated(false);
-        setUserId(null);
-        setIsLoading(false);
-        return;
-      }
-
       try {
         const response = await fetch(`${API_URL}/validate`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -42,10 +47,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (response.ok) {
           const data = await response.json();
           setIsAuthenticated(true);
-          setUserName(localStorage.getItem("userName"));
-          setRole(localStorage.getItem("role"));
+          setUserName(data.userName || localStorage.getItem("userName"));
+          setRole(data.role || localStorage.getItem("role"));
           setUserId(data.user.id);
-          localStorage.setItem("userId", String(data.user.id));
+
+          console.log("✅ Sesión validada. userId:", data.user.id);
         } else {
           logout();
         }
@@ -73,16 +79,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const data = await response.json();
-      
+
+      // Guardar en localStorage
       localStorage.setItem("token", data.token);
       localStorage.setItem("userName", data.userName);
       localStorage.setItem("role", data.role);
       localStorage.setItem("userId", String(data.userId));
 
+      // Actualizar el estado inmediatamente
       setIsAuthenticated(true);
       setUserName(data.userName);
-      setUserId(data.userId);
       setRole(data.role);
+      setUserId(data.userId);
+
+      console.log("🔐 Login exitoso. userId:", data.userId);
     } catch (error) {
       console.error("Error al iniciar sesión:", error);
       throw error;
@@ -90,11 +100,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userName");
-    localStorage.removeItem("role");
-    localStorage.removeItem("userId");
-
+    localStorage.clear();
     setIsAuthenticated(false);
     setUserName(null);
     setUserId(null);
@@ -102,7 +108,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, userName, userId, role, isLoading, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        isAuthenticated,
+        userName,
+        userId,
+        role,
+        isLoading,
+        login,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
