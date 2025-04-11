@@ -122,7 +122,7 @@ const UserList = () => {
   useEffect(() => {
     const fetchRoles = async () => {
       try {
-        const res = await fetch(`${API_URL}/roles`, {
+        const res = await fetch(`${API_URL}/get-roles`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -559,25 +559,26 @@ const UserList = () => {
               />
             </div>
 
-            <div>
-              <label className="block font-semibold text-gray-700">Rol</label>
-              <select
-                className="p-2 border rounded w-full"
-                value={editingUser.ID_TIPO_USUARIO}
-                onChange={(e) =>
-                  setEditingUser({
-                    ...editingUser,
-                    ID_TIPO_USUARIO: parseInt(e.target.value),
-                  })
-                }
-              >
-                {roles.map((rol) => (
-                  <option key={rol.ID_TIPO_USUARIO} value={rol.ID_TIPO_USUARIO}>
-                    {rol.DETALLE_USUARIO}
-                  </option>
-                ))}
-              </select>
-            </div>
+			<div>
+			  <label className="block font-semibold text-gray-700">Rol</label>
+			  <select
+				className="p-2 border rounded w-full"
+				value={Number(editingUser.ID_TIPO_USUARIO)} // 👈 Aseguramos que sea number
+				onChange={(e) =>
+				  setEditingUser({
+					...editingUser,
+					ID_TIPO_USUARIO: parseInt(e.target.value),
+				  })
+				}
+			  >
+				{roles.map((rol) => (
+				  <option key={rol.ID_TIPO_USUARIO} value={rol.ID_TIPO_USUARIO}>
+					{rol.DETALLE_USUARIO}
+				  </option>
+				))}
+			  </select>
+			</div>
+
 
             <div>
               <label className="block font-semibold text-gray-700">Sexo</label>
