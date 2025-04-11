@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
+import Swal from "sweetalert2";
+
 const API_URL = import.meta.env.VITE_API_URL;
 
 // Interfaces para los datos
@@ -121,7 +123,6 @@ const Users = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validaciones de campos requeridos
     if (
       !formData.nombres ||
       !formData.apellidos ||
@@ -132,46 +133,60 @@ const Users = () => {
       !formData.id_sexo ||
       !formData.usuario
     ) {
-      setMessage({
+      await Swal.fire({
+        icon: "error",
+        title: "Campos incompletos",
         text: "Por favor, completa todos los campos requeridos (*)",
-        type: "error",
+        timer: 2500,
+        showConfirmButton: false,
       });
       return;
     }
 
-    // Validación del DNI (8 dígitos)
     if (!/^[0-9]{8}$/.test(formData.dni)) {
-      setMessage({
+      await Swal.fire({
+        icon: "error",
+        title: "DNI inválido",
         text: "El DNI debe tener exactamente 8 dígitos",
-        type: "error",
+        timer: 2500,
+        showConfirmButton: false,
       });
       return;
     }
 
-    // Validación del celular (comienza con 9, 9 dígitos)
     if (!/^[9][0-9]{8}$/.test(formData.celular)) {
-      setMessage({
+      await Swal.fire({
+        icon: "error",
+        title: "Celular inválido",
         text: "El celular debe comenzar con 9 y tener 9 dígitos",
-        type: "error",
+        timer: 2500,
+        showConfirmButton: false,
       });
       return;
     }
 
-    // Validación del contacto de emergencia (si se proporciona)
     if (
       formData.contacto_emergencia &&
       !/^[9][0-9]{8}$/.test(formData.contacto_emergencia)
     ) {
-      setMessage({
+      await Swal.fire({
+        icon: "error",
+        title: "Contacto inválido",
         text: "El contacto de emergencia debe comenzar con 9 y tener 9 dígitos",
-        type: "error",
+        timer: 2500,
+        showConfirmButton: false,
       });
       return;
     }
 
-    // Validación del correo
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo)) {
-      setMessage({ text: "Formato de correo inválido", type: "error" });
+      await Swal.fire({
+        icon: "error",
+        title: "Correo inválido",
+        text: "El formato del correo no es válido",
+        timer: 2500,
+        showConfirmButton: false,
+      });
       return;
     }
 
@@ -291,8 +306,13 @@ const Users = () => {
               type="number"
               name="nro_dpto"
               value={formData.nro_dpto}
-              onChange={handleInputChange}
+              onChange={(e) => {
+                const value = parseInt(e.target.value);
+                if (value < 0) return; //  Bloquea negativos manualmente
+                handleInputChange(e);
+              }}
               className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              min="0"
             />
           </div>
           <div>
