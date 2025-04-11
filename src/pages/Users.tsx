@@ -235,12 +235,14 @@ const Users = () => {
           }
         }
 
-        // Mostrar mensaje y limpiar formulario
-        setMessage({
-          text: "Usuario registrado exitosamente. La contraseña por defecto es el DNI.",
-          type: "success",
+        await Swal.fire({
+          icon: "success",
+          title: "Usuario registrado correctamente",
+          text: "La contraseña por defecto es el DNI.",
+          timer: 2000,
+          showConfirmButton: false,
         });
-
+      
         // Limpiar el formulario
         setFormData({
           nro_dpto: "",
@@ -259,13 +261,22 @@ const Users = () => {
           usuario: "",
         });
       } else {
-        setMessage({
+        await Swal.fire({
+          icon: "error",
+          title: "Error",
           text: data.message || "Error al registrar el usuario",
-          type: "error",
+          timer: 2000,
+          showConfirmButton: false,
         });
       }
     } catch (error) {
-      setMessage({ text: "Error de conexión: " + error, type: "error" });
+      await Swal.fire({
+        icon: "error",
+        title: "Error de conexión",
+        text: String(error),
+        timer: 3000,
+        showConfirmButton: false,
+      });
     }
   };
 
