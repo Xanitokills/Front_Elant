@@ -13,8 +13,9 @@ import Users from "./pages/Users";
 import UserList from "./pages/UserList";
 import MovementsList from "./components/Movements";
 import Dashboard from "./pages/Dashboard";
+import ChangePassword from "./components/ChangePassword";
 import Login from "./pages/Login";
-import LoginConfig from "./components/LoginConfig"; 
+import LoginConfig from "./components/LoginConfig";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { FaBars } from "react-icons/fa";
 
@@ -91,9 +92,10 @@ const App = () => {
           <Route path="/user-list" element={<UserList />} />
           <Route path="/movements-list" element={<MovementsList />} />
           <Route path="/visits" element={<Visits />} />
-          {/* Ruta para la configuración de login */}
-          <Route path="/LoginConfig" element={<LoginConfig />} />{" "}
-          {/* Añadida esta línea */}
+          <Route path="/LoginConfig" element={<LoginConfig />} />
+          <Route path="/ChangePass" element={<ChangePassword />} />
+          {" "}
+          {/* <-- AQUI */}
           <Route
             path="/settings/:section"
             element={

@@ -2,11 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { NavLink } from "react-router-dom";
 import axios from "axios";
 import * as FaIcons from "react-icons/fa";
-import {
-  FaChevronDown,
-  FaSearch,
-  FaSignOutAlt,
-} from "react-icons/fa";
+import { FaChevronDown, FaSearch, FaSignOutAlt } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 
 const getIconComponent = (iconName) => {
@@ -15,7 +11,8 @@ const getIconComponent = (iconName) => {
 };
 
 const Sidebar = ({ closeSidebar, sidebarOpen }) => {
-  const { logout, userId, userName, role, isAuthenticated, isLoading } = useAuth();
+  const { logout, userId, userName, role, isAuthenticated, isLoading } =
+    useAuth();
   const [openSections, setOpenSections] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
   const [sidebarStructure, setSidebarStructure] = useState([]);
@@ -34,23 +31,23 @@ const Sidebar = ({ closeSidebar, sidebarOpen }) => {
   useEffect(() => {
     console.log("🧠 useEffect ejecutado (Sidebar)");
     console.log("👤 userId actual:", userId);
-  
+
     const fetchSidebar = async () => {
       try {
         const token = localStorage.getItem("token");
         if (!token || !userId) return;
-  
+
         const API_URL = import.meta.env.VITE_API_URL;
         console.log(`📡 Llamando a: ${API_URL}/sidebar/${userId}`);
-  
+
         const res = await axios.get(`${API_URL}/sidebar/${userId}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
-  
+
         const menus = res.data;
-  
+
         const structure = menus.map((menu) => ({
           title: menu.MENU_NOMBRE,
           icon: getIconComponent(menu.ICONO),
@@ -60,19 +57,18 @@ const Sidebar = ({ closeSidebar, sidebarOpen }) => {
             icon: getIconComponent(sub.ICONO),
           })),
         }));
-  
+
         setSidebarStructure(structure);
         hasFetchedRef.current = true;
       } catch (err) {
         console.error("❌ Error al obtener el menú:", err);
       }
     };
-  
+
     if (!isLoading && isAuthenticated && userId && !hasFetchedRef.current) {
       fetchSidebar();
     }
   }, [isLoading, isAuthenticated, userId]);
-  
 
   if (isLoading || !isAuthenticated || !userId) {
     console.log("⏳ Esperando a que el contexto esté listo...");
@@ -99,15 +95,21 @@ const Sidebar = ({ closeSidebar, sidebarOpen }) => {
       </div>
 
       {/* Buscador */}
-      <div className="flex items-center gap-3 mb-4">
-        <FaSearch className="text-gray-400" />
-        <input
-          type="text"
-          placeholder="Buscar..."
-          className="w-full p-1 rounded bg-gray-800 text-white placeholder-gray-400 outline-none"
-          onChange={handleSearch}
-        />
-      </div>
+      <form autoComplete="off">
+        {" "}
+        {/* 👈 envolvemos en un form con autoComplete="off" */}
+        <div className="flex items-center gap-3 mb-4">
+          <FaSearch className="text-gray-400" />
+          <input
+            type="search"
+            name="search_sidebar" // 👈 nombre poco común
+            autoComplete="off" // 👈 explícito en el input también
+            placeholder="Buscar..."
+            className="w-full p-1 rounded bg-gray-800 text-white placeholder-gray-400 outline-none"
+            onChange={handleSearch}
+          />
+        </div>
+      </form>
 
       {/* Menús dinámicos */}
       {sidebarStructure.map((section) => {
@@ -127,7 +129,9 @@ const Sidebar = ({ closeSidebar, sidebarOpen }) => {
                 {section.title}
               </span>
               <FaChevronDown
-                className={`transform transition-transform duration-300 ${openSections[section.title] ? "rotate-180" : "rotate-0"}`}
+                className={`transform transition-transform duration-300 ${
+                  openSections[section.title] ? "rotate-180" : "rotate-0"
+                }`}
               />
             </button>
             {openSections[section.title] && (
