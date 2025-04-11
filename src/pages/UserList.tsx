@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useEffectOnce } from "../hooks/useEffectOnce";
 import {
   FaExclamationCircle,
@@ -97,16 +97,13 @@ const UserList = () => {
     }
   };
 
-  const hasFetched = useRef(false);
-
-  useEffect(() => {
-    if (!hasFetched.current) {
-      console.log("🎯 useEffect ejecutado - fetchUsers");
+  useEffectOnce(() => {
+    console.count("📥 fetchUsers llamado");
+    if (token) {
       fetchUsers();
-      hasFetched.current = true;
     }
-  }, [token, navigate]);
-
+  });
+  
   const filteredUsers = users.filter((user) => {
     const target =
       searchField === "NOMBRES"

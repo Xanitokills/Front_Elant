@@ -54,7 +54,10 @@ const Users = () => {
   });
 
   // Estado para mensajes de éxito o error
-  const [message, setMessage] = useState<{ text: string; type: "success" | "error" | "" }>({
+  const [message, setMessage] = useState<{
+    text: string;
+    type: "success" | "error" | "";
+  }>({
     text: "",
     type: "",
   });
@@ -79,7 +82,7 @@ const Users = () => {
         setMessage({ text: "Error al cargar tipos de usuario", type: "error" });
       }
     };
-  
+
     const fetchSexes = async () => {
       try {
         const response = await fetch(`${API_URL}/sexes`, {
@@ -95,15 +98,16 @@ const Users = () => {
         setMessage({ text: "Error al cargar sexos", type: "error" });
       }
     };
-  
+
     fetchUserTypes();
     fetchSexes();
   }, [token]);
-  
 
   // Manejar cambios en los inputs
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
   ) => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
@@ -128,24 +132,36 @@ const Users = () => {
       !formData.id_sexo ||
       !formData.usuario
     ) {
-      setMessage({ text: "Por favor, completa todos los campos requeridos (*)", type: "error" });
+      setMessage({
+        text: "Por favor, completa todos los campos requeridos (*)",
+        type: "error",
+      });
       return;
     }
 
     // Validación del DNI (8 dígitos)
     if (!/^[0-9]{8}$/.test(formData.dni)) {
-      setMessage({ text: "El DNI debe tener exactamente 8 dígitos", type: "error" });
+      setMessage({
+        text: "El DNI debe tener exactamente 8 dígitos",
+        type: "error",
+      });
       return;
     }
 
     // Validación del celular (comienza con 9, 9 dígitos)
     if (!/^[9][0-9]{8}$/.test(formData.celular)) {
-      setMessage({ text: "El celular debe comenzar con 9 y tener 9 dígitos", type: "error" });
+      setMessage({
+        text: "El celular debe comenzar con 9 y tener 9 dígitos",
+        type: "error",
+      });
       return;
     }
 
     // Validación del contacto de emergencia (si se proporciona)
-    if (formData.contacto_emergencia && !/^[9][0-9]{8}$/.test(formData.contacto_emergencia)) {
+    if (
+      formData.contacto_emergencia &&
+      !/^[9][0-9]{8}$/.test(formData.contacto_emergencia)
+    ) {
       setMessage({
         text: "El contacto de emergencia debe comenzar con 9 y tener 9 dígitos",
         type: "error",
@@ -187,8 +203,30 @@ const Users = () => {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage({ text: "Usuario registrado exitosamente. La contraseña por defecto es el DNI.", type: "success" });
-        // Resetear el formulario
+        const { ID_USUARIO } = await data; // asegúrate que el backend te devuelva el ID del nuevo usuario
+
+        // 🧠 Si se marcó como Comité
+        if (formData.comite) {
+          try {
+            await fetch(`${API_URL}/users/${ID_USUARIO}/asignar-comite`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            });
+            console.log("✅ Rol de Comité asignado correctamente");
+          } catch (error) {
+            console.error("⚠️ Error al asignar Comité:", error);
+          }
+        }
+
+        // Mostrar mensaje y limpiar formulario
+        setMessage({
+          text: "Usuario registrado exitosamente. La contraseña por defecto es el DNI.",
+          type: "success",
+        });
+
+        // Limpiar el formulario
         setFormData({
           nro_dpto: "",
           nombres: "",
@@ -206,7 +244,10 @@ const Users = () => {
           usuario: "",
         });
       } else {
-        setMessage({ text: data.message || "Error al registrar el usuario", type: "error" });
+        setMessage({
+          text: data.message || "Error al registrar el usuario",
+          type: "error",
+        });
       }
     } catch (error) {
       setMessage({ text: "Error de conexión: " + error, type: "error" });
@@ -221,7 +262,9 @@ const Users = () => {
       {message.text && (
         <div
           className={`p-4 mb-6 rounded-lg flex items-center ${
-            message.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+            message.type === "success"
+              ? "bg-green-100 text-green-700"
+              : "bg-red-100 text-red-700"
           }`}
         >
           {message.type === "success" ? (
@@ -236,9 +279,14 @@ const Users = () => {
       {/* Formulario de Registro */}
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h2 className="text-lg font-semibold mb-4">Registrar Nuevo Usuario</h2>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form
+          onSubmit={handleSubmit}
+          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+        >
           <div>
-            <label className="block text-sm font-medium text-gray-700">Nro. Departamento</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Nro. Departamento
+            </label>
             <input
               type="number"
               name="nro_dpto"
@@ -248,7 +296,9 @@ const Users = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Nombres *</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Nombres *
+            </label>
             <input
               type="text"
               name="nombres"
@@ -259,7 +309,9 @@ const Users = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Apellidos *</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Apellidos *
+            </label>
             <input
               type="text"
               name="apellidos"
@@ -270,7 +322,9 @@ const Users = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">DNI *</label>
+            <label className="block text-sm font-medium text-gray-700">
+              DNI *
+            </label>
             <input
               type="text"
               name="dni"
@@ -281,7 +335,9 @@ const Users = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Correo *</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Correo *
+            </label>
             <input
               type="email"
               name="correo"
@@ -292,7 +348,9 @@ const Users = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Celular *</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Celular *
+            </label>
             <input
               type="text"
               name="celular"
@@ -303,7 +361,9 @@ const Users = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Contacto de Emergencia</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Contacto de Emergencia
+            </label>
             <input
               type="text"
               name="contacto_emergencia"
@@ -313,7 +373,9 @@ const Users = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Fecha de Nacimiento</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Fecha de Nacimiento
+            </label>
             <input
               type="date"
               name="fecha_nacimiento"
@@ -323,7 +385,9 @@ const Users = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Tipo de Usuario *</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Tipo de Usuario *
+            </label>
             <select
               name="id_tipo_usuario"
               value={formData.id_tipo_usuario}
@@ -340,7 +404,9 @@ const Users = () => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Sexo *</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Sexo *
+            </label>
             <select
               name="id_sexo"
               value={formData.id_sexo}
@@ -357,7 +423,9 @@ const Users = () => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Detalle</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Detalle
+            </label>
             <input
               type="text"
               name="detalle"
@@ -367,7 +435,9 @@ const Users = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Observaciones</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Observaciones
+            </label>
             <textarea
               name="observaciones"
               value={formData.observaciones}
@@ -377,7 +447,9 @@ const Users = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Pertenece al Comité *</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Pertenece al Comité *
+            </label>
             <input
               type="checkbox"
               name="comite"
@@ -387,7 +459,9 @@ const Users = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Usuario *</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Usuario *
+            </label>
             <input
               type="text"
               name="usuario"
