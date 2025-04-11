@@ -47,11 +47,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (response.ok) {
           const data = await response.json();
           setIsAuthenticated(true);
-          setUserName(data.userName);
-          setRole(data.role);
-          setUserId(data.user.id);
-
-          console.log("✅ Sesión validada. userId:", data.user.id);
+          const savedName = localStorage.getItem("userName");
+          const savedRole = localStorage.getItem("role");
+          setUserName(data.userName || savedName || null);
+          setRole(data.role || savedRole || null);
+          setUserId(data.user?.id);
         } else {
           logout();
         }
