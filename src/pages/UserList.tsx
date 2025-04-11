@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useEffectOnce } from "../hooks/useEffectOnce";
 import {
   FaExclamationCircle,
   FaCheckCircle,
@@ -22,7 +23,7 @@ interface User {
   CELULAR: string;
   NRO_DPTO: number | null;
   FECHA_NACIMIENTO: string | null;
-  COMITE: number;
+  COMITE: boolean | number;
   USUARIO: string;
   ROL: string;
   SEXO: string;
@@ -30,12 +31,18 @@ interface User {
   ID_SEXO: number;
 }
 
+interface Rol {
+  ID_TIPO_USUARIO: number;
+  DETALLE_USUARIO: string;
+}
+
 const ITEMS_PER_PAGE = 10;
 
 const UserList = () => {
   const [users, setUsers] = useState<User[]>([]);
+  const [roles, setRoles] = useState<Rol[]>([]);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);  // Nuevo estado para manejar el estado de carga
+  const [isLoading, setIsLoading] = useState(false); // Nuevo estado para manejar el estado de carga
   const [message, setMessage] = useState<{
     text: string;
     type: "success" | "error" | "";
@@ -51,6 +58,7 @@ const UserList = () => {
   const token = localStorage.getItem("token");
 
   const fetchUsers = async () => {
+    console.log("🚀 Ejecutando fetchUsers()");
     if (!token) {
       setMessage({
         text: "No se encontró un token. Por favor, inicia sesión.",
@@ -80,6 +88,7 @@ const UserList = () => {
       if (!response.ok) throw new Error("Error al obtener los usuarios");
 
       const data = await response.json();
+      console.log("📥 Usuarios recibidos del backend:", data);
       setUsers(data);
     } catch (error) {
       const errorMessage =
@@ -88,8 +97,14 @@ const UserList = () => {
     }
   };
 
+  const hasFetched = useRef(false);
+
   useEffect(() => {
-    fetchUsers();
+    if (!hasFetched.current) {
+      console.log("🎯 useEffect ejecutado - fetchUsers");
+      fetchUsers();
+      hasFetched.current = true;
+    }
   }, [token, navigate]);
 
   const filteredUsers = users.filter((user) => {
@@ -106,6 +121,24 @@ const UserList = () => {
   );
 
   const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const res = await fetch(`${API_URL}/roles`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const data = await res.json();
+        setRoles(data);
+      } catch (error) {
+        console.error("Error al cargar los roles:", error);
+      }
+    };
+
+    fetchRoles();
+  }, [token]);
 
   const handleUpdateUser = async () => {
     if (!editingUser) return;
@@ -158,6 +191,17 @@ const UserList = () => {
         throw new Error(result.message || "Error al actualizar el usuario");
       }
 
+      // ✅ Aquí se maneja el comité (después de guardar el usuario)
+      const comiteEndpoint = `${API_URL}/users/${editingUser.ID_USUARIO}/${
+        payload.comite === 1 ? "asignar-comite" : "quitar-comite"
+      }`;
+      await fetch(comiteEndpoint, {
+        method: payload.comite === 1 ? "POST" : "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
       await Swal.fire({
         icon: "success",
         title: "Éxito",
@@ -166,8 +210,8 @@ const UserList = () => {
         showConfirmButton: false,
       });
 
-      setEditingUser(null); // ❗ Cierra el modal
-      fetchUsers(); // ❗ Refresca la lista
+      setEditingUser(null);
+      fetchUsers();
     } catch (error: any) {
       await Swal.fire({
         icon: "error",
@@ -178,11 +222,11 @@ const UserList = () => {
   };
 
   const handleResetPassword = async (id) => {
-    setIsLoading(true);  // Activa el estado de carga
+    setIsLoading(true); // Activa el estado de carga
 
     try {
       const response = await fetch(`${API_URL}/users/change-password/${id}`, {
-        method: "PUT",  // Cambiado a PUT para actualizar
+        method: "PUT", // Cambiado a PUT para actualizar
         headers: {
           "Content-Type": "application/json",
         },
@@ -199,8 +243,8 @@ const UserList = () => {
           timer: 2000,
           showConfirmButton: false,
         }).then(() => {
-          setEditingUser(null);  // Cierra el modal después del éxito
-          setIsLoading(false);  // Desactiva el estado de carga
+          setEditingUser(null); // Cierra el modal después del éxito
+          setIsLoading(false); // Desactiva el estado de carga
         });
       } else {
         Swal.fire({
@@ -208,7 +252,7 @@ const UserList = () => {
           title: "Error",
           text: data.message || "Hubo un error al actualizar la contraseña.",
         });
-        setIsLoading(false);  // Desactiva el estado de carga
+        setIsLoading(false); // Desactiva el estado de carga
       }
     } catch (error) {
       Swal.fire({
@@ -216,12 +260,9 @@ const UserList = () => {
         title: "Error",
         text: "Hubo un error inesperado.",
       });
-      setIsLoading(false);  // Desactiva el estado de carga
+      setIsLoading(false); // Desactiva el estado de carga
     }
   };
-  
-
-
 
   const handleSaveUser = () => {
     Swal.fire({
@@ -333,9 +374,7 @@ const UserList = () => {
                           .join("/")
                       : "N/A"}
                   </td>
-                  <td className="py-3 px-4">
-                    {user.COMITE === 1 ? "Sí" : "No"}
-                  </td>
+                  <td className="py-3 px-4">{user.COMITE ? "Sí" : "No"}</td>
                   <td className="py-3 px-4">{user.USUARIO}</td>
                   <td className="py-3 px-4">{user.ROL}</td>
                   <td className="py-3 px-4">{user.SEXO}</td>
@@ -378,7 +417,10 @@ const UserList = () => {
       {/* Modal para editar */}
       <Modal
         isOpen={!!editingUser}
-        onRequestClose={() => setEditingUser(null)}
+        onRequestClose={() => {
+          setEditingUser(null);
+          setTimeout(() => document.body.focus(), 0);
+        }}
         className="bg-white p-6 w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto mt-20 rounded-lg shadow-lg max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200"
         overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
         ariaHideApp={false}
@@ -493,7 +535,7 @@ const UserList = () => {
               </label>
               <select
                 className="p-2 border rounded w-full"
-                value={editingUser.COMITE}
+                value={editingUser.COMITE ? 1 : 0}
                 onChange={(e) =>
                   setEditingUser({
                     ...editingUser,
@@ -522,14 +564,22 @@ const UserList = () => {
 
             <div>
               <label className="block font-semibold text-gray-700">Rol</label>
-              <input
+              <select
                 className="p-2 border rounded w-full"
-                value={editingUser.ROL}
+                value={editingUser.ID_TIPO_USUARIO}
                 onChange={(e) =>
-                  setEditingUser({ ...editingUser, ROL: e.target.value })
+                  setEditingUser({
+                    ...editingUser,
+                    ID_TIPO_USUARIO: parseInt(e.target.value),
+                  })
                 }
-                placeholder="Rol"
-              />
+              >
+                {roles.map((rol) => (
+                  <option key={rol.ID_TIPO_USUARIO} value={rol.ID_TIPO_USUARIO}>
+                    {rol.DETALLE_USUARIO}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -557,7 +607,9 @@ const UserList = () => {
                 type="button"
                 value={isLoading ? "Cargando..." : "Reiniciar Contraseña"}
                 onClick={() => handleResetPassword(editingUser.ID_USUARIO)}
-                className={`p-2 border rounded w-full ${isLoading ? "bg-gray-400" : "bg-gray-200"} text-gray-700 hover:bg-gray-300 cursor-pointer`}
+                className={`p-2 border rounded w-full ${
+                  isLoading ? "bg-gray-400" : "bg-gray-200"
+                } text-gray-700 hover:bg-gray-300 cursor-pointer`}
                 disabled={isLoading}
               />
             </div>
