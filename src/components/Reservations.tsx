@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Swal from "sweetalert2";
 import { FaFileExport } from "react-icons/fa";
 import axios from "axios";
@@ -9,7 +9,7 @@ import "react-calendar/dist/Calendar.css";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 
 interface Area {
-  id: string;
+  id: number;
   name: string;
 }
 
@@ -37,8 +37,15 @@ interface FilterData {
 }
 
 interface Slot {
+  ID_RESERVA: number;
+  NRO_DPTO: number;
+  TIPO_AREA: number;
+  NOMBRE_AREA: string;
   HORA_INICIO: string;
   HORA_FIN: string;
+  FECHA_RESERVA: string;
+  ID_USUARIO: number;
+  ESTADO: number;
 }
 
 interface AuthContextType {
@@ -64,7 +71,15 @@ const Reservations = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [occupiedSlots, setOccupiedSlots] = useState<Slot[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [isLoadingAreas, setIsLoadingAreas] = useState(true); // Nuevo estado para manejar la carga de áreas
   const [noSlotsMessage, setNoSlotsMessage] = useState<string>("");
+  const [errorMessage, setErrorMessage] = useState<string>("");
+
+  // Referencia para cancelar solicitudes de axios
+  const cancelTokenSource = useRef(axios.CancelToken.source());
+
+  // Bandera para verificar si el componente está montado
+  const isMounted = useRef(true);
 
   // Mapa de imágenes por área
   const areaImages: { [key: string]: string } = {
@@ -72,20 +87,35 @@ const Reservations = () => {
     Parrilla: "https://e.nexoinmobiliario.pe/customers/grupo-lar/2194-elant-fase-2/departamentos-la-victoria-6661ea32af7df_b.jpg",
     Piscina: "https://grupolar.pe/wp-content/uploads/2024/05/area-comun-piscina-1-proyecto-elant.jpg",
     "Salón de Fiestas": "https://e.nexoinmobiliario.pe/customers/grupo-lar/3661-elant-fase-3/departamentos-la-victoria-67bf714588913_b.jpg",
+    "Piscina de Fiestas": "https://grupolar.pe/wp-content/uploads/2024/05/area-comun-piscina-1-proyecto-elant.jpg", // Añadido para coincidir con los datos del backend
   };
 
   // Fetch available areas (no auth required)
   const fetchAreas = async () => {
     try {
-      const res = await axios.get<{ name: string }[]>(`${API_URL}/reservations/areas`);
+      setIsLoadingAreas(true);
+      console.log("Iniciando fetchAreas...");
+      const res = await axios.get<{ ID_AREA: number; NOMBRE_AREA: string }[]>(
+        `${API_URL}/reservations/areas`,
+        { cancelToken: cancelTokenSource.current.token }
+      );
+      console.log("Áreas recibidas:", res.data);
       const formattedAreas: Area[] = res.data.map((area) => ({
-        id: area.name,
-        name: area.name,
+        id: area.ID_AREA,
+        name: area.NOMBRE_AREA,
       }));
       setAreas(formattedAreas);
+      setErrorMessage("");
     } catch (err) {
+      if (axios.isCancel(err)) {
+        console.log("Solicitud de áreas cancelada:", err.message);
+        return;
+      }
       console.error("Error al obtener áreas:", err);
+      setErrorMessage("No se pudieron cargar las áreas. Por favor, intenta de nuevo.");
       Swal.fire("Error", "No se pudieron cargar las áreas", "error");
+    } finally {
+      setIsLoadingAreas(false);
     }
   };
 
@@ -97,6 +127,7 @@ const Reservations = () => {
       const token = localStorage.getItem("token");
       const res = await axios.get<Reservation[]>(`${API_URL}/reservations/user/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
+        cancelToken: cancelTokenSource.current.token,
       });
       const validReservations = res.data.filter(
         (reservation) =>
@@ -107,6 +138,10 @@ const Reservations = () => {
       );
       setReservations(validReservations);
     } catch (err) {
+      if (axios.isCancel(err)) {
+        console.log("Solicitud de reservas cancelada:", err.message);
+        return;
+      }
       console.error("Error al obtener reservas:", err);
       setReservations([]);
     }
@@ -116,7 +151,7 @@ const Reservations = () => {
   const fetchOccupiedSlots = async () => {
     if (!newReservation.area || !newReservation.date || !isAuthenticated || !userId) return;
     setIsLoadingSlots(true);
-    setNoSlotsMessage(""); // Resetear el mensaje
+    setNoSlotsMessage("");
     try {
       const token = localStorage.getItem("token");
       if (!token) {
@@ -126,6 +161,7 @@ const Reservations = () => {
       const res = await axios.get<Slot[]>(`${API_URL}/reservations/slots/occupied`, {
         params: { areaId: newReservation.area, date: newReservation.date },
         headers: { Authorization: `Bearer ${token}` },
+        cancelToken: cancelTokenSource.current.token,
       });
       console.log("Datos crudos del backend:", res.data);
       const validSlots = res.data.filter(
@@ -141,6 +177,10 @@ const Reservations = () => {
       }
       setOccupiedSlots(validSlots);
     } catch (err: any) {
+      if (axios.isCancel(err)) {
+        console.log("Solicitud de slots ocupados cancelada:", err.message);
+        return;
+      }
       console.error("Error al obtener horarios ocupados:", err);
       setOccupiedSlots([]);
       setNoSlotsMessage("No se pudieron cargar los horarios ocupados.");
@@ -157,12 +197,26 @@ const Reservations = () => {
   };
 
   useEffect(() => {
+    console.log("Componente Reservations montado. Estado de autenticación:", { isAuthenticated, isLoading, userId });
+    isMounted.current = true;
+
+    // Ejecutar fetchAreas sin cancelar inmediatamente
     fetchAreas();
+
+    let interval: NodeJS.Timeout | null = null;
     if (isAuthenticated && !isLoading && userId) {
       fetchUserReservations();
-      const interval = setInterval(fetchUserReservations, 5000);
-      return () => clearInterval(interval);
+      interval = setInterval(fetchUserReservations, 5000);
     }
+
+    return () => {
+      console.log("Componente Reservations desmontado. Cancelando intervalos...");
+      isMounted.current = false;
+      if (interval) {
+        clearInterval(interval);
+      }
+      // No cancelamos las solicitudes iniciales aquí para permitir que fetchAreas complete
+    };
   }, [isAuthenticated, isLoading, userId]);
 
   useEffect(() => {
@@ -215,8 +269,11 @@ const Reservations = () => {
   // Handle reservation submission
   const handleCreateReservation = async () => {
     const deptNum = parseInt(newReservation.departmentNumber.toString());
+    const areaId = parseInt(newReservation.area);
+
     if (
       !newReservation.area ||
+      isNaN(areaId) ||
       !newReservation.date ||
       !newReservation.startTime ||
       !newReservation.endTime ||
@@ -232,7 +289,7 @@ const Reservations = () => {
 
     const payload = {
       userId,
-      areaId: newReservation.area,
+      areaId,
       date: newReservation.date,
       startTime: newReservation.startTime,
       endTime: newReservation.endTime,
@@ -244,6 +301,7 @@ const Reservations = () => {
       const token = localStorage.getItem("token");
       await axios.post(`${API_URL}/reservations`, payload, {
         headers: { Authorization: `Bearer ${token}` },
+        cancelToken: cancelTokenSource.current.token,
       });
 
       Swal.fire("¡Registrado!", "Reserva creada con éxito", "success");
@@ -257,6 +315,10 @@ const Reservations = () => {
       fetchUserReservations();
       fetchOccupiedSlots();
     } catch (err: any) {
+      if (axios.isCancel(err)) {
+        console.log("Solicitud de creación de reserva cancelada:", err.message);
+        return;
+      }
       console.error("Error al crear reserva:", err);
       Swal.fire("Error", err.response?.data?.message || "No se pudo crear la reserva", "error");
     }
@@ -461,29 +523,48 @@ const Reservations = () => {
       {/* Vista: Crear Reserva */}
       {activeTab === "createReservation" && (
         <div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            {areas.map((area) => (
-              <div
-                key={area.id}
-                className={`bg-white rounded-lg shadow-md overflow-hidden cursor-pointer ${
-                  newReservation.area === area.id ? "ring-2 ring-blue-500" : ""
-                }`}
-                onClick={() => setNewReservation({ ...newReservation, area: area.id })}
+          {isLoadingAreas ? (
+            <div className="p-3 text-center text-gray-500">Cargando áreas...</div>
+          ) : errorMessage ? (
+            <div className="p-3 text-center text-red-500">
+              {errorMessage}
+              <button
+                onClick={() => {
+                  setErrorMessage("");
+                  fetchAreas();
+                }}
+                className="ml-2 text-blue-500 underline"
               >
-                <img
-                  src={areaImages[area.name] || "https://via.placeholder.com/300x200?text=Default+Area"}
-                  alt={area.name}
-                  className="w-full h-40 object-cover"
-                />
-                <div className="p-4">
-                  <h3 className="text-lg font-semibold">{area.name}</h3>
-                  <button className="mt-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600">
-                    Reservar aquí con Elant
-                  </button>
+                Reintentar
+              </button>
+            </div>
+          ) : areas.length === 0 ? (
+            <div className="p-3 text-center text-gray-500">No hay áreas disponibles.</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              {areas.map((area) => (
+                <div
+                  key={area.id}
+                  className={`bg-white rounded-lg shadow-md overflow-hidden cursor-pointer ${
+                    newReservation.area === area.id.toString() ? "ring-2 ring-blue-500" : ""
+                  }`}
+                  onClick={() => setNewReservation({ ...newReservation, area: area.id.toString() })}
+                >
+                  <img
+                    src={areaImages[area.name] || "https://via.placeholder.com/300x200?text=Default+Area"}
+                    alt={area.name}
+                    className="w-full h-40 object-cover"
+                  />
+                  <div className="p-4">
+                    <h3 className="text-lg font-semibold">{area.name}</h3>
+                    <button className="mt-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600">
+                      Reservar aquí con Elant
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           {newReservation.area && (
             <div className="bg-white p-6 rounded-lg shadow-md">
