@@ -16,6 +16,7 @@ import Dashboard from "./pages/Dashboard";
 import ChangePassword from "./components/ChangePassword";
 import Login from "./pages/Login";
 import LoginConfig from "./components/LoginConfig";
+import Reservations from "./components/Reservations"; // Import the new Reservations component
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { FaBars } from "react-icons/fa";
 
@@ -94,8 +95,7 @@ const App = () => {
           <Route path="/visits" element={<Visits />} />
           <Route path="/LoginConfig" element={<LoginConfig />} />
           <Route path="/ChangePass" element={<ChangePassword />} />
-          {" "}
-          {/* <-- AQUI */}
+          <Route path="/reservas" element={<Reservations />} /> {/* New Route */}
           <Route
             path="/settings/:section"
             element={

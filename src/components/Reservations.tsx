@@ -1,0 +1,592 @@
+import { useState, useEffect } from "react";
+import Swal from "sweetalert2";
+import { FaFileExport } from "react-icons/fa";
+import axios from "axios";
+import { useAuth } from "../context/AuthContext";
+import Calendar from "react-calendar";
+import "react-calendar/dist/Calendar.css";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+
+interface Area {
+  id: string;
+  name: string;
+}
+
+interface Reservation {
+  id: number;
+  areaName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: number;
+  departmentNumber: number;
+}
+
+interface ReservationData {
+  area: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  departmentNumber: number;
+}
+
+interface FilterData {
+  campo: "areaName" | "date" | "departmentNumber";
+  valor: string;
+}
+
+interface Slot {
+  HORA_INICIO: string;
+  HORA_FIN: string;
+}
+
+interface AuthContextType {
+  userId: number | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+}
+
+const Reservations = () => {
+  const { userId, isAuthenticated, isLoading } = useAuth() as AuthContextType;
+
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [filter, setFilter] = useState<FilterData>({ campo: "areaName", valor: "" });
+  const [newReservation, setNewReservation] = useState<ReservationData>({
+    area: "",
+    date: new Date().toISOString().slice(0, 10),
+    startTime: "",
+    endTime: "",
+    departmentNumber: 0,
+  });
+  const [activeTab, setActiveTab] = useState<"myReservations" | "createReservation">("myReservations");
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [occupiedSlots, setOccupiedSlots] = useState<Slot[]>([]);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [noSlotsMessage, setNoSlotsMessage] = useState<string>("");
+
+  // Mapa de imágenes por área
+  const areaImages: { [key: string]: string } = {
+    Otro: "https://static.wixstatic.com/media/7a0311_30fc8c2d073045408375886bb643ff6c~mv2.jpeg/v1/fill/w_2500,h_1875,al_c/7a0311_30fc8c2d073045408375886bb643ff6c~mv2.jpeg",
+    Parrilla: "https://e.nexoinmobiliario.pe/customers/grupo-lar/2194-elant-fase-2/departamentos-la-victoria-6661ea32af7df_b.jpg",
+    Piscina: "https://grupolar.pe/wp-content/uploads/2024/05/area-comun-piscina-1-proyecto-elant.jpg",
+    "Salón de Fiestas": "https://e.nexoinmobiliario.pe/customers/grupo-lar/3661-elant-fase-3/departamentos-la-victoria-67bf714588913_b.jpg",
+  };
+
+  // Fetch available areas (no auth required)
+  const fetchAreas = async () => {
+    try {
+      const res = await axios.get<{ name: string }[]>(`${API_URL}/reservations/areas`);
+      const formattedAreas: Area[] = res.data.map((area) => ({
+        id: area.name,
+        name: area.name,
+      }));
+      setAreas(formattedAreas);
+    } catch (err) {
+      console.error("Error al obtener áreas:", err);
+      Swal.fire("Error", "No se pudieron cargar las áreas", "error");
+    }
+  };
+
+  // Fetch user's existing reservations
+  const fetchUserReservations = async () => {
+    if (!userId) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.get<Reservation[]>(`${API_URL}/reservations/user/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const validReservations = res.data.filter(
+        (reservation) =>
+          reservation.startTime != null &&
+          reservation.endTime != null &&
+          typeof reservation.startTime === "string" &&
+          typeof reservation.endTime === "string"
+      );
+      setReservations(validReservations);
+    } catch (err) {
+      console.error("Error al obtener reservas:", err);
+      setReservations([]);
+    }
+  };
+
+  // Fetch occupied slots for the selected area and date
+  const fetchOccupiedSlots = async () => {
+    if (!newReservation.area || !newReservation.date || !isAuthenticated || !userId) return;
+    setIsLoadingSlots(true);
+    setNoSlotsMessage(""); // Resetear el mensaje
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No se encontró el token de autenticación");
+      }
+      console.log("Solicitando slots ocupados para:", { area: newReservation.area, date: newReservation.date });
+      const res = await axios.get<Slot[]>(`${API_URL}/reservations/slots/occupied`, {
+        params: { areaId: newReservation.area, date: newReservation.date },
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log("Datos crudos del backend:", res.data);
+      const validSlots = res.data.filter(
+        (slot) =>
+          slot.HORA_INICIO != null &&
+          slot.HORA_FIN != null &&
+          typeof slot.HORA_INICIO === "string" &&
+          typeof slot.HORA_FIN === "string"
+      );
+      console.log("Slots válidos después de filtrar:", validSlots);
+      if (validSlots.length === 0) {
+        setNoSlotsMessage("No hay horarios ocupados para esta fecha y área.");
+      }
+      setOccupiedSlots(validSlots);
+    } catch (err: any) {
+      console.error("Error al obtener horarios ocupados:", err);
+      setOccupiedSlots([]);
+      setNoSlotsMessage("No se pudieron cargar los horarios ocupados.");
+      if (err.response?.status !== 404) {
+        Swal.fire(
+          "Error",
+          err.response?.data?.message || "No se pudieron cargar los horarios ocupados",
+          "error"
+        );
+      }
+    } finally {
+      setIsLoadingSlots(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAreas();
+    if (isAuthenticated && !isLoading && userId) {
+      fetchUserReservations();
+      const interval = setInterval(fetchUserReservations, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, isLoading, userId]);
+
+  useEffect(() => {
+    fetchOccupiedSlots();
+  }, [newReservation.area, newReservation.date, isAuthenticated, userId]);
+
+  // Handle filter change
+  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFilter((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Filter reservations
+  const filteredReservations = reservations.filter((res) => {
+    const texto = filter.valor.toLowerCase();
+    let coincide = true;
+
+    if (filter.campo === "areaName") {
+      coincide = res.areaName.toLowerCase().includes(texto);
+    } else if (filter.campo === "date") {
+      coincide = res.date.includes(texto);
+    } else if (filter.campo === "departmentNumber") {
+      coincide = res.departmentNumber.toString().includes(texto);
+    }
+
+    return coincide;
+  });
+
+  // Export reservations to CSV
+  const exportToCSV = () => {
+    const headers = "ID,Área,Fecha,Hora Inicio,Hora Fin,Número de Departamento,Estado\n";
+    const rows = filteredReservations
+      .map((res) => {
+        const formattedDate = formatDate(res.date);
+        const formattedTime = `${formatTime(res.startTime)} - ${formatTime(res.endTime)}`;
+        return `${res.id},${res.areaName},${formattedDate},${formattedTime},${res.departmentNumber},${res.status === 1 ? "Activa" : "Cancelada"}`;
+      })
+      .join("\n");
+
+    const csv = headers + rows;
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "reservas.csv";
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  // Handle reservation submission
+  const handleCreateReservation = async () => {
+    const deptNum = parseInt(newReservation.departmentNumber.toString());
+    if (
+      !newReservation.area ||
+      !newReservation.date ||
+      !newReservation.startTime ||
+      !newReservation.endTime ||
+      isNaN(deptNum) ||
+      deptNum <= 0
+    ) {
+      return Swal.fire("Advertencia", "Por favor, completa todos los campos, incluyendo un número de departamento válido (mayor a 0)", "warning");
+    }
+
+    if (!isAuthenticated || !userId) {
+      return Swal.fire("Advertencia", "Debes estar autenticado para crear una reserva", "warning");
+    }
+
+    const payload = {
+      userId,
+      areaId: newReservation.area,
+      date: newReservation.date,
+      startTime: newReservation.startTime,
+      endTime: newReservation.endTime,
+      departmentNumber: deptNum,
+    };
+    console.log("Payload being sent to backend:", payload);
+
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(`${API_URL}/reservations`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      Swal.fire("¡Registrado!", "Reserva creada con éxito", "success");
+      setNewReservation({
+        area: "",
+        date: new Date().toISOString().slice(0, 10),
+        startTime: "",
+        endTime: "",
+        departmentNumber: 0,
+      });
+      fetchUserReservations();
+      fetchOccupiedSlots();
+    } catch (err: any) {
+      console.error("Error al crear reserva:", err);
+      Swal.fire("Error", err.response?.data?.message || "No se pudo crear la reserva", "error");
+    }
+  };
+
+  // Generate time slots from 8:00 AM to 11:00 PM
+  const generateTimeSlots = () => {
+    const slots = [];
+    for (let hour = 8; hour <= 23; hour++) {
+      const time = `${hour.toString().padStart(2, "0")}:00:00`;
+      slots.push(time);
+    }
+    return slots;
+  };
+
+  // Convert time in "HH:MM:SS" format to minutes since midnight
+  const timeToMinutes = (time: string | undefined): number => {
+    if (!time || typeof time !== "string") return -1;
+    const [hours, minutes] = time.split(":").map(Number);
+    if (isNaN(hours) || isNaN(minutes)) return -1;
+    return hours * 60 + minutes;
+  };
+
+  // Check if a time slot is occupied using minutes
+  const isSlotOccupied = (startTime: string) => {
+    const startMinutes = timeToMinutes(startTime);
+    if (startMinutes === -1) return false;
+
+    return occupiedSlots.some((slot) => {
+      const slotStartMinutes = timeToMinutes(slot.HORA_INICIO);
+      const slotEndMinutes = timeToMinutes(slot.HORA_FIN);
+
+      if (slotStartMinutes === -1 || slotEndMinutes === -1) return false;
+
+      return startMinutes >= slotStartMinutes && startMinutes < slotEndMinutes;
+    });
+  };
+
+  // Format date (e.g., "2025-04-24T00:00:00.000Z" -> "2025-04-24")
+  const formatDate = (date?: string): string => {
+    if (!date || typeof date !== "string") return "N/A";
+    return date.split("T")[0] || "N/A";
+  };
+
+  // Format time (e.g., "1970-01-01T05:12:00.000Z" -> "05:12:00" or "HH:MM:SS" -> "HH:MM:SS")
+  const formatTime = (time?: string): string => {
+    if (!time || typeof time !== "string") return "N/A";
+    if (time.includes("T")) {
+      const date = new Date(time);
+      const isoString = date.toISOString();
+      const timePart = isoString.split("T")[1];
+      if (!timePart) return "N/A";
+      const timeWithoutMs = timePart.split(".")[0];
+      return timeWithoutMs || "N/A";
+    }
+    return time;
+  };
+
+  // Format time for input (e.g., "HH:MM:SS" -> "HH:MM")
+  const formatTimeForInput = (time: string): string => {
+    if (!time || typeof time !== "string") return "";
+    return time.slice(0, 5);
+  };
+
+  // Handle date selection from calendar
+  const handleDateChange = (date: Date) => {
+    setSelectedDate(date);
+    setNewReservation({
+      ...newReservation,
+      date: date.toISOString().slice(0, 10),
+    });
+  };
+
+  // Handle time slot selection
+  const handleTimeSlotSelect = (startTime: string) => {
+    if (isSlotOccupied(startTime)) {
+      Swal.fire("Advertencia", "Este horario no está disponible", "warning");
+      return;
+    }
+    const startMinutes = timeToMinutes(startTime);
+    if (startMinutes === -1) return;
+    const endMinutes = startMinutes + 60; // 1 hora después
+    const endHours = Math.floor(endMinutes / 60);
+    const endMinutesRemainder = endMinutes % 60;
+    const endTime = `${endHours.toString().padStart(2, "0")}:${endMinutesRemainder.toString().padStart(2, "0")}:00`;
+    setNewReservation({
+      ...newReservation,
+      startTime,
+      endTime,
+    });
+  };
+
+  if (isLoading) {
+    return <div className="p-4">Cargando...</div>;
+  }
+
+  return (
+    <div className="p-6 bg-gray-100 min-h-screen">
+      <h1 className="text-2xl font-bold mb-6">Control de Reservas</h1>
+
+      {/* Submenú */}
+      <div className="mb-6">
+        <div className="flex space-x-4 border-b">
+          <button
+            onClick={() => setActiveTab("myReservations")}
+            className={`py-2 px-4 font-semibold ${
+              activeTab === "myReservations"
+                ? "border-b-2 border-blue-600 text-blue-600"
+                : "text-gray-600"
+            }`}
+          >
+            Mis Reservas
+          </button>
+          <button
+            onClick={() => setActiveTab("createReservation")}
+            className={`py-2 px-4 font-semibold ${
+              activeTab === "createReservation"
+                ? "border-b-2 border-blue-600 text-blue-600"
+                : "text-gray-600"
+            }`}
+          >
+            Crear Reserva
+          </button>
+        </div>
+      </div>
+
+      {/* Vista: Mis Reservas */}
+      {activeTab === "myReservations" && isAuthenticated && (
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Buscar por</label>
+                <select
+                  name="campo"
+                  value={filter.campo}
+                  onChange={handleFilterChange}
+                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="areaName">Área</option>
+                  <option value="date">Fecha</option>
+                  <option value="departmentNumber">Número de Departamento</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Valor a buscar</label>
+                <input
+                  type="text"
+                  name="valor"
+                  value={filter.valor}
+                  onChange={handleFilterChange}
+                  className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end mt-4 md:mt-0">
+              <button
+                onClick={exportToCSV}
+                className="flex items-center bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition duration-300"
+              >
+                <FaFileExport className="mr-2" />
+                Exportar a CSV
+              </button>
+            </div>
+          </div>
+
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="p-3">ID</th>
+                <th className="p-3">Área</th>
+                <th className="p-3">Fecha</th>
+                <th className="p-3">Horario</th>
+                <th className="p-3">Número de Departamento</th>
+                <th className="p-3">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredReservations.map((res) => (
+                <tr key={res.id} className="border-b">
+                  <td className="p-3">{res.id}</td>
+                  <td className="p-3">{res.areaName || "N/A"}</td>
+                  <td className="p-3">{formatDate(res.date)}</td>
+                  <td className="p-3">
+                    {res.startTime && res.endTime
+                      ? `${formatTime(res.startTime)} - ${formatTime(res.endTime)}`
+                      : "N/A"}
+                  </td>
+                  <td className="p-3">{res.departmentNumber}</td>
+                  <td className="p-3">{res.status === 1 ? "Activa" : "Cancelada"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {filteredReservations.length === 0 && (
+            <div className="p-3 text-center text-gray-500">No hay reservas para mostrar.</div>
+          )}
+        </div>
+      )}
+
+      {/* Vista: Crear Reserva */}
+      {activeTab === "createReservation" && (
+        <div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            {areas.map((area) => (
+              <div
+                key={area.id}
+                className={`bg-white rounded-lg shadow-md overflow-hidden cursor-pointer ${
+                  newReservation.area === area.id ? "ring-2 ring-blue-500" : ""
+                }`}
+                onClick={() => setNewReservation({ ...newReservation, area: area.id })}
+              >
+                <img
+                  src={areaImages[area.name] || "https://via.placeholder.com/300x200?text=Default+Area"}
+                  alt={area.name}
+                  className="w-full h-40 object-cover"
+                />
+                <div className="p-4">
+                  <h3 className="text-lg font-semibold">{area.name}</h3>
+                  <button className="mt-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600">
+                    Reservar aquí con Elant
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {newReservation.area && (
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <h2 className="text-lg font-semibold mb-4">Selecciona Fecha y Horario</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Selecciona la Fecha
+                  </label>
+                  <Calendar
+                    onChange={handleDateChange}
+                    value={selectedDate}
+                    minDate={new Date()}
+                    className="border rounded-lg"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Selecciona el Horario
+                  </label>
+                  {isLoadingSlots ? (
+                    <div className="text-center text-gray-500">Cargando horarios...</div>
+                  ) : (
+                    <div>
+                      {noSlotsMessage && (
+                        <div className="text-center text-gray-500 mb-2">{noSlotsMessage}</div>
+                      )}
+                      <div className="grid grid-cols-3 gap-2">
+                        {generateTimeSlots().map((time) => {
+                          const isOccupied = isSlotOccupied(time);
+                          return (
+                            <button
+                              key={time}
+                              onClick={() => handleTimeSlotSelect(time)}
+                              className={`p-2 border rounded-lg text-center ${
+                                newReservation.startTime === time
+                                  ? "bg-blue-500 text-white"
+                                  : isOccupied
+                                  ? "bg-red-500 text-white cursor-not-allowed"
+                                  : "bg-green-200 text-gray-700 hover:bg-green-300"
+                              }`}
+                              disabled={isOccupied}
+                            >
+                              {time.slice(0, 5)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-4">Detalles de la Reserva</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Hora de Fin</label>
+                    <input
+                      type="time"
+                      value={formatTimeForInput(newReservation.endTime)}
+                      onChange={(e) =>
+                        setNewReservation({
+                          ...newReservation,
+                          endTime: e.target.value ? `${e.target.value}:00` : "",
+                        })
+                      }
+                      className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Número de Departamento</label>
+                    <input
+                      type="number"
+                      value={newReservation.departmentNumber === 0 ? "" : newReservation.departmentNumber}
+                      onChange={(e) =>
+                        setNewReservation({
+                          ...newReservation,
+                          departmentNumber: parseInt(e.target.value) || 0,
+                        })
+                      }
+                      placeholder="Ejemplo: 101"
+                      className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      onClick={handleCreateReservation}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300 w-full"
+                    >
+                      Confirmar Reserva
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Reservations;

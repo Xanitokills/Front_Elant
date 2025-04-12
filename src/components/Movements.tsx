@@ -107,6 +107,7 @@ const Movements = () => {
         setDni(""); // Limpia si se cancela
       }
   
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       Swal.fire("Error", "No se encontró un usuario con ese DNI", "error");
       setDni("");

@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { NavLink } from "react-router-dom";
 import axios from "axios";
 import * as FaIcons from "react-icons/fa";
-import { FaChevronDown, FaSearch, FaSignOutAlt } from "react-icons/fa";
+import { FaChevronDown, FaSearch, FaSignOutAlt, FaCalendarAlt } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 
 const getIconComponent = (iconName) => {
@@ -96,14 +96,12 @@ const Sidebar = ({ closeSidebar, sidebarOpen }) => {
 
       {/* Buscador */}
       <form autoComplete="off">
-        {" "}
-        {/* 👈 envolvemos en un form con autoComplete="off" */}
         <div className="flex items-center gap-3 mb-4">
           <FaSearch className="text-gray-400" />
           <input
             type="search"
-            name="search_sidebar" // 👈 nombre poco común
-            autoComplete="off" // 👈 explícito en el input también
+            name="search_sidebar"
+            autoComplete="off"
             placeholder="Buscar..."
             className="w-full p-1 rounded bg-gray-800 text-white placeholder-gray-400 outline-none"
             onChange={handleSearch}
@@ -155,6 +153,19 @@ const Sidebar = ({ closeSidebar, sidebarOpen }) => {
           </div>
         );
       })}
+
+      {/* Reservas Menu Item */}
+      <NavLink
+        to="/reservas"
+        onClick={closeSidebar}
+        className={({ isActive }) =>
+          `flex items-center gap-2 px-3 py-2 rounded text-sm mb-1 transition-colors duration-200
+          ${isActive ? "bg-gray-700" : "hover:bg-gray-800"}`
+        }
+      >
+        <FaCalendarAlt />
+        Reservas
+      </NavLink>
 
       {/* Logout */}
       <button
