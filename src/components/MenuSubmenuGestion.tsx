@@ -76,10 +76,10 @@ export default function MenuSubmenuGestion() {
       const res = await fetch(`${API_URL}/tiposUsuario`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error(`Error al obtener tipos de usuario: ${res.statusText}`);
+      if (!res.ok) throw new Error();
       const data = await res.json();
       setTiposUsuario(data.filter((tipo: TipoUsuario) => tipo.ESTADO === true));
-    } catch (error) {
+    } catch {
       Swal.fire({
         icon: "error",
         title: "Error",
@@ -273,7 +273,8 @@ export default function MenuSubmenuGestion() {
     }
     if (!validateLength("nombre", editMenuModal.nombre, 50)) return;
     if (!validateLength("ícono", editMenuModal.icono, 50)) return;
-    if (editMenuModal.url && !validateLength("URL", editMenuModal.url, 100)) return;
+    if (editMenuModal.url && !validateLength("URL", editMenuModal.url, 100))
+      return;
 
     try {
       const res = await fetch(`${API_URL}/menu/${editMenuModal.id}`, {
@@ -430,14 +431,17 @@ export default function MenuSubmenuGestion() {
     const submenuToMove = reorderedSubmenus[index];
 
     try {
-      const res = await fetch(`${API_URL}/submenu/${submenuToMove.ID_SUBMENU}/update-order`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ newOrder }),
-      });
+      const res = await fetch(
+        `${API_URL}/submenu/${submenuToMove.ID_SUBMENU}/update-order`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ newOrder }),
+        }
+      );
       if (!res.ok) throw new Error("Error al actualizar orden");
       Swal.fire({
         icon: "success",
@@ -467,14 +471,17 @@ export default function MenuSubmenuGestion() {
     const submenuToMove = reorderedSubmenus[index];
 
     try {
-      const res = await fetch(`${API_URL}/submenu/${submenuToMove.ID_SUBMENU}/update-order`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ newOrder }),
-      });
+      const res = await fetch(
+        `${API_URL}/submenu/${submenuToMove.ID_SUBMENU}/update-order`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ newOrder }),
+        }
+      );
       if (!res.ok) throw new Error("Error al actualizar orden");
       Swal.fire({
         icon: "success",
@@ -496,7 +503,11 @@ export default function MenuSubmenuGestion() {
   };
 
   // Asignar menú a tipo de usuario
-  const handleAssignMenuToRole = async (idTipoUsuario: number, idMenu: number, menuNombre: string) => {
+  const handleAssignMenuToRole = async (
+    idTipoUsuario: number,
+    idMenu: number,
+    menuNombre: string
+  ) => {
     try {
       const res = await fetch(`${API_URL}/rol-menu`, {
         method: "POST",
@@ -529,13 +540,17 @@ export default function MenuSubmenuGestion() {
   };
 
   // Eliminar asignación de menú a tipo de usuario
-  const handleRemoveMenuFromRole = async (idTipoUsuario: number, idMenu: number, menuNombre: string) => {
+  const handleRemoveMenuFromRole = async (
+    idTipoUsuario: number,
+    idMenu: number,
+    menuNombre: string
+  ) => {
     const result = await Swal.fire({
       icon: "warning",
       title: "¿Estás seguro?",
       text: `¿Deseas desasignar el acceso al menú "${menuNombre}"?`,
       showCancelButton: true,
-      confirmButtonText: "Sí, eliminar",
+      confirmButtonText: "Sí, desasignar",
       cancelButtonText: "Cancelar",
     });
 
@@ -573,7 +588,11 @@ export default function MenuSubmenuGestion() {
   };
 
   // Asignar submenú a tipo de usuario
-  const handleAssignSubmenuToRole = async (idTipoUsuario: number, idSubmenu: number, submenuNombre: string) => {
+  const handleAssignSubmenuToRole = async (
+    idTipoUsuario: number,
+    idSubmenu: number,
+    submenuNombre: string
+  ) => {
     try {
       const res = await fetch(`${API_URL}/rol-submenu`, {
         method: "POST",
@@ -606,13 +625,17 @@ export default function MenuSubmenuGestion() {
   };
 
   // Eliminar asignación de submenú a tipo de usuario
-  const handleRemoveSubmenuFromRole = async (idTipoUsuario: number, idSubmenu: number, submenuNombre: string) => {
+  const handleRemoveSubmenuFromRole = async (
+    idTipoUsuario: number,
+    idSubmenu: number,
+    submenuNombre: string
+  ) => {
     const result = await Swal.fire({
       icon: "warning",
       title: "¿Estás seguro?",
-      text: `¿Deseas eliminar el acceso al submenú "${submenuNombre}"?`,
+      text: `¿Deseas desasignar el acceso al submenú "${submenuNombre}"?`,
       showCancelButton: true,
-      confirmButtonText: "Sí, eliminar",
+      confirmButtonText: "Sí, desasignar",
       cancelButtonText: "Cancelar",
     });
 
@@ -624,24 +647,21 @@ export default function MenuSubmenuGestion() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({
-            idTipoUsuario,
-            idSubmenu,
-          }),
+          body: JSON.stringify({ idTipoUsuario, idSubmenu }),
         });
-        if (!res.ok) throw new Error("Error al eliminar asignación de submenú");
+        if (!res.ok) throw new Error();
         Swal.fire({
           icon: "success",
           title: "Éxito",
-          text: `Acceso al submenú "${submenuNombre}" eliminado correctamente`,
+          text: `Acceso al submenú "${submenuNombre}" desasignado correctamente`,
           timer: 2000,
           showConfirmButton: false,
         });
-      } catch (error) {
+      } catch {
         Swal.fire({
           icon: "error",
           title: "Error",
-          text: "No se pudo eliminar la asignación del submenú",
+          text: "No se pudo desasignar el submenú",
           timer: 2000,
           showConfirmButton: false,
         });
@@ -731,9 +751,7 @@ export default function MenuSubmenuGestion() {
               className="border p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
               placeholder="URL (opcional)"
               value={newMenu.url}
-              onChange={(e) =>
-                setNewMenu({ ...newMenu, url: e.target.value })
-              }
+              onChange={(e) => setNewMenu({ ...newMenu, url: e.target.value })}
               maxLength={100}
             />
             <button
@@ -831,7 +849,9 @@ export default function MenuSubmenuGestion() {
             )}
           </ul>
 
-          <h3 className="font-bold text-lg mb-4">Seleccionar Menú para Submenús</h3>
+          <h3 className="font-bold text-lg mb-4">
+            Seleccionar Menú para Submenús
+          </h3>
           <select
             className="border p-3 mb-6 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
             value={selectedMenu}
@@ -910,7 +930,10 @@ export default function MenuSubmenuGestion() {
                       <button
                         className="text-red-600 hover:text-red-800 transition-colors duration-200"
                         onClick={() =>
-                          handleDeleteSubmenu(item.ID_SUBMENU!, item.SUBMENU_NOMBRE!)
+                          handleDeleteSubmenu(
+                            item.ID_SUBMENU!,
+                            item.SUBMENU_NOMBRE!
+                          )
                         }
                       >
                         🗑️
@@ -927,7 +950,9 @@ export default function MenuSubmenuGestion() {
       {/* Vista: Asignar Roles */}
       {activeTab === "assign" && (
         <div>
-          <h3 className="font-bold text-lg mb-4">Asignar Menús y Submenús por Tipo de Usuario</h3>
+          <h3 className="font-bold text-lg mb-4">
+            Asignar Menús y Submenús por Tipo de Usuario
+          </h3>
           <select
             className="border p-3 mb-6 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
             value={selectedTipoUsuario}
@@ -943,7 +968,8 @@ export default function MenuSubmenuGestion() {
 
           {!selectedTipoUsuario && (
             <p className="text-red-600 mb-4">
-              Por favor, selecciona un tipo de usuario para asignar menús y submenús.
+              Por favor, selecciona un tipo de usuario para asignar menús y
+              submenús.
             </p>
           )}
 
@@ -985,7 +1011,7 @@ export default function MenuSubmenuGestion() {
                             )
                           }
                         >
-                          Eliminar
+                          Desasignar
                         </button>
                       </div>
                     </li>
@@ -1019,7 +1045,9 @@ export default function MenuSubmenuGestion() {
                         key={item.ID_SUBMENU}
                         className="flex justify-between items-center p-4 bg-white shadow rounded hover:bg-gray-50 transition-colors duration-200"
                       >
-                        <span className="font-medium">{item.SUBMENU_NOMBRE}</span>
+                        <span className="font-medium">
+                          {item.SUBMENU_NOMBRE}
+                        </span>
                         <div className="flex space-x-3">
                           <button
                             className="bg-green-600 text-white px-4 py-1 rounded-lg hover:bg-green-700 transition-colors duration-200"
@@ -1043,7 +1071,7 @@ export default function MenuSubmenuGestion() {
                               )
                             }
                           >
-                            Eliminar
+                            Desasignar
                           </button>
                         </div>
                       </li>
@@ -1116,7 +1144,10 @@ export default function MenuSubmenuGestion() {
               placeholder="Nombre del submenú"
               value={editSubmenuModal.nombre}
               onChange={(e) =>
-                setEditSubmenuModal({ ...editSubmenuModal, nombre: e.target.value })
+                setEditSubmenuModal({
+                  ...editSubmenuModal,
+                  nombre: e.target.value,
+                })
               }
               maxLength={50}
             />
@@ -1125,7 +1156,10 @@ export default function MenuSubmenuGestion() {
               placeholder="Ícono (ej: fa-cog)"
               value={editSubmenuModal.icono}
               onChange={(e) =>
-                setEditSubmenuModal({ ...editSubmenuModal, icono: e.target.value })
+                setEditSubmenuModal({
+                  ...editSubmenuModal,
+                  icono: e.target.value,
+                })
               }
               maxLength={50}
             />
@@ -1134,7 +1168,10 @@ export default function MenuSubmenuGestion() {
               placeholder="URL del submenú"
               value={editSubmenuModal.url}
               onChange={(e) =>
-                setEditSubmenuModal({ ...editSubmenuModal, url: e.target.value })
+                setEditSubmenuModal({
+                  ...editSubmenuModal,
+                  url: e.target.value,
+                })
               }
               maxLength={100}
             />
