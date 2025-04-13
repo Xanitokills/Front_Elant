@@ -1,20 +1,20 @@
 import { useState, useEffect } from "react";
 import Swal from "sweetalert2";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+// Interfaz para permitir campos de submenú nulos
 interface MenuWithSubmenu {
   ID_MENU: number;
   MENU_NOMBRE: string;
   MENU_ICONO: string;
   MENU_URL: string | null;
   MENU_ORDEN: number;
-  ID_SUBMENU: number;
-  SUBMENU_NOMBRE: string;
-  SUBMENU_ICONO: string;
-  SUBMENU_URL: string;
-  SUBMENU_ORDEN: number;
+  ID_SUBMENU: number | null;
+  SUBMENU_NOMBRE: string | null;
+  SUBMENU_ICONO: string | null;
+  SUBMENU_URL: string | null;
+  SUBMENU_ORDEN: number | null;
 }
 
 export default function MenuSubmenuGestion() {
@@ -28,13 +28,12 @@ export default function MenuSubmenuGestion() {
   });
   const [activeTab, setActiveTab] = useState("create");
   const [selectedMenu, setSelectedMenu] = useState<string>("");
-  const [isLoading, setIsLoading] = useState(false); // Added for loading states
+  const [editMenu, setEditMenu] = useState<{ id: number; nombre: string } | null>(null);
   const token = localStorage.getItem("token");
 
   // Obtener los menús y submenús
   const fetchMenus = async () => {
     try {
-      setIsLoading(true);
       const res = await fetch(`${API_URL}/menus-submenus`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -49,8 +48,6 @@ export default function MenuSubmenuGestion() {
         timer: 2000,
         showConfirmButton: false,
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -60,7 +57,6 @@ export default function MenuSubmenuGestion() {
 
   // Validar y crear un nuevo menú
   const handleCreateMenu = async () => {
-    // Validaciones
     if (!newMenu.nombre.trim()) {
       Swal.fire({
         icon: "warning",
@@ -81,7 +77,6 @@ export default function MenuSubmenuGestion() {
       });
       return;
     }
-    // URL es opcional, pero si se ingresa, debe ser válida
     if (newMenu.url && !isValidUrl(newMenu.url)) {
       Swal.fire({
         icon: "warning",
@@ -94,7 +89,6 @@ export default function MenuSubmenuGestion() {
     }
 
     try {
-      setIsLoading(true);
       const res = await fetch(`${API_URL}/menu`, {
         method: "POST",
         headers: {
@@ -121,14 +115,11 @@ export default function MenuSubmenuGestion() {
         timer: 2000,
         showConfirmButton: false,
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
   // Validar y crear un nuevo submenú
   const handleCreateSubmenu = async () => {
-    // Validaciones
     if (!newSubmenu.idMenu) {
       Swal.fire({
         icon: "warning",
@@ -181,7 +172,6 @@ export default function MenuSubmenuGestion() {
     }
 
     try {
-      setIsLoading(true);
       const res = await fetch(`${API_URL}/submenu`, {
         method: "POST",
         headers: {
@@ -213,34 +203,68 @@ export default function MenuSubmenuGestion() {
         timer: 2000,
         showConfirmButton: false,
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  // Manejo del orden (drag and drop)
-  const onDragEnd = async (result: any) => {
-    const { source, destination } = result;
-    if (!destination) return;
-
-    // Si el orden no cambia, no hacer nada
-    if (source.index === destination.index) return;
-
-    const reorderedSubmenus = Array.from(filteredSubmenus); // Use filteredSubmenus for correct context
-    const [movedItem] = reorderedSubmenus.splice(source.index, 1);
-    reorderedSubmenus.splice(destination.index, 0, movedItem);
+  // Actualizar el nombre del menú
+  const handleUpdateMenuName = async (id: number, nombre: string) => {
+    if (!nombre.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Campo requerido",
+        text: "El nombre del menú es obligatorio",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
 
     try {
-      setIsLoading(true);
-      const res = await fetch(`${API_URL}/submenu/${movedItem.ID_SUBMENU}/update-order`, {
+      const res = await fetch(`${API_URL}/menu/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          newOrder: destination.index + 1,
-        }),
+        body: JSON.stringify({ nombre }),
+      });
+      if (!res.ok) throw new Error("Error al actualizar menú");
+      Swal.fire({
+        icon: "success",
+        title: "Éxito",
+        text: "Nombre del menú actualizado correctamente",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      setEditMenu(null);
+      fetchMenus();
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo actualizar el nombre del menú",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  };
+
+  // Mover submenú hacia arriba
+  const moveSubmenuUp = async (index: number) => {
+    if (index === 0) return; // No se puede mover más arriba
+
+    const reorderedSubmenus = Array.from(filteredSubmenus);
+    const newOrder = index; // Nueva posición (1-based para el backend)
+    const submenuToMove = reorderedSubmenus[index];
+
+    try {
+      const res = await fetch(`${API_URL}/submenu/${submenuToMove.ID_SUBMENU}/update-order`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ newOrder }),
       });
       if (!res.ok) throw new Error("Error al actualizar orden");
       Swal.fire({
@@ -252,6 +276,7 @@ export default function MenuSubmenuGestion() {
       });
       fetchMenus();
     } catch (error) {
+      console.error("Error updating order:", error);
       Swal.fire({
         icon: "error",
         title: "Error",
@@ -259,8 +284,44 @@ export default function MenuSubmenuGestion() {
         timer: 2000,
         showConfirmButton: false,
       });
-    } finally {
-      setIsLoading(false);
+    }
+  };
+
+  // Mover submenú hacia abajo
+  const moveSubmenuDown = async (index: number) => {
+    if (index === filteredSubmenus.length - 1) return; // No se puede mover más abajo
+
+    const reorderedSubmenus = Array.from(filteredSubmenus);
+    const newOrder = index + 2; // Nueva posición (1-based para el backend)
+    const submenuToMove = reorderedSubmenus[index];
+
+    try {
+      const res = await fetch(`${API_URL}/submenu/${submenuToMove.ID_SUBMENU}/update-order`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ newOrder }),
+      });
+      if (!res.ok) throw new Error("Error al actualizar orden");
+      Swal.fire({
+        icon: "success",
+        title: "Éxito",
+        text: "Orden actualizado correctamente",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      fetchMenus();
+    } catch (error) {
+      console.error("Error updating order:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo actualizar el orden",
+        timer: 2000,
+        showConfirmButton: false,
+      });
     }
   };
 
@@ -279,21 +340,19 @@ export default function MenuSubmenuGestion() {
     .map((id) => menus.find((m) => m.ID_MENU === id))
     .filter((m): m is MenuWithSubmenu => !!m);
 
-  // Filtrar los submenús de acuerdo al menú seleccionado
-  const filteredSubmenus = menus.filter(
-    (item) => item.ID_MENU === parseInt(selectedMenu)
-  );
+  // Filtrar submenús válidos y ordenarlos por SUBMENU_ORDEN
+  const filteredSubmenus = menus
+    .filter(
+      (item) =>
+        item.ID_MENU === parseInt(selectedMenu) &&
+        item.ID_SUBMENU !== null &&
+        item.SUBMENU_NOMBRE !== null
+    )
+    .sort((a, b) => (a.SUBMENU_ORDEN || 0) - (b.SUBMENU_ORDEN || 0));
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <h1 className="text-2xl font-bold mb-6">Gestión de Menús y Submenús</h1>
-
-      {/* Indicador de carga */}
-      {isLoading && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
-        </div>
-      )}
 
       {/* Submenú */}
       <div className="mb-6">
@@ -305,7 +364,6 @@ export default function MenuSubmenuGestion() {
                 ? "border-b-2 border-blue-600 text-blue-600"
                 : "text-gray-600 hover:text-blue-600"
             } transition-colors duration-200`}
-            disabled={isLoading}
           >
             Crear Menú y Submenú
           </button>
@@ -316,7 +374,6 @@ export default function MenuSubmenuGestion() {
                 ? "border-b-2 border-blue-600 text-blue-600"
                 : "text-gray-600 hover:text-blue-600"
             } transition-colors duration-200`}
-            disabled={isLoading}
           >
             Gestionar Menú y Submenú
           </button>
@@ -335,7 +392,6 @@ export default function MenuSubmenuGestion() {
               onChange={(e) =>
                 setNewMenu({ ...newMenu, nombre: e.target.value })
               }
-              disabled={isLoading}
             />
             <input
               className="border p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -344,7 +400,6 @@ export default function MenuSubmenuGestion() {
               onChange={(e) =>
                 setNewMenu({ ...newMenu, icono: e.target.value })
               }
-              disabled={isLoading}
             />
             <input
               className="border p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -353,12 +408,10 @@ export default function MenuSubmenuGestion() {
               onChange={(e) =>
                 setNewMenu({ ...newMenu, url: e.target.value })
               }
-              disabled={isLoading}
             />
             <button
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 w-full"
               onClick={handleCreateMenu}
-              disabled={isLoading}
             >
               Crear Menú
             </button>
@@ -372,7 +425,6 @@ export default function MenuSubmenuGestion() {
               onChange={(e) =>
                 setNewSubmenu({ ...newSubmenu, idMenu: e.target.value })
               }
-              disabled={isLoading}
             >
               <option value="">Selecciona un menú</option>
               {uniqueMenus.map((menu) => (
@@ -388,7 +440,6 @@ export default function MenuSubmenuGestion() {
               onChange={(e) =>
                 setNewSubmenu({ ...newSubmenu, nombre: e.target.value })
               }
-              disabled={isLoading}
             />
             <input
               className="border p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -397,7 +448,6 @@ export default function MenuSubmenuGestion() {
               onChange={(e) =>
                 setNewSubmenu({ ...newSubmenu, icono: e.target.value })
               }
-              disabled={isLoading}
             />
             <input
               className="border p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -406,12 +456,10 @@ export default function MenuSubmenuGestion() {
               onChange={(e) =>
                 setNewSubmenu({ ...newSubmenu, url: e.target.value })
               }
-              disabled={isLoading}
             />
             <button
               className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200 w-full"
               onClick={handleCreateSubmenu}
-              disabled={isLoading}
             >
               Crear Submenú
             </button>
@@ -422,12 +470,69 @@ export default function MenuSubmenuGestion() {
       {/* Vista: Gestionar Menú y Submenú */}
       {activeTab === "manage" && (
         <div>
+          {/* Lista de Menús con opción de edición */}
+          <h3 className="font-bold text-lg mb-4">Menús Disponibles</h3>
+          <ul className="space-y-4 mb-6">
+            {uniqueMenus.length === 0 ? (
+              <li className="p-4 bg-white shadow rounded text-gray-600">
+                No hay menús disponibles.
+              </li>
+            ) : (
+              uniqueMenus.map((menu) => (
+                <li
+                  key={menu.ID_MENU}
+                  className="flex justify-between items-center p-4 bg-white shadow rounded hover:bg-gray-50 transition-colors duration-200"
+                >
+                  <div>
+                    {editMenu && editMenu.id === menu.ID_MENU ? (
+                      <div className="flex space-x-2">
+                        <input
+                          className="border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
+                          value={editMenu.nombre}
+                          onChange={(e) =>
+                            setEditMenu({ ...editMenu, nombre: e.target.value })
+                          }
+                        />
+                        <button
+                          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                          onClick={() =>
+                            handleUpdateMenuName(editMenu.id, editMenu.nombre)
+                          }
+                        >
+                          Guardar
+                        </button>
+                        <button
+                          className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
+                          onClick={() => setEditMenu(null)}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="font-medium">{menu.MENU_NOMBRE}</span>
+                    )}
+                  </div>
+                  {!editMenu && (
+                    <button
+                      className="text-yellow-600 hover:text-yellow-800 transition-colors duration-200"
+                      onClick={() =>
+                        setEditMenu({ id: menu.ID_MENU, nombre: menu.MENU_NOMBRE })
+                      }
+                    >
+                      ✏️
+                    </button>
+                  )}
+                </li>
+              ))
+            )}
+          </ul>
+
           {/* Combo Box para seleccionar el menú */}
+          <h3 className="font-bold text-lg mb-4">Seleccionar Menú para Submenús</h3>
           <select
             className="border p-3 mb-6 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
             value={selectedMenu}
             onChange={(e) => setSelectedMenu(e.target.value)}
-            disabled={isLoading}
           >
             <option value="">Selecciona un menú</option>
             {uniqueMenus.map((menu) => (
@@ -439,87 +544,86 @@ export default function MenuSubmenuGestion() {
 
           {/* Validación para menú no seleccionado */}
           {!selectedMenu && (
-            <p className="text-red-600 mb-4">Por favor, selecciona un menú para gestionar sus submenús.</p>
+            <p className="text-red-600 mb-4">
+              Por favor, selecciona un menú para gestionar sus submenús.
+            </p>
           )}
 
           {/* Lista de Submenús del Menú Seleccionado */}
           {selectedMenu && (
-            <DragDropContext onDragEnd={onDragEnd}>
-              <Droppable droppableId="submenus">
-                {(provided) => (
-                  <ul
-                    className="space-y-4"
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
+            <ul className="space-y-4">
+              {filteredSubmenus.length === 0 ? (
+                <li className="p-4 bg-white shadow rounded text-gray-600">
+                  No hay submenús para este menú.
+                </li>
+              ) : (
+                filteredSubmenus.map((item, idx) => (
+                  <li
+                    key={item.ID_SUBMENU}
+                    className="flex justify-between items-center p-4 bg-white shadow rounded hover:bg-gray-50 transition-colors duration-200"
                   >
-                    {filteredSubmenus.length === 0 ? (
-                      <li className="p-4 bg-white shadow rounded text-gray-600">
-                        No hay submenús para este menú.
-                      </li>
-                    ) : (
-                      filteredSubmenus.map((item, idx) => (
-                        <Draggable
-                          key={item.ID_SUBMENU}
-                          draggableId={`${item.ID_SUBMENU}`}
-                          index={idx}
-                        >
-                          {(provided) => (
-                            <li
-                              className="flex justify-between items-center p-4 bg-white shadow rounded hover:bg-gray-50 transition-colors duration-200"
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                            >
-                              <div className="flex items-center">
-                                <span className="mr-2 font-medium">
-                                  {idx + 1}. {item.SUBMENU_NOMBRE}
-                                </span>
-                                <span className="text-gray-500 text-sm">
-                                  ({item.SUBMENU_URL})
-                                </span>
-                              </div>
-                              <div className="flex space-x-3">
-                                <button
-                                  className="text-yellow-600 hover:text-yellow-800 transition-colors duration-200"
-                                  onClick={() => {
-                                    Swal.fire({
-                                      icon: "info",
-                                      title: "Funcionalidad pendiente",
-                                      text: "La edición de submenús no está implementada.",
-                                      timer: 2000,
-                                      showConfirmButton: false,
-                                    });
-                                  }}
-                                  disabled={isLoading}
-                                >
-                                  ✏️
-                                </button>
-                                <button
-                                  className="text-red-600 hover:text-red-800 transition-colors duration-200"
-                                  onClick={() => {
-                                    Swal.fire({
-                                      icon: "info",
-                                      title: "Funcionalidad pendiente",
-                                      text: "La eliminación de submenús no está implementada.",
-                                      timer: 2000,
-                                      showConfirmButton: false,
-                                    });
-                                  }}
-                                  disabled={isLoading}
-                                >
-                                  🗑️
-                                </button>
-                              </div>
-                            </li>
-                          )}
-                        </Draggable>
-                      ))
-                    )}
-                    {provided.placeholder}
-                  </ul>
-                )}
-              </Droppable>
-            </DragDropContext>
+                    <div className="flex items-center">
+                      <span className="mr-2 font-medium">
+                        {idx + 1}. {item.SUBMENU_NOMBRE}
+                      </span>
+                      <span className="text-gray-500 text-sm">
+                        ({item.SUBMENU_URL})
+                      </span>
+                    </div>
+                    <div className="flex space-x-3">
+                      <button
+                        className={`text-blue-600 hover:text-blue-800 transition-colors duration-200 ${
+                          idx === 0 ? "opacity-50 cursor-not-allowed" : ""
+                        }`}
+                        onClick={() => moveSubmenuUp(idx)}
+                        disabled={idx === 0}
+                        title="Subir"
+                      >
+                        ⬆️
+                      </button>
+                      <button
+                        className={`text-blue-600 hover:text-blue-800 transition-colors duration-200 ${
+                          idx === filteredSubmenus.length - 1 ? "opacity-50 cursor-not-allowed" : ""
+                        }`}
+                        onClick={() => moveSubmenuDown(idx)}
+                        disabled={idx === filteredSubmenus.length - 1}
+                        title="Bajar"
+                      >
+                        ⬇️
+                      </button>
+                      <button
+                        className="text-yellow-600 hover:text-yellow-800 transition-colors duration-200"
+                        onClick={() => {
+                          Swal.fire({
+                            icon: "info",
+                            title: "Funcionalidad pendiente",
+                            text: "La edición de submenús no está implementada.",
+                            timer: 2000,
+                            showConfirmButton: false,
+                          });
+                        }}
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        className="text-red-600 hover:text-red-800 transition-colors duration-200"
+                        onClick={() => {
+                          Swal.fire({
+                            icon: "info",
+                            title: "Funcionalidad pendiente",
+                            text: "La eliminación de submenús no está implementada.",
+                            timer: 2000,
+                            showConfirmButton: false,
+                          });
+                        }}
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </li>
+                ))
+              )}
+            </ul>
           )}
         </div>
       )}
