@@ -39,7 +39,23 @@ const SidebarContainer = styled.div.withConfig({
 
 const FixedHeader = styled.div`
   padding: 1rem;
-  border-bottom: 1px solid #2d3748;
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 1rem;
+    right: 1rem;
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      #2d3748 20%,
+      #2d3748 80%,
+      transparent
+    );
+  }
 `;
 
 const ScrollableContent = styled.div`
@@ -76,13 +92,29 @@ const ScrollableContent = styled.div`
 
 const Footer = styled.div`
   padding: 1rem;
-  border-top: 1px solid #2d3748;
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 1rem;
+    right: 1rem;
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      #2d3748 20%,
+      #2d3748 80%,
+      transparent
+    );
+  }
 `;
 
 const SearchInput = styled.input`
   width: 100%;
   padding: 0.25rem;
-  border-radius: 0.25rem;
+  border-radius: 0.5rem;
   background-color: #2d3748;
   color: #ffffff;
   placeholder-color: #a0aec0;
@@ -94,20 +126,67 @@ const SearchInput = styled.input`
   }
 `;
 
-const MenuButton = styled.button`
+const MenuList = styled.div`
+  position: relative;
+  margin-bottom: 1rem;
+`;
+
+const MenuItem = styled.div`
+  position: relative;
+  margin-bottom: 1rem; /* Más espacio entre elementos del menú */
+`;
+
+const MenuButtonWrapper = styled.div`
+  position: relative;
+
+  &:hover button {
+    background-color: #2d3748;
+  }
+`;
+
+const MenuButton = styled.button<{ isOpen: boolean }>`
   width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-weight: bold;
   font-size: 0.875rem;
-  margin-bottom: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
   transition: background-color 0.2s ease;
+  background-color: ${({ isOpen }) => (isOpen ? "#4a5568" : "transparent")};
+`;
+
+const SubmenuList = styled.nav`
+  position: relative;
+  margin-left: 1rem;
+  margin-top: 0.5rem; /* Más espacio entre el menú y el submenú */
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-in-out;
+
+  &.open {
+    max-height: 500px;
+  }
+`;
+
+const SubmenuItem = styled(NavLink)`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem; /* Más espacio entre elementos del submenú */
+  transition: background-color 0.2s ease, color 0.2s ease;
 
   &:hover {
     background-color: #2d3748;
+  }
+
+  &.active {
+    background-color: #4a5568;
+    color: #93c5fd;
   }
 `;
 
@@ -116,7 +195,7 @@ const NavLinkStyled = styled(NavLink)`
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
-  border-radius: 0.25rem;
+  border-radius: 0.75rem;
   font-size: 0.875rem;
   margin-bottom: 0.25rem;
   transition: background-color 0.2s ease, color 0.2s ease;
@@ -135,7 +214,7 @@ const LogoutButton = styled.button`
   display: flex;
   align-items: center;
   padding: 0.75rem;
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
   width: 100%;
   transition: background-color 0.2s ease;
 
@@ -158,7 +237,14 @@ const Sidebar = ({ closeSidebar, sidebarOpen }: { closeSidebar: () => void; side
   const hasFetchedRef = useRef(false);
 
   const toggleSection = (title: string) => {
-    setOpenSections((prev) => ({ ...prev, [title]: !prev[title] }));
+    setOpenSections((prev) => {
+      const newState: { [key: string]: boolean } = {};
+      Object.keys(prev).forEach((key) => {
+        newState[key] = false;
+      });
+      newState[title] = !prev[title];
+      return newState;
+    });
   };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,12 +274,10 @@ const Sidebar = ({ closeSidebar, sidebarOpen }: { closeSidebar: () => void; side
 
         console.log("Menús obtenidos:", res.data);
 
-        // Accede al primer elemento del array y luego a la clave que contiene el JSON
         const menuObject = res.data[0];
         const menusData = menuObject[Object.keys(menuObject)[0]];
         console.log("Datos de menús JSON:", menusData);
 
-        // Verifica si menusData es una cadena y parsea
         let menus;
         if (typeof menusData === "string") {
           menus = JSON.parse(menusData);
@@ -204,7 +288,6 @@ const Sidebar = ({ closeSidebar, sidebarOpen }: { closeSidebar: () => void; side
 
         console.log("Estructura de menús:", menus);
 
-        // Procesar los menús
         const structure = menus.map((menu: any) => ({
           title: menu.MENU_NOMBRE,
           icon: getIconComponent(menu.MENU_ICONO),
@@ -237,9 +320,7 @@ const Sidebar = ({ closeSidebar, sidebarOpen }: { closeSidebar: () => void; side
 
   return (
     <SidebarContainer sidebarOpen={sidebarOpen}>
-      {/* Sección fija: Usuario y Buscador */}
       <FixedHeader>
-        {/* Usuario */}
         <div className="flex items-center mb-4">
           <img
             src="https://randomuser.me/api/portraits/men/75.jpg"
@@ -252,7 +333,6 @@ const Sidebar = ({ closeSidebar, sidebarOpen }: { closeSidebar: () => void; side
           </div>
         </div>
 
-        {/* Buscador */}
         <form autoComplete="off">
           <div className="flex items-center gap-3 mb-4">
             <FaSearch className="text-gray-400" />
@@ -267,47 +347,51 @@ const Sidebar = ({ closeSidebar, sidebarOpen }: { closeSidebar: () => void; side
         </form>
       </FixedHeader>
 
-      {/* Sección desplazable: Menús */}
       <ScrollableContent>
         {sidebarStructure.length === 0 ? (
           <p className="text-gray-400 text-sm">No hay menús disponibles</p>
         ) : (
-          sidebarStructure.map((section) => {
-            const filteredItems = section.items.filter((item) =>
-              item.label.toLowerCase().includes(searchTerm)
-            );
-            if (filteredItems.length === 0) return null;
+          <MenuList>
+            {sidebarStructure.map((section) => {
+              const filteredItems = section.items.filter((item) =>
+                item.label.toLowerCase().includes(searchTerm)
+              );
+              if (filteredItems.length === 0) return null;
 
-            return (
-              <div key={section.title} className="mb-4">
-                <MenuButton onClick={() => toggleSection(section.title)}>
-                  <span className="flex items-center gap-2">
-                    {section.icon}
-                    {section.title}
-                  </span>
-                  <FaChevronDown
-                    className={`transform transition-transform duration-300 ${
-                      openSections[section.title] ? "rotate-180" : "rotate-0"
-                    }`}
-                  />
-                </MenuButton>
-                {openSections[section.title] && (
-                  <nav>
+              return (
+                <MenuItem key={section.title}>
+                  <MenuButtonWrapper>
+                    <MenuButton
+                      isOpen={openSections[section.title]}
+                      onClick={() => toggleSection(section.title)}
+                    >
+                      <span className="flex items-center gap-2">
+                        {section.icon}
+                        {section.title}
+                      </span>
+                      <FaChevronDown
+                        className={`transform transition-transform duration-300 ${
+                          openSections[section.title] ? "rotate-180" : "rotate-0"
+                        }`}
+                      />
+                    </MenuButton>
+                  </MenuButtonWrapper>
+                  <SubmenuList className={openSections[section.title] ? "open" : ""}>
                     {filteredItems.map((item) => (
-                      <NavLinkStyled
+                      <SubmenuItem
                         key={item.path}
                         to={item.path}
                         onClick={closeSidebar}
                       >
                         {item.icon}
                         {item.label}
-                      </NavLinkStyled>
+                      </SubmenuItem>
                     ))}
-                  </nav>
-                )}
-              </div>
-            );
-          })
+                  </SubmenuList>
+                </MenuItem>
+              );
+            })}
+          </MenuList>
         )}
 
         <NavLinkStyled to="/reservas" onClick={closeSidebar}>
@@ -316,7 +400,6 @@ const Sidebar = ({ closeSidebar, sidebarOpen }: { closeSidebar: () => void; side
         </NavLinkStyled>
       </ScrollableContent>
 
-      {/* Sección fija: Logout */}
       <Footer>
         <LogoutButton
           onClick={() => {
