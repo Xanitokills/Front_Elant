@@ -3,7 +3,7 @@ import Swal from "sweetalert2";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-// Interfaz para permitir campos de submenú nulos
+// Interfaz para menús y submenús
 interface MenuWithSubmenu {
   ID_MENU: number;
   MENU_NOMBRE: string;
@@ -17,8 +17,16 @@ interface MenuWithSubmenu {
   SUBMENU_ORDEN: number | null;
 }
 
+// Interfaz para tipos de usuario
+interface TipoUsuario {
+  ID_TIPO_USUARIO: number;
+  DETALLE_USUARIO: string;
+  ESTADO: boolean;
+}
+
 export default function MenuSubmenuGestion() {
   const [menus, setMenus] = useState<MenuWithSubmenu[]>([]);
+  const [tiposUsuario, setTiposUsuario] = useState<TipoUsuario[]>([]);
   const [newMenu, setNewMenu] = useState({ nombre: "", icono: "", url: "" });
   const [newSubmenu, setNewSubmenu] = useState({
     nombre: "",
@@ -40,22 +48,19 @@ export default function MenuSubmenuGestion() {
     icono: string;
     url: string;
   } | null>(null);
+  const [selectedTipoUsuario, setSelectedTipoUsuario] = useState<string>("");
   const token = localStorage.getItem("token");
 
   // Obtener los menús y submenús
   const fetchMenus = async () => {
     try {
-      console.log("Fetching menus with API_URL:", API_URL, "Token:", token);
       const res = await fetch(`${API_URL}/menus-submenus`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      console.log("Response status:", res.status, "OK:", res.ok);
       if (!res.ok) throw new Error(`Error al obtener menús: ${res.statusText}`);
       const data = await res.json();
-      console.log("Received data:", data);
       setMenus(data);
     } catch (error) {
-      console.error("Fetch error:", error);
       Swal.fire({
         icon: "error",
         title: "Error",
@@ -66,8 +71,28 @@ export default function MenuSubmenuGestion() {
     }
   };
 
+  const fetchTiposUsuario = async () => {
+    try {
+      const res = await fetch(`${API_URL}/tiposUsuario`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`Error al obtener tipos de usuario: ${res.statusText}`);
+      const data = await res.json();
+      setTiposUsuario(data.filter((tipo: TipoUsuario) => tipo.ESTADO === true));
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudieron cargar los tipos de usuario",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  };
+
   useEffect(() => {
     fetchMenus();
+    fetchTiposUsuario();
   }, []);
 
   // Validar longitud de campos
@@ -85,7 +110,7 @@ export default function MenuSubmenuGestion() {
     return true;
   };
 
-  // Validar y crear un nuevo menú
+  // Crear un nuevo menú
   const handleCreateMenu = async () => {
     if (!newMenu.nombre.trim()) {
       Swal.fire({
@@ -110,16 +135,6 @@ export default function MenuSubmenuGestion() {
     if (!validateLength("nombre", newMenu.nombre, 50)) return;
     if (!validateLength("ícono", newMenu.icono, 50)) return;
     if (newMenu.url && !validateLength("URL", newMenu.url, 100)) return;
-    if (newMenu.url && !isValidUrl(newMenu.url)) {
-      Swal.fire({
-        icon: "warning",
-        title: "URL inválida",
-        text: "Por favor, ingrese una URL válida",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
-    }
 
     try {
       const res = await fetch(`${API_URL}/menu`, {
@@ -151,7 +166,7 @@ export default function MenuSubmenuGestion() {
     }
   };
 
-  // Validar y crear un nuevo submenú
+  // Crear un nuevo submenú
   const handleCreateSubmenu = async () => {
     if (!newSubmenu.idMenu) {
       Swal.fire({
@@ -196,16 +211,6 @@ export default function MenuSubmenuGestion() {
     if (!validateLength("nombre", newSubmenu.nombre, 50)) return;
     if (!validateLength("ícono", newSubmenu.icono, 50)) return;
     if (!validateLength("URL", newSubmenu.url, 100)) return;
-    if (!isValidUrl(newSubmenu.url)) {
-      Swal.fire({
-        icon: "warning",
-        title: "URL inválida",
-        text: "Por favor, ingrese una URL válida para el submenú",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
-    }
 
     try {
       const res = await fetch(`${API_URL}/submenu`, {
@@ -269,16 +274,6 @@ export default function MenuSubmenuGestion() {
     if (!validateLength("nombre", editMenuModal.nombre, 50)) return;
     if (!validateLength("ícono", editMenuModal.icono, 50)) return;
     if (editMenuModal.url && !validateLength("URL", editMenuModal.url, 100)) return;
-    if (editMenuModal.url && !isValidUrl(editMenuModal.url)) {
-      Swal.fire({
-        icon: "warning",
-        title: "URL inválida",
-        text: "Por favor, ingrese una URL válida",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
-    }
 
     try {
       const res = await fetch(`${API_URL}/menu/${editMenuModal.id}`, {
@@ -351,16 +346,6 @@ export default function MenuSubmenuGestion() {
     if (!validateLength("nombre", editSubmenuModal.nombre, 50)) return;
     if (!validateLength("ícono", editSubmenuModal.icono, 50)) return;
     if (!validateLength("URL", editSubmenuModal.url, 100)) return;
-    if (!isValidUrl(editSubmenuModal.url)) {
-      Swal.fire({
-        icon: "warning",
-        title: "URL inválida",
-        text: "Por favor, ingrese una URL válida",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
-    }
 
     try {
       const res = await fetch(`${API_URL}/submenu/${editSubmenuModal.id}`, {
@@ -463,7 +448,6 @@ export default function MenuSubmenuGestion() {
       });
       fetchMenus();
     } catch (error) {
-      console.error("Error updating order:", error);
       Swal.fire({
         icon: "error",
         title: "Error",
@@ -501,7 +485,6 @@ export default function MenuSubmenuGestion() {
       });
       fetchMenus();
     } catch (error) {
-      console.error("Error updating order:", error);
       Swal.fire({
         icon: "error",
         title: "Error",
@@ -512,13 +495,157 @@ export default function MenuSubmenuGestion() {
     }
   };
 
-  // Función auxiliar para validar URLs
-  const isValidUrl = (url: string) => {
+  // Asignar menú a tipo de usuario
+  const handleAssignMenuToRole = async (idTipoUsuario: number, idMenu: number, menuNombre: string) => {
     try {
-      new URL(url);
-      return true;
-    } catch {
-      return false;
+      const res = await fetch(`${API_URL}/rol-menu`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          idTipoUsuario,
+          idMenu,
+        }),
+      });
+      if (!res.ok) throw new Error("Error al asignar menú");
+      Swal.fire({
+        icon: "success",
+        title: "Éxito",
+        text: `Menú "${menuNombre}" asignado correctamente`,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo asignar el menú",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  };
+
+  // Eliminar asignación de menú a tipo de usuario
+  const handleRemoveMenuFromRole = async (idTipoUsuario: number, idMenu: number, menuNombre: string) => {
+    const result = await Swal.fire({
+      icon: "warning",
+      title: "¿Estás seguro?",
+      text: `¿Deseas desasignar el acceso al menú "${menuNombre}"?`,
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`${API_URL}/rol-menu`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            idTipoUsuario,
+            idMenu,
+          }),
+        });
+        if (!res.ok) throw new Error("Error al eliminar asignación de menú");
+        Swal.fire({
+          icon: "success",
+          title: "Éxito",
+          text: `Acceso al menú "${menuNombre}" eliminado correctamente`,
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      } catch (error) {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "No se pudo eliminar la asignación del menú",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      }
+    }
+  };
+
+  // Asignar submenú a tipo de usuario
+  const handleAssignSubmenuToRole = async (idTipoUsuario: number, idSubmenu: number, submenuNombre: string) => {
+    try {
+      const res = await fetch(`${API_URL}/rol-submenu`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          idTipoUsuario,
+          idSubmenu,
+        }),
+      });
+      if (!res.ok) throw new Error("Error al asignar submenú");
+      Swal.fire({
+        icon: "success",
+        title: "Éxito",
+        text: `Submenú "${submenuNombre}" asignado correctamente`,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo asignar el submenú",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  };
+
+  // Eliminar asignación de submenú a tipo de usuario
+  const handleRemoveSubmenuFromRole = async (idTipoUsuario: number, idSubmenu: number, submenuNombre: string) => {
+    const result = await Swal.fire({
+      icon: "warning",
+      title: "¿Estás seguro?",
+      text: `¿Deseas eliminar el acceso al submenú "${submenuNombre}"?`,
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`${API_URL}/rol-submenu`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            idTipoUsuario,
+            idSubmenu,
+          }),
+        });
+        if (!res.ok) throw new Error("Error al eliminar asignación de submenú");
+        Swal.fire({
+          icon: "success",
+          title: "Éxito",
+          text: `Acceso al submenú "${submenuNombre}" eliminado correctamente`,
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      } catch (error) {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "No se pudo eliminar la asignación del submenú",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      }
     }
   };
 
@@ -563,6 +690,16 @@ export default function MenuSubmenuGestion() {
             } transition-colors duration-200`}
           >
             Gestionar Menú y Submenú
+          </button>
+          <button
+            onClick={() => setActiveTab("assign")}
+            className={`py-2 px-4 font-semibold ${
+              activeTab === "assign"
+                ? "border-b-2 border-blue-600 text-blue-600"
+                : "text-gray-600 hover:text-blue-600"
+            } transition-colors duration-200`}
+          >
+            Asignar Roles
           </button>
         </div>
       </div>
@@ -663,7 +800,6 @@ export default function MenuSubmenuGestion() {
       {/* Vista: Gestionar Menú y Submenú */}
       {activeTab === "manage" && (
         <div>
-          {/* Lista de Menús con opción de edición */}
           <h3 className="font-bold text-lg mb-4">Menús Disponibles</h3>
           <ul className="space-y-4 mb-6">
             {uniqueMenus.length === 0 ? (
@@ -695,7 +831,6 @@ export default function MenuSubmenuGestion() {
             )}
           </ul>
 
-          {/* Combo Box para seleccionar el menú */}
           <h3 className="font-bold text-lg mb-4">Seleccionar Menú para Submenús</h3>
           <select
             className="border p-3 mb-6 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -710,14 +845,12 @@ export default function MenuSubmenuGestion() {
             ))}
           </select>
 
-          {/* Validación para menú no seleccionado */}
           {!selectedMenu && (
             <p className="text-red-600 mb-4">
               Por favor, selecciona un menú para gestionar sus submenús.
             </p>
           )}
 
-          {/* Lista de Submenús del Menú Seleccionado */}
           {selectedMenu && (
             <ul className="space-y-4">
               {filteredSubmenus.length === 0 ? (
@@ -787,6 +920,138 @@ export default function MenuSubmenuGestion() {
                 ))
               )}
             </ul>
+          )}
+        </div>
+      )}
+
+      {/* Vista: Asignar Roles */}
+      {activeTab === "assign" && (
+        <div>
+          <h3 className="font-bold text-lg mb-4">Asignar Menús y Submenús por Tipo de Usuario</h3>
+          <select
+            className="border p-3 mb-6 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
+            value={selectedTipoUsuario}
+            onChange={(e) => setSelectedTipoUsuario(e.target.value)}
+          >
+            <option value="">Selecciona un tipo de usuario</option>
+            {tiposUsuario.map((tipo) => (
+              <option key={tipo.ID_TIPO_USUARIO} value={tipo.ID_TIPO_USUARIO}>
+                {tipo.DETALLE_USUARIO}
+              </option>
+            ))}
+          </select>
+
+          {!selectedTipoUsuario && (
+            <p className="text-red-600 mb-4">
+              Por favor, selecciona un tipo de usuario para asignar menús y submenús.
+            </p>
+          )}
+
+          {selectedTipoUsuario && (
+            <div>
+              <h4 className="font-bold text-md mb-4">Menús Disponibles</h4>
+              <ul className="space-y-4 mb-6">
+                {uniqueMenus.length === 0 ? (
+                  <li className="p-4 bg-white shadow rounded text-gray-600">
+                    No hay menús disponibles.
+                  </li>
+                ) : (
+                  uniqueMenus.map((menu) => (
+                    <li
+                      key={menu.ID_MENU}
+                      className="flex justify-between items-center p-4 bg-white shadow rounded hover:bg-gray-50 transition-colors duration-200"
+                    >
+                      <span className="font-medium">{menu.MENU_NOMBRE}</span>
+                      <div className="flex space-x-3">
+                        <button
+                          className="bg-green-600 text-white px-4 py-1 rounded-lg hover:bg-green-700 transition-colors duration-200"
+                          onClick={() =>
+                            handleAssignMenuToRole(
+                              parseInt(selectedTipoUsuario),
+                              menu.ID_MENU,
+                              menu.MENU_NOMBRE
+                            )
+                          }
+                        >
+                          Asignar
+                        </button>
+                        <button
+                          className="bg-red-600 text-white px-4 py-1 rounded-lg hover:bg-red-700 transition-colors duration-200"
+                          onClick={() =>
+                            handleRemoveMenuFromRole(
+                              parseInt(selectedTipoUsuario),
+                              menu.ID_MENU,
+                              menu.MENU_NOMBRE
+                            )
+                          }
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </li>
+                  ))
+                )}
+              </ul>
+
+              <h4 className="font-bold text-md mb-4">Submenús Disponibles</h4>
+              <select
+                className="border p-3 mb-6 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
+                value={selectedMenu}
+                onChange={(e) => setSelectedMenu(e.target.value)}
+              >
+                <option value="">Selecciona un menú</option>
+                {uniqueMenus.map((menu) => (
+                  <option key={menu.ID_MENU} value={menu.ID_MENU}>
+                    {menu.MENU_NOMBRE}
+                  </option>
+                ))}
+              </select>
+
+              {selectedMenu && (
+                <ul className="space-y-4">
+                  {filteredSubmenus.length === 0 ? (
+                    <li className="p-4 bg-white shadow rounded text-gray-600">
+                      No hay submenús para este menú.
+                    </li>
+                  ) : (
+                    filteredSubmenus.map((item) => (
+                      <li
+                        key={item.ID_SUBMENU}
+                        className="flex justify-between items-center p-4 bg-white shadow rounded hover:bg-gray-50 transition-colors duration-200"
+                      >
+                        <span className="font-medium">{item.SUBMENU_NOMBRE}</span>
+                        <div className="flex space-x-3">
+                          <button
+                            className="bg-green-600 text-white px-4 py-1 rounded-lg hover:bg-green-700 transition-colors duration-200"
+                            onClick={() =>
+                              handleAssignSubmenuToRole(
+                                parseInt(selectedTipoUsuario),
+                                item.ID_SUBMENU!,
+                                item.SUBMENU_NOMBRE!
+                              )
+                            }
+                          >
+                            Asignar
+                          </button>
+                          <button
+                            className="bg-red-600 text-white px-4 py-1 rounded-lg hover:bg-red-700 transition-colors duration-200"
+                            onClick={() =>
+                              handleRemoveSubmenuFromRole(
+                                parseInt(selectedTipoUsuario),
+                                item.ID_SUBMENU!,
+                                item.SUBMENU_NOMBRE!
+                              )
+                            }
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              )}
+            </div>
           )}
         </div>
       )}
