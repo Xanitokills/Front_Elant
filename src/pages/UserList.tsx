@@ -7,12 +7,59 @@ import {
   FaTrash,
   FaPlus,
   FaTimes,
+  FaChevronLeft,
+  FaChevronRight,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import Modal from "react-modal";
 import Swal from "sweetalert2";
-import dayjs from "dayjs";
+import styled, { keyframes } from "styled-components";
+
 const API_URL = import.meta.env.VITE_API_URL;
+
+// Keyframes for animations
+const slideInDown = keyframes`
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+// Styled components
+const Container = styled.div`
+  padding: 1.5rem;
+  background-color: #f3f4f6;
+  min-height: 100vh;
+  @media (min-width: 768px) {
+    padding: 2rem;
+  }
+`;
+
+const Title = styled.h1`
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 1.5rem;
+  animation: ${slideInDown} 0.5s ease-out;
+`;
+
+const Card = styled.div`
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+  transition: box-shadow 0.2s ease;
+  &:hover {
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  }
+  @media (min-width: 768px) {
+    padding: 2rem;
+  }
+`;
 
 interface User {
   ID_USUARIO: number;
@@ -42,7 +89,7 @@ const UserList = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Rol[]>([]);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false); // Nuevo estado para manejar el estado de carga
+  const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{
     text: string;
     type: "success" | "error" | "";
@@ -103,7 +150,7 @@ const UserList = () => {
       fetchUsers();
     }
   });
-  
+
   const filteredUsers = users.filter((user) => {
     const target =
       searchField === "NOMBRES"
@@ -188,7 +235,6 @@ const UserList = () => {
         throw new Error(result.message || "Error al actualizar el usuario");
       }
 
-      // ✅ Aquí se maneja el comité (después de guardar el usuario)
       const comiteEndpoint = `${API_URL}/users/${editingUser.ID_USUARIO}/${
         payload.comite === 1 ? "asignar-comite" : "quitar-comite"
       }`;
@@ -218,21 +264,21 @@ const UserList = () => {
     }
   };
 
-  const handleResetPassword = async (id) => {
-    setIsLoading(true); // Activa el estado de carga
+  const handleResetPassword = async (id: number) => {
+    setIsLoading(true);
 
     try {
       const response = await fetch(`${API_URL}/users/change-password/${id}`, {
-        method: "PUT", // Cambiado a PUT para actualizar
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        // Mostrar mensaje de éxito y cerrar el modal
         Swal.fire({
           icon: "success",
           title: "Éxito",
@@ -240,8 +286,8 @@ const UserList = () => {
           timer: 2000,
           showConfirmButton: false,
         }).then(() => {
-          setEditingUser(null); // Cierra el modal después del éxito
-          setIsLoading(false); // Desactiva el estado de carga
+          setEditingUser(null);
+          setIsLoading(false);
         });
       } else {
         Swal.fire({
@@ -249,7 +295,7 @@ const UserList = () => {
           title: "Error",
           text: data.message || "Hubo un error al actualizar la contraseña.",
         });
-        setIsLoading(false); // Desactiva el estado de carga
+        setIsLoading(false);
       }
     } catch (error) {
       Swal.fire({
@@ -257,7 +303,7 @@ const UserList = () => {
         title: "Error",
         text: "Hubo un error inesperado.",
       });
-      setIsLoading(false); // Desactiva el estado de carga
+      setIsLoading(false);
     }
   };
 
@@ -272,69 +318,125 @@ const UserList = () => {
       reverseButtons: true,
     }).then((result) => {
       if (result.isConfirmed) {
-        handleUpdateUser(); // ya incluye cierre de modal y mensajes
+        handleUpdateUser();
+      }
+    });
+  };
+
+  const handleDeleteUser = async (id: number) => {
+    Swal.fire({
+      title: "¿Estás seguro?",
+      text: "No podrás deshacer esta acción.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          const response = await fetch(`${API_URL}/users/${id}`, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error("Error al eliminar el usuario");
+          }
+
+          Swal.fire({
+            icon: "success",
+            title: "Éxito",
+            text: "Usuario eliminado correctamente",
+            timer: 2000,
+            showConfirmButton: false,
+          });
+          fetchUsers();
+        } catch (error) {
+          Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "No se pudo eliminar el usuario",
+          });
+        }
       }
     });
   };
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Lista de Usuarios</h1>
-        <button
-          onClick={() => navigate("/users")}
-          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center"
-        >
-          <FaPlus className="mr-2" /> Agregar Usuario
-        </button>
-      </div>
+    <Container>
+      <Title>Gestión de Usuarios</Title>
 
-      <h2 className="text-lg font-semibold mb-2">Buscar usuarios</h2>
-      <div className="flex flex-wrap gap-4 mb-4">
-        <select
-          value={searchField}
-          onChange={(e) => setSearchField(e.target.value)}
-          className="p-2 border rounded-lg w-full max-w-[160px]"
-        >
-          <option value="NOMBRES">Nombres</option>
-          <option value="DNI">DNI</option>
-          <option value="NRO_DPTO">Nro. Dpto</option>
-        </select>
-
-        <input
-          type="text"
-          value={searchValue}
-          onChange={(e) => {
-            setSearchValue(e.target.value);
-            setCurrentPage(1);
-          }}
-          className="p-2 border rounded-lg w-full max-w-xs"
-          placeholder="Buscar..."
-        />
-      </div>
-
-      {message.text && (
-        <div
-          className={`p-4 mb-6 rounded-lg flex items-center ${
-            message.type === "success"
-              ? "bg-green-100 text-green-700"
-              : "bg-red-100 text-red-700"
-          }`}
-        >
-          {message.type === "success" ? (
-            <FaCheckCircle className="mr-2" />
-          ) : (
-            <FaExclamationCircle className="mr-2" />
-          )}
-          {message.text}
+      {/* Search and Add User */}
+      <Card>
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Buscar por
+              </label>
+              <select
+                value={searchField}
+                onChange={(e) => {
+                  setSearchField(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="NOMBRES">Nombres</option>
+                <option value="DNI">DNI</option>
+                <option value="NRO_DPTO">Nro. Dpto</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Valor
+              </label>
+              <input
+                type="text"
+                value={searchValue}
+                onChange={(e) => {
+                  setSearchValue(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Buscar..."
+              />
+            </div>
+          </div>
+          <button
+            onClick={() => navigate("/users")}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"
+          >
+            <FaPlus className="mr-2" /> Agregar Usuario
+          </button>
         </div>
-      )}
 
-      <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
-        <div className="min-w-[1200px]">
-          <table className="w-full table-auto text-sm">
+        {/* Message */}
+        {message.text && (
+          <div
+            className={`p-4 mb-6 rounded-lg flex items-center ${
+              message.type === "success"
+                ? "bg-green-100 text-green-700"
+                : "bg-red-100 text-red-700"
+            }`}
+          >
+            {message.type === "success" ? (
+              <FaCheckCircle className="mr-2" />
+            ) : (
+              <FaExclamationCircle className="mr-2" />
+            )}
+            {message.text}
+          </div>
+        )}
+
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full bg-white border border-gray-200 rounded-lg">
             <thead>
-              <tr className="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
+              <tr className="bg-gray-50 text-gray-700 text-sm font-semibold">
                 <th className="py-3 px-4 text-left">ID</th>
                 <th className="py-3 px-4 text-left">Nombres</th>
                 <th className="py-3 px-4 text-left">Apellidos</th>
@@ -351,49 +453,76 @@ const UserList = () => {
               </tr>
             </thead>
             <tbody>
-              {paginatedUsers.map((user) => (
-                <tr
-                  key={user.ID_USUARIO}
-                  className="border-b hover:bg-gray-100"
-                >
-                  <td className="py-3 px-4">{user.ID_USUARIO}</td>
-                  <td className="py-3 px-4">{user.NOMBRES}</td>
-                  <td className="py-3 px-4">{user.APELLIDOS}</td>
-                  <td className="py-3 px-4">{user.DNI}</td>
-                  <td className="py-3 px-4">{user.CORREO}</td>
-                  <td className="py-3 px-4">{user.CELULAR}</td>
-                  <td className="py-3 px-4">{user.NRO_DPTO ?? "N/A"}</td>
-                  <td className="py-3 px-4">
-                    {user.FECHA_NACIMIENTO
-                      ? user.FECHA_NACIMIENTO.split("T")[0]
-                          .split("-")
-                          .reverse()
-                          .join("/")
-                      : "N/A"}
-                  </td>
-                  <td className="py-3 px-4">{user.COMITE ? "Sí" : "No"}</td>
-                  <td className="py-3 px-4">{user.USUARIO}</td>
-                  <td className="py-3 px-4">{user.ROL}</td>
-                  <td className="py-3 px-4">{user.SEXO}</td>
-                  <td className="py-3 px-4 flex space-x-2">
-                    <button
-                      onClick={() => setEditingUser(user)}
-                      className="text-blue-500 hover:text-blue-700"
-                    >
-                      <FaEdit />
-                    </button>
-                    <button className="text-red-500 hover:text-red-700">
-                      <FaTrash />
-                    </button>
+              {paginatedUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={13} className="py-4 text-center text-gray-500">
+                    No hay usuarios para mostrar.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                paginatedUsers.map((user, index) => (
+                  <tr
+                    key={user.ID_USUARIO}
+                    className={`border-b transition-colors ${
+                      index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                    } hover:bg-gray-100`}
+                  >
+                    <td className="py-3 px-4">{user.ID_USUARIO}</td>
+                    <td className="py-3 px-4">{user.NOMBRES}</td>
+                    <td className="py-3 px-4">{user.APELLIDOS}</td>
+                    <td className="py-3 px-4">{user.DNI}</td>
+                    <td className="py-3 px-4">{user.CORREO}</td>
+                    <td className="py-3 px-4">{user.CELULAR}</td>
+                    <td className="py-3 px-4">{user.NRO_DPTO ?? "N/A"}</td>
+                    <td className="py-3 px-4">
+                      {user.FECHA_NACIMIENTO
+                        ? user.FECHA_NACIMIENTO.split("T")[0]
+                            .split("-")
+                            .reverse()
+                            .join("/")
+                        : "N/A"}
+                    </td>
+                    <td className="py-3 px-4">{user.COMITE ? "Sí" : "No"}</td>
+                    <td className="py-3 px-4">{user.USUARIO}</td>
+                    <td className="py-3 px-4">{user.ROL}</td>
+                    <td className="py-3 px-4">{user.SEXO}</td>
+                    <td className="py-3 px-4 flex space-x-2">
+                      <button
+                        onClick={() => setEditingUser(user)}
+                        className="text-blue-500 hover:text-blue-700"
+                        title="Editar"
+                      >
+                        <FaEdit />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUser(user.ID_USUARIO)}
+                        className="text-red-500 hover:text-red-700"
+                        title="Eliminar"
+                      >
+                        <FaTrash />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
+        {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex justify-center mt-4 space-x-2">
+          <div className="flex justify-center items-center mt-6 space-x-2">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className={`px-3 py-1 rounded-lg border ${
+                currentPage === 1
+                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : "bg-white text-blue-500 hover:bg-blue-50"
+              }`}
+            >
+              <FaChevronLeft />
+            </button>
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <button
                 key={page}
@@ -401,227 +530,259 @@ const UserList = () => {
                 className={`px-3 py-1 rounded-lg border ${
                   page === currentPage
                     ? "bg-blue-500 text-white"
-                    : "bg-white text-blue-500"
+                    : "bg-white text-blue-500 hover:bg-blue-50"
                 }`}
               >
                 {page}
               </button>
             ))}
+            <button
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
+              disabled={currentPage === totalPages}
+              className={`px-3 py-1 rounded-lg border ${
+                currentPage === totalPages
+                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : "bg-white text-blue-500 hover:bg-blue-50"
+              }`}
+            >
+              <FaChevronRight />
+            </button>
           </div>
         )}
-      </div>
+      </Card>
 
-      {/* Modal para editar */}
+      {/* Modal for Editing */}
       <Modal
         isOpen={!!editingUser}
         onRequestClose={() => {
           setEditingUser(null);
           setTimeout(() => document.body.focus(), 0);
         }}
-        className="bg-white p-6 w-full sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto mt-20 rounded-lg shadow-lg max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200"
+        className="bg-white p-6 w-full sm:max-w-2xl mx-auto mt-20 rounded-lg shadow-lg max-h-[90vh] overflow-y-auto"
         overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
         ariaHideApp={false}
       >
         {editingUser && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <h2 className="text-xl font-bold col-span-full">Editar Usuario</h2>
-
-            <div>
-              <label className="block font-semibold text-gray-700">
-                Nombres
-              </label>
-              <input
-                className="p-2 border rounded w-full"
-                value={editingUser.NOMBRES}
-                onChange={(e) =>
-                  setEditingUser({ ...editingUser, NOMBRES: e.target.value })
-                }
-                placeholder="Nombres"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-gray-700">
-                Apellidos
-              </label>
-              <input
-                className="p-2 border rounded w-full"
-                value={editingUser.APELLIDOS}
-                onChange={(e) =>
-                  setEditingUser({ ...editingUser, APELLIDOS: e.target.value })
-                }
-                placeholder="Apellidos"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-gray-700">DNI</label>
-              <input
-                className="p-2 border rounded w-full"
-                value={editingUser.DNI}
-                onChange={(e) =>
-                  setEditingUser({ ...editingUser, DNI: e.target.value })
-                }
-                placeholder="DNI"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-gray-700">
-                Correo
-              </label>
-              <input
-                className="p-2 border rounded w-full"
-                value={editingUser.CORREO}
-                onChange={(e) =>
-                  setEditingUser({ ...editingUser, CORREO: e.target.value })
-                }
-                placeholder="Correo"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-gray-700">
-                Celular
-              </label>
-              <input
-                className="p-2 border rounded w-full"
-                value={editingUser.CELULAR}
-                onChange={(e) =>
-                  setEditingUser({ ...editingUser, CELULAR: e.target.value })
-                }
-                placeholder="Celular"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-gray-700">Dpto</label>
-              <input
-                className="p-2 border rounded w-full"
-                value={editingUser.NRO_DPTO ?? ""}
-                onChange={(e) =>
-                  setEditingUser({
-                    ...editingUser,
-                    NRO_DPTO: parseInt(e.target.value) || null,
-                  })
-                }
-                placeholder="Dpto"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-gray-700">
-                Fecha de Nacimiento
-              </label>
-              <input
-                className="p-2 border rounded w-full"
-                type="date"
-                value={editingUser.FECHA_NACIMIENTO?.split("T")[0] || ""}
-                onChange={(e) =>
-                  setEditingUser({
-                    ...editingUser,
-                    FECHA_NACIMIENTO: e.target.value,
-                  })
-                }
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-gray-700">
-                Comité
-              </label>
-              <select
-                className="p-2 border rounded w-full"
-                value={editingUser.COMITE ? 1 : 0}
-                onChange={(e) =>
-                  setEditingUser({
-                    ...editingUser,
-                    COMITE: parseInt(e.target.value),
-                  })
-                }
-              >
-                <option value={0}>No</option>
-                <option value={1}>Sí</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-semibold text-gray-700">
-                Usuario
-              </label>
-              <input
-                className="p-2 border rounded w-full"
-                value={editingUser.USUARIO}
-                onChange={(e) =>
-                  setEditingUser({ ...editingUser, USUARIO: e.target.value })
-                }
-                placeholder="Usuario"
-              />
-            </div>
-
-			<div>
-			  <label className="block font-semibold text-gray-700">Rol</label>
-			  <select
-				className="p-2 border rounded w-full"
-				value={Number(editingUser.ID_TIPO_USUARIO)} // 👈 Aseguramos que sea number
-				onChange={(e) =>
-				  setEditingUser({
-					...editingUser,
-					ID_TIPO_USUARIO: parseInt(e.target.value),
-				  })
-				}
-			  >
-				{roles.map((rol) => (
-				  <option key={rol.ID_TIPO_USUARIO} value={rol.ID_TIPO_USUARIO}>
-					{rol.DETALLE_USUARIO}
-				  </option>
-				))}
-			  </select>
-			</div>
-
-
-            <div>
-              <label className="block font-semibold text-gray-700">Sexo</label>
-              <select
-                className="p-2 border rounded w-full"
-                value={editingUser.ID_SEXO}
-                onChange={(e) =>
-                  setEditingUser({
-                    ...editingUser,
-                    ID_SEXO: parseInt(e.target.value),
-                  })
-                }
-              >
-                <option value={1}>Masculino</option>
-                <option value={2}>Femenino</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-semibold text-gray-700">
-                Reiniciar Contraseña
-              </label>
-              <input
-                type="button"
-                value={isLoading ? "Cargando..." : "Reiniciar Contraseña"}
-                onClick={() => handleResetPassword(editingUser.ID_USUARIO)}
-                className={`p-2 border rounded w-full ${
-                  isLoading ? "bg-gray-400" : "bg-gray-200"
-                } text-gray-700 hover:bg-gray-300 cursor-pointer`}
-                disabled={isLoading}
-              />
-            </div>
-
-            <div className="col-span-full flex justify-end gap-2">
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-800">Editar Usuario</h2>
               <button
                 onClick={() => setEditingUser(null)}
-                className="px-4 py-2 bg-gray-300 rounded"
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Nombres
+                </label>
+                <input
+                  className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={editingUser.NOMBRES}
+                  onChange={(e) =>
+                    setEditingUser({ ...editingUser, NOMBRES: e.target.value })
+                  }
+                  placeholder="Nombres"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Apellidos
+                </label>
+                <input
+                  className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={editingUser.APELLIDOS}
+                  onChange={(e) =>
+                    setEditingUser({ ...editingUser, APELLIDOS: e.target.value })
+                  }
+                  placeholder="Apellidos"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  DNI
+                </label>
+                <input
+                  className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={editingUser.DNI}
+                  onChange={(e) =>
+                    setEditingUser({ ...editingUser, DNI: e.target.value })
+                  }
+                  placeholder="DNI"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Correo
+                </label>
+                <input
+                  className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={editingUser.CORREO}
+                  onChange={(e) =>
+                    setEditingUser({ ...editingUser, CORREO: e.target.value })
+                  }
+                  placeholder="Correo"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Celular
+                </label>
+                <input
+                  className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={editingUser.CELULAR}
+                  onChange={(e) =>
+                    setEditingUser({ ...editingUser, CELULAR: e.target.value })
+                  }
+                  placeholder="Celular"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Dpto
+                </label>
+                <input
+                  className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={editingUser.NRO_DPTO ?? ""}
+                  onChange={(e) =>
+                    setEditingUser({
+                      ...editingUser,
+                      NRO_DPTO: parseInt(e.target.value) || null,
+                    })
+                  }
+                  placeholder="Dpto"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Fecha de Nacimiento
+                </label>
+                <input
+                  className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  type="date"
+                  value={editingUser.FECHA_NACIMIENTO?.split("T")[0] || ""}
+                  onChange={(e) =>
+                    setEditingUser({
+                      ...editingUser,
+                      FECHA_NACIMIENTO: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Comité
+                </label>
+                <select
+                  className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={editingUser.COMITE ? 1 : 0}
+                  onChange={(e) =>
+                    setEditingUser({
+                      ...editingUser,
+                      COMITE: parseInt(e.target.value),
+                    })
+                  }
+                >
+                  <option value={0}>No</option>
+                  <option value={1}>Sí</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Usuario
+                </label>
+                <input
+                  className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={editingUser.USUARIO}
+                  onChange={(e) =>
+                    setEditingUser({ ...editingUser, USUARIO: e.target.value })
+                  }
+                  placeholder="Usuario"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Rol
+                </label>
+                <select
+                  className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={Number(editingUser.ID_TIPO_USUARIO)}
+                  onChange={(e) =>
+                    setEditingUser({
+                      ...editingUser,
+                      ID_TIPO_USUARIO: parseInt(e.target.value),
+                    })
+                  }
+                >
+                  {roles.map((rol) => (
+                    <option key={rol.ID_TIPO_USUARIO} value={rol.ID_TIPO_USUARIO}>
+                      {rol.DETALLE_USUARIO}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Sexo
+                </label>
+                <select
+                  className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={editingUser.ID_SEXO}
+                  onChange={(e) =>
+                    setEditingUser({
+                      ...editingUser,
+                      ID_SEXO: parseInt(e.target.value),
+                    })
+                  }
+                >
+                  <option value={1}>Masculino</option>
+                  <option value={2}>Femenino</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Reiniciar Contraseña
+                </label>
+                <button
+                  onClick={() => handleResetPassword(editingUser.ID_USUARIO)}
+                  className={`p-2 w-full rounded-lg text-white ${
+                    isLoading
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-gray-600 hover:bg-gray-700"
+                  }`}
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Cargando..." : "Reiniciar Contraseña"}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-4 mt-6">
+              <button
+                onClick={() => setEditingUser(null)}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSaveUser}
-                className="px-4 py-2 bg-blue-600 text-white rounded"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Guardar
               </button>
@@ -629,7 +790,7 @@ const UserList = () => {
           </div>
         )}
       </Modal>
-    </div>
+    </Container>
   );
 };
 

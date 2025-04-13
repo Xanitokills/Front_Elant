@@ -1,10 +1,67 @@
 import { useState, useEffect } from "react";
 import { FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
 import Swal from "sweetalert2";
+import styled, { keyframes } from "styled-components";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-// Interfaces para los datos
+// Keyframes for animations
+const slideInDown = keyframes`
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+const fadeIn = keyframes`
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+// Styled components
+const Container = styled.div`
+  padding: 1.5rem;
+  background-color: #f3f4f6;
+  min-height: 100vh;
+  @media (min-width: 768px) {
+    padding: 2rem;
+  }
+`;
+
+const Title = styled.h1`
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 1.5rem;
+  animation: ${slideInDown} 0.5s ease-out;
+`;
+
+const Card = styled.div`
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+  transition: box-shadow 0.2s ease;
+  animation: ${fadeIn} 0.5s ease-out;
+  &:hover {
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  }
+  @media (min-width: 768px) {
+    padding: 2rem;
+  }
+`;
+
+// Interfaces
 interface UserType {
   ID_TIPO_USUARIO: number;
   DETALLE_USUARIO: string;
@@ -33,11 +90,8 @@ interface FormData {
 }
 
 const Users = () => {
-  // Estado para los tipos de usuario y sexos
   const [userTypes, setUserTypes] = useState<UserType[]>([]);
   const [sexes, setSexes] = useState<Sex[]>([]);
-
-  // Estado para el formulario
   const [formData, setFormData] = useState<FormData>({
     nro_dpto: "",
     nombres: "",
@@ -54,8 +108,6 @@ const Users = () => {
     comite: false,
     usuario: "",
   });
-
-  // Estado para mensajes de éxito o error
   const [message, setMessage] = useState<{
     text: string;
     type: "success" | "error" | "";
@@ -64,10 +116,25 @@ const Users = () => {
     type: "",
   });
 
-  // Obtener el token de localStorage
   const token = localStorage.getItem("token");
 
-  // Obtener tipos de usuario y sexos al montar el componente
+  // Generate username from nombres and apellidos
+  const generateUsername = (nombres: string, apellidos: string): string => {
+    if (!nombres || !apellidos) return "";
+    const firstName = nombres.trim().split(" ")[0];
+    const lastName = apellidos.trim().replace(/\s+/g, "").toLowerCase();
+    return `${firstName[0].toLowerCase()}${lastName}`;
+  };
+
+  // Update username whenever nombres or apellidos change
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      usuario: generateUsername(prev.nombres, prev.apellidos),
+    }));
+  }, [formData.nombres, formData.apellidos]);
+
+  // Fetch user types and sexes
   useEffect(() => {
     const fetchUserTypes = async () => {
       try {
@@ -105,7 +172,7 @@ const Users = () => {
     fetchSexes();
   }, [token]);
 
-  // Manejar cambios en los inputs
+  // Handle input changes
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
@@ -119,7 +186,7 @@ const Users = () => {
     }));
   };
 
-  // Manejar el envío del formulario
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -218,9 +285,8 @@ const Users = () => {
       const data = await response.json();
 
       if (response.ok) {
-        const { ID_USUARIO } = await data; // asegúrate que el backend te devuelva el ID del nuevo usuario
+        const { ID_USUARIO } = data;
 
-        // 🧠 Si se marcó como Comité
         if (formData.comite) {
           try {
             await fetch(`${API_URL}/users/${ID_USUARIO}/asignar-comite`, {
@@ -242,8 +308,7 @@ const Users = () => {
           timer: 2000,
           showConfirmButton: false,
         });
-      
-        // Limpiar el formulario
+
         setFormData({
           nro_dpto: "",
           nombres: "",
@@ -281,36 +346,38 @@ const Users = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      <h1 className="text-2xl font-bold mb-6">Registro de Usuarios</h1>
+    <Container>
+      <Title>Registro de Usuarios</Title>
 
-      {/* Mensaje de éxito o error */}
+      {/* Message */}
       {message.text && (
-        <div
-          className={`p-4 mb-6 rounded-lg flex items-center ${
-            message.type === "success"
-              ? "bg-green-100 text-green-700"
-              : "bg-red-100 text-red-700"
-          }`}
-        >
-          {message.type === "success" ? (
-            <FaCheckCircle className="mr-2" />
-          ) : (
-            <FaExclamationCircle className="mr-2" />
-          )}
-          {message.text}
-        </div>
+        <Card>
+          <div
+            className={`p-4 rounded-lg flex items-center ${
+              message.type === "success"
+                ? "bg-green-100 text-green-700"
+                : "bg-red-100 text-red-700"
+            }`}
+          >
+            {message.type === "success" ? (
+              <FaCheckCircle className="mr-2" />
+            ) : (
+              <FaExclamationCircle className="mr-2" />
+            )}
+            {message.text}
+          </div>
+        </Card>
       )}
 
-      {/* Formulario de Registro */}
-      <div className="bg-white p-6 rounded-lg shadow-md">
+      {/* Form */}
+      <Card>
         <h2 className="text-lg font-semibold mb-4">Registrar Nuevo Usuario</h2>
         <form
           onSubmit={handleSubmit}
           className="grid grid-cols-1 md:grid-cols-2 gap-4"
         >
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-600 mb-1">
               Nro. Departamento
             </label>
             <input
@@ -319,15 +386,15 @@ const Users = () => {
               value={formData.nro_dpto}
               onChange={(e) => {
                 const value = parseInt(e.target.value);
-                if (value < 0) return; //  Bloquea negativos manualmente
+                if (value < 0) return;
                 handleInputChange(e);
               }}
-              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               min="0"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-600 mb-1">
               Nombres *
             </label>
             <input
@@ -335,12 +402,12 @@ const Users = () => {
               name="nombres"
               value={formData.nombres}
               onChange={handleInputChange}
-              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-600 mb-1">
               Apellidos *
             </label>
             <input
@@ -348,12 +415,12 @@ const Users = () => {
               name="apellidos"
               value={formData.apellidos}
               onChange={handleInputChange}
-              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-600 mb-1">
               DNI *
             </label>
             <input
@@ -361,12 +428,12 @@ const Users = () => {
               name="dni"
               value={formData.dni}
               onChange={handleInputChange}
-              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-600 mb-1">
               Correo *
             </label>
             <input
@@ -374,12 +441,12 @@ const Users = () => {
               name="correo"
               value={formData.correo}
               onChange={handleInputChange}
-              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-600 mb-1">
               Celular *
             </label>
             <input
@@ -387,12 +454,12 @@ const Users = () => {
               name="celular"
               value={formData.celular}
               onChange={handleInputChange}
-              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-600 mb-1">
               Contacto de Emergencia
             </label>
             <input
@@ -400,11 +467,11 @@ const Users = () => {
               name="contacto_emergencia"
               value={formData.contacto_emergencia}
               onChange={handleInputChange}
-              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-600 mb-1">
               Fecha de Nacimiento
             </label>
             <input
@@ -412,18 +479,18 @@ const Users = () => {
               name="fecha_nacimiento"
               value={formData.fecha_nacimiento}
               onChange={handleInputChange}
-              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-600 mb-1">
               Tipo de Usuario *
             </label>
             <select
               name="id_tipo_usuario"
               value={formData.id_tipo_usuario}
               onChange={handleInputChange}
-              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             >
               <option value="">Seleccione un tipo</option>
@@ -435,14 +502,14 @@ const Users = () => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-600 mb-1">
               Sexo *
             </label>
             <select
               name="id_sexo"
               value={formData.id_sexo}
               onChange={handleInputChange}
-              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             >
               <option value="">Seleccione un sexo</option>
@@ -454,7 +521,7 @@ const Users = () => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-600 mb-1">
               Detalle
             </label>
             <input
@@ -462,24 +529,24 @@ const Users = () => {
               name="detalle"
               value={formData.detalle}
               onChange={handleInputChange}
-              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-600 mb-1">
               Observaciones
             </label>
             <textarea
               name="observaciones"
               value={formData.observaciones}
               onChange={handleInputChange}
-              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               rows={3}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Pertenece al Comité *
+            <label className="block text-sm font-medium text-gray-600 mb-1">
+              Pertenece al Comité
             </label>
             <input
               type="checkbox"
@@ -490,29 +557,32 @@ const Users = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-600 mb-1">
               Usuario *
             </label>
             <input
               type="text"
               name="usuario"
               value={formData.usuario}
-              onChange={handleInputChange}
-              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              required
+              className="w-full p-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
+              readOnly
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Generado automáticamente a partir del nombre y apellido.
+            </p>
           </div>
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 flex justify-end">
             <button
               type="submit"
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition duration-300"
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center transition duration-300"
             >
+              <FaCheckCircle className="mr-2" />
               Registrar Usuario
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </Card>
+    </Container>
   );
 };
 

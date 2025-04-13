@@ -2,7 +2,11 @@ import { useEffect, useState, useRef } from "react";
 import { NavLink } from "react-router-dom";
 import axios from "axios";
 import * as FaIcons from "react-icons/fa";
-import { FaChevronDown, FaSearch, FaSignOutAlt, FaCalendarAlt } from "react-icons/fa";
+import {
+  FaChevronDown,
+  FaSearch,
+  FaSignOutAlt
+} from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 import styled from "styled-components";
 
@@ -62,7 +66,7 @@ const ScrollableContent = styled.div`
   flex: 1;
   overflow-y: auto;
   padding: 1rem;
-  
+
   scrollbar-width: none;
   -ms-overflow-style: none;
 
@@ -190,26 +194,6 @@ const SubmenuItem = styled(NavLink)`
   }
 `;
 
-const NavLinkStyled = styled(NavLink)`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.75rem;
-  font-size: 0.875rem;
-  margin-bottom: 0.25rem;
-  transition: background-color 0.2s ease, color 0.2s ease;
-
-  &:hover {
-    background-color: #2d3748;
-  }
-
-  &.active {
-    background-color: #4a5568;
-    color: #93c5fd;
-  }
-`;
-
 const LogoutButton = styled.button`
   display: flex;
   align-items: center;
@@ -229,11 +213,22 @@ interface SidebarStructure {
   items: { label: string; path: string; icon: JSX.Element | null }[];
 }
 
-const Sidebar = ({ closeSidebar, sidebarOpen }: { closeSidebar: () => void; sidebarOpen: boolean }) => {
-  const { logout, userId, userName, role, isAuthenticated, isLoading } = useAuth();
-  const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({});
+const Sidebar = ({
+  closeSidebar,
+  sidebarOpen,
+}: {
+  closeSidebar: () => void;
+  sidebarOpen: boolean;
+}) => {
+  const { logout, userId, userName, role, isAuthenticated, isLoading } =
+    useAuth();
+  const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>(
+    {}
+  );
   const [searchTerm, setSearchTerm] = useState("");
-  const [sidebarStructure, setSidebarStructure] = useState<SidebarStructure[]>([]);
+  const [sidebarStructure, setSidebarStructure] = useState<SidebarStructure[]>(
+    []
+  );
   const hasFetchedRef = useRef(false);
 
   const toggleSection = (title: string) => {
@@ -282,7 +277,10 @@ const Sidebar = ({ closeSidebar, sidebarOpen }: { closeSidebar: () => void; side
         if (typeof menusData === "string") {
           menus = JSON.parse(menusData);
         } else {
-          console.error("Formato de datos no válido, se esperaba una cadena:", menusData);
+          console.error(
+            "Formato de datos no válido, se esperaba una cadena:",
+            menusData
+          );
           return;
         }
 
@@ -291,13 +289,13 @@ const Sidebar = ({ closeSidebar, sidebarOpen }: { closeSidebar: () => void; side
         const structure = menus.map((menu: any) => ({
           title: menu.MENU_NOMBRE,
           icon: getIconComponent(menu.MENU_ICONO),
-          items: menu.SUBMENUS
-            .sort((a: any, b: any) => a.SUBMENU_ORDEN - b.SUBMENU_ORDEN)
-            .map((sub: any) => ({
-              label: sub.SUBMENU_NOMBRE,
-              path: sub.SUBMENU_URL,
-              icon: getIconComponent(sub.SUBMENU_ICONO),
-            })),
+          items: menu.SUBMENUS.sort(
+            (a: any, b: any) => a.SUBMENU_ORDEN - b.SUBMENU_ORDEN
+          ).map((sub: any) => ({
+            label: sub.SUBMENU_NOMBRE,
+            path: sub.SUBMENU_URL,
+            icon: getIconComponent(sub.SUBMENU_ICONO),
+          })),
         }));
 
         console.log("Estructura procesada del sidebar:", structure);
@@ -371,12 +369,16 @@ const Sidebar = ({ closeSidebar, sidebarOpen }: { closeSidebar: () => void; side
                       </span>
                       <FaChevronDown
                         className={`transform transition-transform duration-300 ${
-                          openSections[section.title] ? "rotate-180" : "rotate-0"
+                          openSections[section.title]
+                            ? "rotate-180"
+                            : "rotate-0"
                         }`}
                       />
                     </MenuButton>
                   </MenuButtonWrapper>
-                  <SubmenuList className={openSections[section.title] ? "open" : ""}>
+                  <SubmenuList
+                    className={openSections[section.title] ? "open" : ""}
+                  >
                     {filteredItems.map((item) => (
                       <SubmenuItem
                         key={item.path}
@@ -393,11 +395,6 @@ const Sidebar = ({ closeSidebar, sidebarOpen }: { closeSidebar: () => void; side
             })}
           </MenuList>
         )}
-
-        <NavLinkStyled to="/reservas" onClick={closeSidebar}>
-          <FaCalendarAlt />
-          Reservas
-        </NavLinkStyled>
       </ScrollableContent>
 
       <Footer>

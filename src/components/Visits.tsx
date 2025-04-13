@@ -102,12 +102,18 @@ const Button = styled.button`
   }
 `;
 
-const TableRow = styled.tr<{ estado: number; delay: number }>`
+const TableRow = styled.tr<{ estado: number; delay: number; isHighlighted?: boolean }>`
   animation: ${fadeIn} 0.5s ease-out forwards;
   animation-delay: ${(props) => props.delay}s;
-  background-color: ${(props) => (props.estado === 1 ? "#f0fff4" : "#fef2f2")};
+  background-color: ${(props) =>
+    props.isHighlighted
+      ? "rgba(37, 99, 235, 0.3)" // Soft shaded blue
+      : props.estado === 1
+      ? "#f0fff4"
+      : "#fef2f2"};
   &:hover {
-    background-color: #f9fafb;
+    background-color: ${(props) =>
+      props.isHighlighted ? "rgba(37, 99, 235, 0.4)" : "#f9fafb"};
   }
 `;
 
@@ -135,6 +141,7 @@ const Visits = () => {
   const now = new Date();
   const currentDate = now.toISOString().slice(0, 10);
   const [activeTab, setActiveTab] = useState<"create" | "history">("create");
+  const [highlightedVisitId, setHighlightedVisitId] = useState<number | null>(null);
 
   // Fetch visits from backend
   const fetchVisits = async () => {
@@ -146,7 +153,8 @@ const Visits = () => {
       });
       if (!response.ok) throw new Error("Error al obtener las visitas");
       const data = await response.json();
-      setVisitas(data);
+      // Sort visits by ID_VISITA descending to ensure newest is first
+      setVisitas(data.sort((a: Visitante, b: Visitante) => b.ID_VISITA - a.ID_VISITA));
     } catch (err) {
       console.error("Error al obtener las visitas:", err);
       Swal.fire({
@@ -244,6 +252,7 @@ const Visits = () => {
         const errorData = await response.json();
         throw new Error(errorData.message || "Error al grabar la visita");
       }
+      const newVisit = await response.json(); // Get the newly created visit
       Swal.fire({
         icon: "success",
         title: "Éxito",
@@ -251,12 +260,19 @@ const Visits = () => {
         timer: 2000,
         showConfirmButton: false,
       });
-      fetchVisits();
+      // Fetch visits immediately to ensure the new visit is included
+      await fetchVisits();
       setDni("");
       setNombreVisitante("");
       setNroDpto("");
       setMotivo("");
       setActiveTab("history");
+      // Highlight the new visit
+      setHighlightedVisitId(newVisit.ID_VISITA);
+      // Remove highlight after 10 seconds
+      setTimeout(() => {
+        setHighlightedVisitId(null);
+      }, 10000);
     } catch (err) {
       const error = err as Error;
       setError(error.message || "Error al grabar la visita");
@@ -519,6 +535,7 @@ const Visits = () => {
                         key={visita.ID_VISITA}
                         estado={visita.ESTADO}
                         delay={index * 0.1}
+                        isHighlighted={visita.ID_VISITA === highlightedVisitId}
                       >
                         <td className="py-3 px-4">{visita.ID_VISITA}</td>
                         <td className="py-3 px-4">{visita.NRO_DPTO ?? "-"}</td>
