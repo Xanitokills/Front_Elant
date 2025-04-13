@@ -28,19 +28,34 @@ export default function MenuSubmenuGestion() {
   });
   const [activeTab, setActiveTab] = useState("create");
   const [selectedMenu, setSelectedMenu] = useState<string>("");
-  const [editMenu, setEditMenu] = useState<{ id: number; nombre: string } | null>(null);
+  const [editMenuModal, setEditMenuModal] = useState<{
+    id: number;
+    nombre: string;
+    icono: string;
+    url: string | null;
+  } | null>(null);
+  const [editSubmenuModal, setEditSubmenuModal] = useState<{
+    id: number;
+    nombre: string;
+    icono: string;
+    url: string;
+  } | null>(null);
   const token = localStorage.getItem("token");
 
   // Obtener los menús y submenús
   const fetchMenus = async () => {
     try {
+      console.log("Fetching menus with API_URL:", API_URL, "Token:", token);
       const res = await fetch(`${API_URL}/menus-submenus`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error("Error al obtener menús");
+      console.log("Response status:", res.status, "OK:", res.ok);
+      if (!res.ok) throw new Error(`Error al obtener menús: ${res.statusText}`);
       const data = await res.json();
+      console.log("Received data:", data);
       setMenus(data);
     } catch (error) {
+      console.error("Fetch error:", error);
       Swal.fire({
         icon: "error",
         title: "Error",
@@ -54,6 +69,21 @@ export default function MenuSubmenuGestion() {
   useEffect(() => {
     fetchMenus();
   }, []);
+
+  // Validar longitud de campos
+  const validateLength = (field: string, value: string, maxLength: number) => {
+    if (value.length > maxLength) {
+      Swal.fire({
+        icon: "warning",
+        title: "Entrada inválida",
+        text: `El campo ${field} no puede exceder ${maxLength} caracteres`,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return false;
+    }
+    return true;
+  };
 
   // Validar y crear un nuevo menú
   const handleCreateMenu = async () => {
@@ -77,6 +107,9 @@ export default function MenuSubmenuGestion() {
       });
       return;
     }
+    if (!validateLength("nombre", newMenu.nombre, 50)) return;
+    if (!validateLength("ícono", newMenu.icono, 50)) return;
+    if (newMenu.url && !validateLength("URL", newMenu.url, 100)) return;
     if (newMenu.url && !isValidUrl(newMenu.url)) {
       Swal.fire({
         icon: "warning",
@@ -160,6 +193,9 @@ export default function MenuSubmenuGestion() {
       });
       return;
     }
+    if (!validateLength("nombre", newSubmenu.nombre, 50)) return;
+    if (!validateLength("ícono", newSubmenu.icono, 50)) return;
+    if (!validateLength("URL", newSubmenu.url, 100)) return;
     if (!isValidUrl(newSubmenu.url)) {
       Swal.fire({
         icon: "warning",
@@ -206,9 +242,11 @@ export default function MenuSubmenuGestion() {
     }
   };
 
-  // Actualizar el nombre del menú
-  const handleUpdateMenuName = async (id: number, nombre: string) => {
-    if (!nombre.trim()) {
+  // Actualizar un menú
+  const handleUpdateMenu = async () => {
+    if (!editMenuModal) return;
+
+    if (!editMenuModal.nombre.trim()) {
       Swal.fire({
         icon: "warning",
         title: "Campo requerido",
@@ -218,43 +256,192 @@ export default function MenuSubmenuGestion() {
       });
       return;
     }
+    if (!editMenuModal.icono.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Campo requerido",
+        text: "El ícono del menú es obligatorio",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    if (!validateLength("nombre", editMenuModal.nombre, 50)) return;
+    if (!validateLength("ícono", editMenuModal.icono, 50)) return;
+    if (editMenuModal.url && !validateLength("URL", editMenuModal.url, 100)) return;
+    if (editMenuModal.url && !isValidUrl(editMenuModal.url)) {
+      Swal.fire({
+        icon: "warning",
+        title: "URL inválida",
+        text: "Por favor, ingrese una URL válida",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
 
     try {
-      const res = await fetch(`${API_URL}/menu/${id}`, {
+      const res = await fetch(`${API_URL}/menu/${editMenuModal.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ nombre }),
+        body: JSON.stringify({
+          nombre: editMenuModal.nombre,
+          icono: editMenuModal.icono,
+          url: editMenuModal.url || null,
+        }),
       });
       if (!res.ok) throw new Error("Error al actualizar menú");
       Swal.fire({
         icon: "success",
         title: "Éxito",
-        text: "Nombre del menú actualizado correctamente",
+        text: "Menú actualizado correctamente",
         timer: 2000,
         showConfirmButton: false,
       });
-      setEditMenu(null);
+      setEditMenuModal(null);
       fetchMenus();
     } catch (error) {
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "No se pudo actualizar el nombre del menú",
+        text: "No se pudo actualizar el menú",
         timer: 2000,
         showConfirmButton: false,
       });
     }
   };
 
+  // Actualizar un submenú
+  const handleUpdateSubmenu = async () => {
+    if (!editSubmenuModal) return;
+
+    if (!editSubmenuModal.nombre.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Campo requerido",
+        text: "El nombre del submenú es obligatorio",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    if (!editSubmenuModal.icono.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Campo requerido",
+        text: "El ícono del submenú es obligatorio",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    if (!editSubmenuModal.url.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Campo requerido",
+        text: "La URL del submenú es obligatoria",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    if (!validateLength("nombre", editSubmenuModal.nombre, 50)) return;
+    if (!validateLength("ícono", editSubmenuModal.icono, 50)) return;
+    if (!validateLength("URL", editSubmenuModal.url, 100)) return;
+    if (!isValidUrl(editSubmenuModal.url)) {
+      Swal.fire({
+        icon: "warning",
+        title: "URL inválida",
+        text: "Por favor, ingrese una URL válida",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/submenu/${editSubmenuModal.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          nombre: editSubmenuModal.nombre,
+          icono: editSubmenuModal.icono,
+          url: editSubmenuModal.url,
+        }),
+      });
+      if (!res.ok) throw new Error("Error al actualizar submenú");
+      Swal.fire({
+        icon: "success",
+        title: "Éxito",
+        text: "Submenú actualizado correctamente",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      setEditSubmenuModal(null);
+      fetchMenus();
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo actualizar el submenú",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  };
+
+  // Eliminar un submenú
+  const handleDeleteSubmenu = async (id: number, nombre: string) => {
+    const result = await Swal.fire({
+      icon: "warning",
+      title: "¿Estás seguro?",
+      text: `¿Deseas eliminar el submenú "${nombre}"?`,
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`${API_URL}/submenu/${id}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!res.ok) throw new Error("Error al eliminar submenú");
+        Swal.fire({
+          icon: "success",
+          title: "Éxito",
+          text: "Submenú eliminado correctamente",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+        fetchMenus();
+      } catch (error) {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "No se pudo eliminar el submenú",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      }
+    }
+  };
+
   // Mover submenú hacia arriba
   const moveSubmenuUp = async (index: number) => {
-    if (index === 0) return; // No se puede mover más arriba
+    if (index === 0) return;
 
     const reorderedSubmenus = Array.from(filteredSubmenus);
-    const newOrder = index; // Nueva posición (1-based para el backend)
+    const newOrder = index;
     const submenuToMove = reorderedSubmenus[index];
 
     try {
@@ -289,10 +476,10 @@ export default function MenuSubmenuGestion() {
 
   // Mover submenú hacia abajo
   const moveSubmenuDown = async (index: number) => {
-    if (index === filteredSubmenus.length - 1) return; // No se puede mover más abajo
+    if (index === filteredSubmenus.length - 1) return;
 
     const reorderedSubmenus = Array.from(filteredSubmenus);
-    const newOrder = index + 2; // Nueva posición (1-based para el backend)
+    const newOrder = index + 2;
     const submenuToMove = reorderedSubmenus[index];
 
     try {
@@ -392,6 +579,7 @@ export default function MenuSubmenuGestion() {
               onChange={(e) =>
                 setNewMenu({ ...newMenu, nombre: e.target.value })
               }
+              maxLength={50}
             />
             <input
               className="border p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -400,6 +588,7 @@ export default function MenuSubmenuGestion() {
               onChange={(e) =>
                 setNewMenu({ ...newMenu, icono: e.target.value })
               }
+              maxLength={50}
             />
             <input
               className="border p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -408,6 +597,7 @@ export default function MenuSubmenuGestion() {
               onChange={(e) =>
                 setNewMenu({ ...newMenu, url: e.target.value })
               }
+              maxLength={100}
             />
             <button
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 w-full"
@@ -440,6 +630,7 @@ export default function MenuSubmenuGestion() {
               onChange={(e) =>
                 setNewSubmenu({ ...newSubmenu, nombre: e.target.value })
               }
+              maxLength={50}
             />
             <input
               className="border p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -448,6 +639,7 @@ export default function MenuSubmenuGestion() {
               onChange={(e) =>
                 setNewSubmenu({ ...newSubmenu, icono: e.target.value })
               }
+              maxLength={50}
             />
             <input
               className="border p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -456,6 +648,7 @@ export default function MenuSubmenuGestion() {
               onChange={(e) =>
                 setNewSubmenu({ ...newSubmenu, url: e.target.value })
               }
+              maxLength={100}
             />
             <button
               className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200 w-full"
@@ -483,45 +676,20 @@ export default function MenuSubmenuGestion() {
                   key={menu.ID_MENU}
                   className="flex justify-between items-center p-4 bg-white shadow rounded hover:bg-gray-50 transition-colors duration-200"
                 >
-                  <div>
-                    {editMenu && editMenu.id === menu.ID_MENU ? (
-                      <div className="flex space-x-2">
-                        <input
-                          className="border p-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
-                          value={editMenu.nombre}
-                          onChange={(e) =>
-                            setEditMenu({ ...editMenu, nombre: e.target.value })
-                          }
-                        />
-                        <button
-                          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-                          onClick={() =>
-                            handleUpdateMenuName(editMenu.id, editMenu.nombre)
-                          }
-                        >
-                          Guardar
-                        </button>
-                        <button
-                          className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
-                          onClick={() => setEditMenu(null)}
-                        >
-                          Cancelar
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="font-medium">{menu.MENU_NOMBRE}</span>
-                    )}
-                  </div>
-                  {!editMenu && (
-                    <button
-                      className="text-yellow-600 hover:text-yellow-800 transition-colors duration-200"
-                      onClick={() =>
-                        setEditMenu({ id: menu.ID_MENU, nombre: menu.MENU_NOMBRE })
-                      }
-                    >
-                      ✏️
-                    </button>
-                  )}
+                  <span className="font-medium">{menu.MENU_NOMBRE}</span>
+                  <button
+                    className="text-yellow-600 hover:text-yellow-800 transition-colors duration-200"
+                    onClick={() =>
+                      setEditMenuModal({
+                        id: menu.ID_MENU,
+                        nombre: menu.MENU_NOMBRE,
+                        icono: menu.MENU_ICONO,
+                        url: menu.MENU_URL,
+                      })
+                    }
+                  >
+                    ✏️
+                  </button>
                 </li>
               ))
             )}
@@ -583,7 +751,9 @@ export default function MenuSubmenuGestion() {
                       </button>
                       <button
                         className={`text-blue-600 hover:text-blue-800 transition-colors duration-200 ${
-                          idx === filteredSubmenus.length - 1 ? "opacity-50 cursor-not-allowed" : ""
+                          idx === filteredSubmenus.length - 1
+                            ? "opacity-50 cursor-not-allowed"
+                            : ""
                         }`}
                         onClick={() => moveSubmenuDown(idx)}
                         disabled={idx === filteredSubmenus.length - 1}
@@ -593,29 +763,22 @@ export default function MenuSubmenuGestion() {
                       </button>
                       <button
                         className="text-yellow-600 hover:text-yellow-800 transition-colors duration-200"
-                        onClick={() => {
-                          Swal.fire({
-                            icon: "info",
-                            title: "Funcionalidad pendiente",
-                            text: "La edición de submenús no está implementada.",
-                            timer: 2000,
-                            showConfirmButton: false,
-                          });
-                        }}
+                        onClick={() =>
+                          setEditSubmenuModal({
+                            id: item.ID_SUBMENU!,
+                            nombre: item.SUBMENU_NOMBRE!,
+                            icono: item.SUBMENU_ICONO!,
+                            url: item.SUBMENU_URL!,
+                          })
+                        }
                       >
                         ✏️
                       </button>
                       <button
                         className="text-red-600 hover:text-red-800 transition-colors duration-200"
-                        onClick={() => {
-                          Swal.fire({
-                            icon: "info",
-                            title: "Funcionalidad pendiente",
-                            text: "La eliminación de submenús no está implementada.",
-                            timer: 2000,
-                            showConfirmButton: false,
-                          });
-                        }}
+                        onClick={() =>
+                          handleDeleteSubmenu(item.ID_SUBMENU!, item.SUBMENU_NOMBRE!)
+                        }
                       >
                         🗑️
                       </button>
@@ -625,6 +788,106 @@ export default function MenuSubmenuGestion() {
               )}
             </ul>
           )}
+        </div>
+      )}
+
+      {/* Modal para editar menú */}
+      {editMenuModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+            <h3 className="font-bold text-lg mb-4">Editar Menú</h3>
+            <input
+              className="border p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
+              placeholder="Nombre del menú"
+              value={editMenuModal.nombre}
+              onChange={(e) =>
+                setEditMenuModal({ ...editMenuModal, nombre: e.target.value })
+              }
+              maxLength={50}
+            />
+            <input
+              className="border p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
+              placeholder="Ícono (ej: fa-home)"
+              value={editMenuModal.icono}
+              onChange={(e) =>
+                setEditMenuModal({ ...editMenuModal, icono: e.target.value })
+              }
+              maxLength={50}
+            />
+            <input
+              className="border p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
+              placeholder="URL (opcional)"
+              value={editMenuModal.url || ""}
+              onChange={(e) =>
+                setEditMenuModal({ ...editMenuModal, url: e.target.value })
+              }
+              maxLength={100}
+            />
+            <div className="flex space-x-3">
+              <button
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex-1"
+                onClick={handleUpdateMenu}
+              >
+                Guardar
+              </button>
+              <button
+                className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-200 flex-1"
+                onClick={() => setEditMenuModal(null)}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para editar submenú */}
+      {editSubmenuModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+            <h3 className="font-bold text-lg mb-4">Editar Submenú</h3>
+            <input
+              className="border p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
+              placeholder="Nombre del submenú"
+              value={editSubmenuModal.nombre}
+              onChange={(e) =>
+                setEditSubmenuModal({ ...editSubmenuModal, nombre: e.target.value })
+              }
+              maxLength={50}
+            />
+            <input
+              className="border p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
+              placeholder="Ícono (ej: fa-cog)"
+              value={editSubmenuModal.icono}
+              onChange={(e) =>
+                setEditSubmenuModal({ ...editSubmenuModal, icono: e.target.value })
+              }
+              maxLength={50}
+            />
+            <input
+              className="border p-3 mb-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-600"
+              placeholder="URL del submenú"
+              value={editSubmenuModal.url}
+              onChange={(e) =>
+                setEditSubmenuModal({ ...editSubmenuModal, url: e.target.value })
+              }
+              maxLength={100}
+            />
+            <div className="flex space-x-3">
+              <button
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex-1"
+                onClick={handleUpdateSubmenu}
+              >
+                Guardar
+              </button>
+              <button
+                className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-200 flex-1"
+                onClick={() => setEditSubmenuModal(null)}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
