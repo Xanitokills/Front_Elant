@@ -20,7 +20,9 @@ const Container = styled.div`
   padding: 1.5rem;
   background-color: #f3f4f6;
   min-height: 100vh;
-  @media (min-width: 768px) { padding: 2rem; }
+  @media (min-width: 768px) {
+    padding: 2rem;
+  }
 `;
 
 const Title = styled.h1`
@@ -36,7 +38,9 @@ const TabButton = styled.button<{ active: boolean }>`
   color: ${(props) => (props.active ? "#2563eb" : "#4b5563")};
   border-bottom: ${(props) => (props.active ? "2px solid #2563eb" : "none")};
   transition: color 0.2s ease, border-bottom 0.2s ease;
-  &:hover { color: #2563eb; }
+  &:hover {
+    color: #2563eb;
+  }
 `;
 
 const TabContent = styled.div`
@@ -51,8 +55,12 @@ const Card = styled.div`
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 1.5rem;
   transition: box-shadow 0.2s ease;
-  &:hover { box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15); }
-  @media (min-width: 768px) { padding: 2rem; }
+  &:hover {
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  }
+  @media (min-width: 768px) {
+    padding: 2rem;
+  }
 `;
 
 const Input = styled.input`
@@ -88,14 +96,18 @@ const Button = styled.button`
   padding: 0.5rem 1rem;
   border-radius: 0.375rem;
   transition: background-color 0.2s ease, transform 0.2s ease;
-  &:hover { transform: translateY(-1px); }
+  &:hover {
+    transform: translateY(-1px);
+  }
 `;
 
 const TableRow = styled.tr<{ $estado: number; $delay: number }>`
   animation: ${fadeIn} 0.5s ease-out forwards;
   animation-delay: ${(props) => props.$delay}s;
   background-color: ${(props) => (props.$estado === 1 ? "#f0fff4" : "#fef2f2")};
-  &:hover { background-color: #f9fafb; }
+  &:hover {
+    background-color: #f9fafb;
+  }
 `;
 
 interface VisitaProgramada {
@@ -184,7 +196,9 @@ const VisitasProgramadas = () => {
   const [motivo, setMotivo] = useState("");
   const [fechaLlegada, setFechaLlegada] = useState(currentDate);
   const [horaLlegada, setHoraLlegada] = useState("");
-  const [visitasProgramadas, setVisitasProgramadas] = useState<VisitaProgramada[]>([]);
+  const [visitasProgramadas, setVisitasProgramadas] = useState<
+    VisitaProgramada[]
+  >([]);
   const [filter, setFilter] = useState({
     nombre: "",
     fecha: "",
@@ -193,6 +207,7 @@ const VisitasProgramadas = () => {
   });
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"create" | "history">("create");
+  const [isCanceling, setIsCanceling] = useState(false); // Nueva bandera
 
   const fetchOwnerDepartments = async () => {
     try {
@@ -232,15 +247,19 @@ const VisitasProgramadas = () => {
   };
 
   const fetchScheduledVisits = async () => {
+    if (isCanceling) return; // Evitar fetch mientras se está cancelando
     try {
       const response = await fetch(`${API_URL}/scheduled-visits`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
-      if (!response.ok) throw new Error("Error al obtener las visitas programadas");
+      if (!response.ok)
+        throw new Error("Error al obtener las visitas programadas");
       const data = await response.json();
       console.log("Raw API response:", JSON.stringify(data, null, 2));
       const normalizedData = data
-        .filter((visit: VisitaProgramada) => visit.ID_USUARIO_PROPIETARIO === userId)
+        .filter(
+          (visit: VisitaProgramada) => visit.ID_USUARIO_PROPIETARIO === userId
+        )
         .map((visit: VisitaProgramada) => {
           console.log("Processing visit:", {
             ID: visit.ID_VISITA_PROGRAMADA,
@@ -252,38 +271,34 @@ const VisitasProgramadas = () => {
           let fechaLlegada: string | null = null;
           let horaLlegada: string | null = null;
 
-          // Handle FECHA_LLEGADA
           if (visit.FECHA_LLEGADA) {
             if (typeof visit.FECHA_LLEGADA === "string") {
               if (visit.FECHA_LLEGADA.includes("T")) {
-                // ISO format: "2025-04-14T00:00:00.000Z"
                 const date = new Date(visit.FECHA_LLEGADA);
                 if (!isNaN(date.getTime())) {
-                  fechaLlegada = date.toISOString().split("T")[0]; // "2025-04-14"
+                  fechaLlegada = date.toISOString().split("T")[0];
                 }
               } else {
-                // Already "YYYY-MM-DD"
                 fechaLlegada = visit.FECHA_LLEGADA;
               }
             } else {
-              // Date object
               fechaLlegada = visit.FECHA_LLEGADA.toISOString().split("T")[0];
             }
           }
 
-          // Handle HORA_LLEGADA
           if (visit.HORA_LLEGADA) {
             if (typeof visit.HORA_LLEGADA === "string") {
               if (visit.HORA_LLEGADA.includes("T")) {
-                // ISO format: "1970-01-01T15:00:00.000Z"
                 const date = new Date(visit.HORA_LLEGADA);
                 if (!isNaN(date.getTime())) {
                   const hours = date.getUTCHours().toString().padStart(2, "0");
-                  const minutes = date.getUTCMinutes().toString().padStart(2, "0");
-                  horaLlegada = `${hours}:${minutes}`; // "15:00"
+                  const minutes = date
+                    .getUTCMinutes()
+                    .toString()
+                    .padStart(2, "0");
+                  horaLlegada = `${hours}:${minutes}`;
                 }
               } else {
-                // Already "HH:mm" or "HH:mm:ss.sssssss"
                 const timeMatch = visit.HORA_LLEGADA.match(/^(\d{2}:\d{2})/);
                 horaLlegada = timeMatch ? timeMatch[1] : null;
               }
@@ -292,7 +307,12 @@ const VisitasProgramadas = () => {
 
           return {
             ...visit,
-            ESTADO: visit.ESTADO === true ? 1 : visit.ESTADO === false ? 0 : visit.ESTADO,
+            ESTADO:
+              visit.ESTADO === true
+                ? 1
+                : visit.ESTADO === false
+                ? 0
+                : visit.ESTADO,
             NOMBRE_VISITANTE: visit.NOMBRE_VISITANTE.toUpperCase(),
             FECHA_LLEGADA: fechaLlegada,
             HORA_LLEGADA: horaLlegada,
@@ -302,7 +322,8 @@ const VisitasProgramadas = () => {
       setVisitasProgramadas(
         normalizedData.sort(
           (a: VisitaProgramada, b: VisitaProgramada) =>
-            new Date(b.FECHA_LLEGADA).getTime() - new Date(a.FECHA_LLEGADA).getTime()
+            new Date(b.FECHA_LLEGADA).getTime() -
+            new Date(a.FECHA_LLEGADA).getTime()
         )
       );
     } catch (err) {
@@ -320,13 +341,15 @@ const VisitasProgramadas = () => {
   useEffect(() => {
     fetchOwnerDepartments();
     fetchScheduledVisits();
-    const interval = setInterval(fetchScheduledVisits, 5000);
+    const interval = setInterval(fetchScheduledVisits, 8000);
     return () => clearInterval(interval);
   }, [userId]);
 
   const handleSearchDni = async () => {
     if (!/^[a-zA-Z0-9]{8,12}$/.test(dni)) {
-      setError("El DNI o Carnet de Extranjería debe tener entre 8 y 12 caracteres alfanuméricos");
+      setError(
+        "El DNI o Carnet de Extranjería debe tener entre 8 y 12 caracteres alfanuméricos"
+      );
       setIsNombreManual(true);
       return;
     }
@@ -365,7 +388,9 @@ const VisitasProgramadas = () => {
       return;
     }
     if (!/^[a-zA-Z0-9]{8,12}$/.test(dni)) {
-      setError("El DNI o Carnet de Extranjería debe tener entre 8 y 12 caracteres alfanuméricos");
+      setError(
+        "El DNI o Carnet de Extranjería debe tener entre 8 y 12 caracteres alfanuméricos"
+      );
       Swal.fire({
         icon: "error",
         title: "Identificador inválido",
@@ -429,7 +454,9 @@ const VisitasProgramadas = () => {
       });
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Error al registrar la visita programada");
+        throw new Error(
+          errorData.message || "Error al registrar la visita programada"
+        );
       }
       Swal.fire({
         icon: "success",
@@ -442,7 +469,9 @@ const VisitasProgramadas = () => {
       setDni("");
       setNombreVisitante("");
       setIsNombreManual(false);
-      setNroDpto(departamentos.length === 1 ? departamentos[0].NRO_DPTO.toString() : "");
+      setNroDpto(
+        departamentos.length === 1 ? departamentos[0].NRO_DPTO.toString() : ""
+      );
       setMotivo("");
       setFechaLlegada(currentDate);
       setHoraLlegada("");
@@ -468,41 +497,100 @@ const VisitasProgramadas = () => {
   };
 
   const handleCancelVisit = async (idVisita: number) => {
+    // Mostrar mensaje de confirmación
+    const result = await Swal.fire({
+      icon: "warning",
+      title: "¿Estás seguro?",
+      text: "¿Deseas cancelar esta visita programada?",
+      showCancelButton: true,
+      confirmButtonText: "Sí, cancelar",
+      cancelButtonText: "No",
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+    });
+  
+    if (!result.isConfirmed) {
+      return; // Si el usuario cancela, no hacemos nada
+    }
+  
+    setIsCanceling(true); // Activar la bandera
     try {
       const response = await fetch(`${API_URL}/scheduled-visits/${idVisita}/cancel`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
-      if (!response.ok) throw new Error("Error al cancelar la visita");
-      Swal.fire({
-        icon: "success",
-        title: "Éxito",
-        text: "Visita cancelada correctamente",
-        timer: 2000,
-        showConfirmButton: false,
-      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (response.status === 400) {
+          if (errorData.message === "La visita ya está procesada o cancelada" || errorData.message === "No se pudo cancelar la visita: estado no válido") {
+            // Verificar el estado actual de la visita
+            const visitResponse = await fetch(`${API_URL}/scheduled-visits`, {
+              headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+            });
+            if (!visitResponse.ok) throw new Error("Error al verificar el estado de la visita");
+            const visits = await visitResponse.json();
+            const visit = visits.find((v: VisitaProgramada) => v.ID_VISITA_PROGRAMADA === idVisita);
+  
+            if (!visit || visit.ESTADO === 0) {
+              // Si la visita no existe en la lista (porque ya fue procesada) o tiene ESTADO = 0, considerarlo un éxito
+              Swal.fire({
+                icon: "success",
+                title: "Éxito",
+                text: "Visita cancelada correctamente",
+                timer: 2000,
+                showConfirmButton: false,
+              });
+            } else {
+              throw new Error(errorData.message || "Error al cancelar la visita");
+            }
+          } else {
+            throw new Error(errorData.message || "Error al cancelar la visita");
+          }
+        } else {
+          throw new Error(errorData.message || "Error al cancelar la visita");
+        }
+      } else {
+        Swal.fire({
+          icon: "success",
+          title: "Éxito",
+          text: "Visita cancelada correctamente",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      }
+  
       await fetchScheduledVisits();
     } catch (err) {
       console.error("Error al cancelar visita:", err);
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "No se pudo cancelar la visita",
+        text: err.message || "No se pudo cancelar la visita",
         timer: 2000,
         showConfirmButton: false,
       });
+    } finally {
+      setIsCanceling(false); // Desactivar la bandera
     }
   };
 
   const filteredVisitasProgramadas = visitasProgramadas.filter((visita) => {
     const fechaLlegada = formatDate(visita.FECHA_LLEGADA);
     const estadoNum =
-      typeof visita.ESTADO === "boolean" ? (visita.ESTADO ? 1 : 0) : visita.ESTADO;
+      typeof visita.ESTADO === "boolean"
+        ? visita.ESTADO
+          ? 1
+          : 0
+        : visita.ESTADO;
     return (
       (filter.nombre === "" ||
-        visita.NOMBRE_VISITANTE.toLowerCase().includes(filter.nombre.toLowerCase())) &&
+        visita.NOMBRE_VISITANTE.toLowerCase().includes(
+          filter.nombre.toLowerCase()
+        )) &&
       (filter.fecha === "" || fechaLlegada === filter.fecha) &&
-      (filter.nroDpto === "" || visita.NRO_DPTO.toString() === filter.nroDpto) &&
+      (filter.nroDpto === "" ||
+        visita.NRO_DPTO.toString() === filter.nroDpto) &&
       (filter.estado === "" || estadoNum.toString() === filter.estado)
     );
   });
@@ -514,15 +602,17 @@ const VisitasProgramadas = () => {
       .map((visita) => {
         const estadoNum =
           typeof visita.ESTADO === "boolean"
-            ? visita.ESTADO ? 1 : 0
+            ? visita.ESTADO
+              ? 1
+              : 0
             : visita.ESTADO;
         return `${visita.ID_VISITA_PROGRAMADA},${visita.NRO_DPTO},${
           visita.NOMBRE_VISITANTE
-        },${visita.DNI_VISITANTE},${visita.NOMBRE_PROPIETARIO || "-"},${formatDate(
-          visita.FECHA_LLEGADA
-        )},${formatTime(visita.HORA_LLEGADA)},${visita.MOTIVO},${
-          estadoNum === 1 ? "Pendiente" : "Procesada"
-        }`;
+        },${visita.DNI_VISITANTE},${
+          visita.NOMBRE_PROPIETARIO || "-"
+        },${formatDate(visita.FECHA_LLEGADA)},${formatTime(
+          visita.HORA_LLEGADA
+        )},${visita.MOTIVO},${estadoNum === 1 ? "Pendiente" : "Procesada"}`;
       })
       .join("\n");
     const csv = headers + rows;
@@ -547,10 +637,16 @@ const VisitasProgramadas = () => {
       <Title>Gestión de Visitas Programadas</Title>
       <div className="mb-6">
         <div className="flex space-x-4 border-b">
-          <TabButton active={activeTab === "create"} onClick={() => setActiveTab("create")}>
+          <TabButton
+            active={activeTab === "create"}
+            onClick={() => setActiveTab("create")}
+          >
             Registrar Visita Programada
           </TabButton>
-          <TabButton active={activeTab === "history"} onClick={() => setActiveTab("history")}>
+          <TabButton
+            active={activeTab === "history"}
+            onClick={() => setActiveTab("history")}
+          >
             Historial de Visitas Programadas
           </TabButton>
         </div>
@@ -558,9 +654,13 @@ const VisitasProgramadas = () => {
       <TabContent>
         {activeTab === "create" && (
           <Card>
-            <h2 className="text-lg font-semibold mb-4">Registrar Nueva Visita Programada</h2>
+            <h2 className="text-lg font-semibold mb-4">
+              Registrar Nueva Visita Programada
+            </h2>
             {error && (
-              <p className="text-red-500 mb-4 bg-red-50 p-2 rounded-lg">{error}</p>
+              <p className="text-red-500 mb-4 bg-red-50 p-2 rounded-lg">
+                {error}
+              </p>
             )}
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
@@ -591,7 +691,8 @@ const VisitasProgramadas = () => {
                     </Button>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Ingresa el DNI o CE y haz clic en buscar. Si no tienes, ingresa manualmente.
+                    Ingresa el DNI o CE y haz clic en buscar. Si no tienes,
+                    ingresa manualmente.
                   </p>
                 </div>
                 <div className="md:col-span-7">
@@ -602,10 +703,13 @@ const VisitasProgramadas = () => {
                     type="text"
                     value={nombreVisitante}
                     onChange={(e) => {
-                      if (isNombreManual) setNombreVisitante(e.target.value.toUpperCase());
+                      if (isNombreManual)
+                        setNombreVisitante(e.target.value.toUpperCase());
                     }}
                     readOnly={!isNombreManual}
-                    className={isNombreManual ? "" : "bg-gray-100 text-gray-700"}
+                    className={
+                      isNombreManual ? "" : "bg-gray-100 text-gray-700"
+                    }
                     placeholder="Ingresa el nombre completo"
                     required
                   />
@@ -638,7 +742,8 @@ const VisitasProgramadas = () => {
                       <option value="">Seleccione un departamento</option>
                       {departamentos.map((depto) => (
                         <option key={depto.NRO_DPTO} value={depto.NRO_DPTO}>
-                          {depto.NRO_DPTO} {depto.IS_PRINCIPAL ? "(Principal)" : ""}
+                          {depto.NRO_DPTO}{" "}
+                          {depto.IS_PRINCIPAL ? "(Principal)" : ""}
                         </option>
                       ))}
                     </Select>
@@ -712,7 +817,9 @@ const VisitasProgramadas = () => {
         )}
         {activeTab === "history" && (
           <Card>
-            <h2 className="text-lg font-semibold mb-4">Historial de Visitas Programadas</h2>
+            <h2 className="text-lg font-semibold mb-4">
+              Historial de Visitas Programadas
+            </h2>
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 w-full md:w-3/4">
                 <div>
@@ -725,7 +832,8 @@ const VisitasProgramadas = () => {
                     value={filter.nroDpto}
                     onChange={(e) => {
                       const value = e.target.value;
-                      if (value === "" || /^[0-9]*$/.test(value)) handleFilterChange(e);
+                      if (value === "" || /^[0-9]*$/.test(value))
+                        handleFilterChange(e);
                     }}
                     placeholder="Ejemplo: 101"
                   />
@@ -757,7 +865,11 @@ const VisitasProgramadas = () => {
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Estado
                   </label>
-                  <Select name="estado" value={filter.estado} onChange={handleFilterChange}>
+                  <Select
+                    name="estado"
+                    value={filter.estado}
+                    onChange={handleFilterChange}
+                  >
                     <option value="">Todas</option>
                     <option value="1">Pendientes</option>
                     <option value="0">Procesadas</option>
@@ -778,22 +890,45 @@ const VisitasProgramadas = () => {
               <table className="min-w-full bg-white border border-gray-200">
                 <thead>
                   <tr className="bg-gray-50 text-gray-700">
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">ID Visita</th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Número Dpto</th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Nombre Visitante</th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">DNI/CE</th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Propietario</th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Fecha Llegada</th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Hora Tentativa</th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Motivo</th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Estado</th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Acciones</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                      ID Visita
+                    </th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                      Número Dpto
+                    </th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                      Nombre Visitante
+                    </th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                      DNI/CE
+                    </th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                      Propietario
+                    </th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                      Fecha Llegada
+                    </th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                      Hora Tentativa
+                    </th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                      Motivo
+                    </th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                      Estado
+                    </th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                      Acciones
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredVisitasProgramadas.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="py-4 text-center text-gray-500">
+                      <td
+                        colSpan={10}
+                        className="py-4 text-center text-gray-500"
+                      >
                         No hay visitas programadas para mostrar.
                       </td>
                     </tr>
@@ -811,13 +946,23 @@ const VisitasProgramadas = () => {
                           $estado={estadoNum}
                           $delay={index * 0.1}
                         >
-                          <td className="py-3 px-4">{visita.ID_VISITA_PROGRAMADA}</td>
+                          <td className="py-3 px-4">
+                            {visita.ID_VISITA_PROGRAMADA}
+                          </td>
                           <td className="py-3 px-4">{visita.NRO_DPTO}</td>
-                          <td className="py-3 px-4">{visita.NOMBRE_VISITANTE}</td>
+                          <td className="py-3 px-4">
+                            {visita.NOMBRE_VISITANTE}
+                          </td>
                           <td className="py-3 px-4">{visita.DNI_VISITANTE}</td>
-                          <td className="py-3 px-4">{visita.NOMBRE_PROPIETARIO || "-"}</td>
-                          <td className="py-3 px-4">{formatDate(visita.FECHA_LLEGADA)}</td>
-                          <td className="py-3 px-4">{formatTime(visita.HORA_LLEGADA)}</td>
+                          <td className="py-3 px-4">
+                            {visita.NOMBRE_PROPIETARIO || "-"}
+                          </td>
+                          <td className="py-3 px-4">
+                            {formatDate(visita.FECHA_LLEGADA)}
+                          </td>
+                          <td className="py-3 px-4">
+                            {formatTime(visita.HORA_LLEGADA)}
+                          </td>
                           <td className="py-3 px-4">{visita.MOTIVO}</td>
                           <td className="py-3 px-4">
                             <span
@@ -834,7 +979,9 @@ const VisitasProgramadas = () => {
                             {estadoNum === 1 && (
                               <Button
                                 className="bg-red-600 text-white hover:bg-red-700 text-xs py-1 px-2"
-                                onClick={() => handleCancelVisit(visita.ID_VISITA_PROGRAMADA)}
+                                onClick={() =>
+                                  handleCancelVisit(visita.ID_VISITA_PROGRAMADA)
+                                }
                               >
                                 Cancelar
                               </Button>
