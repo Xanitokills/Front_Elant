@@ -794,8 +794,8 @@ const Visits = () => {
                             <span
                               className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
                                 estadoNum === 1
-                                  ? "bg-green-200 text-green-800"
-                                  : "bg-red-200 text-red-800"
+                                  ? "bg-blue-100 text-[#2563eb]"
+                                  : "bg-red-100 text-red-700"
                               }`}
                             >
                               {estadoNum === 1 ? "Activa" : "Terminada"}
