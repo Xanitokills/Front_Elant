@@ -90,6 +90,19 @@ const Input = styled.input`
   }
 `;
 
+const Select = styled.select`
+  border: 1px solid #d1d5db;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  width: 100%;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  &:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+  }
+`;
+
 const Button = styled.button`
   display: flex;
   align-items: center;
@@ -102,12 +115,16 @@ const Button = styled.button`
   }
 `;
 
-const TableRow = styled.tr<{ estado: number; delay: number; isHighlighted?: boolean }>`
+const TableRow = styled.tr<{
+  estado: number;
+  delay: number;
+  isHighlighted?: boolean;
+}>`
   animation: ${fadeIn} 0.5s ease-out forwards;
   animation-delay: ${(props) => props.delay}s;
   background-color: ${(props) =>
     props.isHighlighted
-      ? "rgba(37, 99, 235, 0.3)" // Soft shaded blue
+      ? "rgba(37, 99, 235, 0.3)"
       : props.estado === 1
       ? "#f0fff4"
       : "#fef2f2"};
@@ -116,6 +133,11 @@ const TableRow = styled.tr<{ estado: number; delay: number; isHighlighted?: bool
       props.isHighlighted ? "rgba(37, 99, 235, 0.4)" : "#f9fafb"};
   }
 `;
+
+interface Propietario {
+  ID_USUARIO: number;
+  NOMBRE_COMPLETO: string;
+}
 
 interface Visitante {
   ID_VISITA: number;
@@ -126,6 +148,8 @@ interface Visitante {
   FECHA_SALIDA: string | null;
   MOTIVO: string;
   ID_USUARIO_REGISTRO: number;
+  ID_USUARIO_PROPIETARIO: number;
+  NOMBRE_PROPIETARIO: string;
   ESTADO: number;
 }
 
@@ -134,6 +158,8 @@ const Visits = () => {
   const [nombreVisitante, setNombreVisitante] = useState("");
   const [nroDpto, setNroDpto] = useState("");
   const [motivo, setMotivo] = useState("");
+  const [idUsuarioPropietario, setIdUsuarioPropietario] = useState("");
+  const [propietarios, setPropietarios] = useState<Propietario[]>([]);
   const [visitas, setVisitas] = useState<Visitante[]>([]);
   const [filter, setFilter] = useState({ nombre: "", fecha: "" });
   const [error, setError] = useState("");
@@ -141,7 +167,9 @@ const Visits = () => {
   const now = new Date();
   const currentDate = now.toISOString().slice(0, 10);
   const [activeTab, setActiveTab] = useState<"create" | "history">("create");
-  const [highlightedVisitId, setHighlightedVisitId] = useState<number | null>(null);
+  const [highlightedVisitId, setHighlightedVisitId] = useState<number | null>(
+    null
+  );
 
   // Fetch visits from backend
   const fetchVisits = async () => {
@@ -153,14 +181,52 @@ const Visits = () => {
       });
       if (!response.ok) throw new Error("Error al obtener las visitas");
       const data = await response.json();
-      // Sort visits by ID_VISITA descending to ensure newest is first
-      setVisitas(data.sort((a: Visitante, b: Visitante) => b.ID_VISITA - a.ID_VISITA));
+      setVisitas(
+        data.sort((a: Visitante, b: Visitante) => b.ID_VISITA - a.ID_VISITA)
+      );
     } catch (err) {
       console.error("Error al obtener las visitas:", err);
       Swal.fire({
         icon: "error",
         title: "Error",
         text: "No se pudieron cargar las visitas",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  };
+
+  // Fetch owners by department number
+  const fetchOwners = async (nroDpto: string) => {
+    if (!nroDpto || isNaN(parseInt(nroDpto))) {
+      setPropietarios([]);
+      setIdUsuarioPropietario("");
+      return;
+    }
+    try {
+      const response = await fetch(`${API_URL}/owners?nro_dpto=${nroDpto}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      if (!response.ok) throw new Error("Error al obtener propietarios");
+      const data = await response.json();
+      setPropietarios(data);
+      if (data.length === 0) {
+        setIdUsuarioPropietario("");
+        setError("No se encontraron propietarios para este departamento");
+      } else {
+        setError("");
+      }
+    } catch (err) {
+      console.error("Error al obtener propietarios:", err);
+      setPropietarios([]);
+      setIdUsuarioPropietario("");
+      setError("No se pudieron cargar los propietarios");
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudieron cargar los propietarios",
         timer: 2000,
         showConfirmButton: false,
       });
@@ -206,6 +272,10 @@ const Visits = () => {
     const value = e.target.value;
     if (value === "" || (/^[0-9]{1,5}$/.test(value) && parseInt(value) >= 0)) {
       setNroDpto(value);
+      fetchOwners(value);
+    } else {
+      setPropietarios([]);
+      setIdUsuarioPropietario("");
     }
   };
 
@@ -219,12 +289,12 @@ const Visits = () => {
 
   // Handle saving a visit
   const handleSaveVisit = async () => {
-    if (!nombreVisitante || !motivo || !nroDpto) {
-      setError("Por favor, complete todos los campos");
+    if (!nombreVisitante || !motivo || !nroDpto || !idUsuarioPropietario) {
+      setError("Por favor, complete todos los campos, incluido el propietario");
       Swal.fire({
         icon: "warning",
         title: "Campos incompletos",
-        text: "Por favor, complete todos los campos",
+        text: "Por favor, complete todos los campos, incluido el propietario",
         timer: 2000,
         showConfirmButton: false,
       });
@@ -245,6 +315,7 @@ const Visits = () => {
           fecha_ingreso: new Date().toISOString(),
           motivo,
           id_usuario_registro: userId || 1,
+          id_usuario_propietario: parseInt(idUsuarioPropietario), // Nuevo
           estado: 1,
         }),
       });
@@ -252,7 +323,7 @@ const Visits = () => {
         const errorData = await response.json();
         throw new Error(errorData.message || "Error al grabar la visita");
       }
-      const newVisit = await response.json(); // Get the newly created visit
+      const newVisit = await response.json();
       Swal.fire({
         icon: "success",
         title: "Éxito",
@@ -260,16 +331,15 @@ const Visits = () => {
         timer: 2000,
         showConfirmButton: false,
       });
-      // Fetch visits immediately to ensure the new visit is included
       await fetchVisits();
       setDni("");
       setNombreVisitante("");
       setNroDpto("");
       setMotivo("");
+      setIdUsuarioPropietario("");
+      setPropietarios([]);
       setActiveTab("history");
-      // Highlight the new visit
       setHighlightedVisitId(newVisit.ID_VISITA);
-      // Remove highlight after 10 seconds
       setTimeout(() => {
         setHighlightedVisitId(null);
       }, 10000);
@@ -294,20 +364,32 @@ const Visits = () => {
 
   // Filter visits
   const filteredVisitas = visitas.filter((visita) => {
-    const fechaIngreso = new Date(visita.FECHA_INGRESO).toISOString().slice(0, 10);
+    const fechaIngreso = new Date(visita.FECHA_INGRESO)
+      .toISOString()
+      .slice(0, 10);
     return (
       (filter.nombre === "" ||
-        visita.NOMBRE_VISITANTE.toLowerCase().includes(filter.nombre.toLowerCase())) &&
+        visita.NOMBRE_VISITANTE.toLowerCase().includes(
+          filter.nombre.toLowerCase()
+        )) &&
       (filter.fecha === "" || fechaIngreso === filter.fecha)
     );
   });
 
   // Export to CSV
   const exportToCSV = () => {
-    const headers = "ID Visita,Número Dpto,Nombre Visitante,DNI,Fecha Ingreso,Fecha Salida,Motivo,Estado\n";
+    const headers =
+      "ID Visita,Número Dpto,Nombre Visitante,DNI,Fecha Ingreso,Fecha Salida,Motivo,Propietario,Estado\n";
     const rows = filteredVisitas
-      .map((visita) =>
-        `${visita.ID_VISITA},${visita.NRO_DPTO ?? "-"},${visita.NOMBRE_VISITANTE},${visita.DNI_VISITANTE},${visita.FECHA_INGRESO},${visita.FECHA_SALIDA ?? "-"},${visita.MOTIVO},${visita.ESTADO}`
+      .map(
+        (visita) =>
+          `${visita.ID_VISITA},${visita.NRO_DPTO ?? "-"},${
+            visita.NOMBRE_VISITANTE
+          },${visita.DNI_VISITANTE},${visita.FECHA_INGRESO},${
+            visita.FECHA_SALIDA ?? "-"
+          },${visita.MOTIVO},${visita.NOMBRE_PROPIETARIO ?? "-"},${
+            visita.ESTADO
+          }`
       )
       .join("\n");
     const csv = headers + rows;
@@ -354,9 +436,13 @@ const Visits = () => {
         {/* Registrar Visita */}
         {activeTab === "create" && (
           <Card>
-            <h2 className="text-lg font-semibold mb-4">Registrar Nueva Visita</h2>
+            <h2 className="text-lg font-semibold mb-4">
+              Registrar Nueva Visita
+            </h2>
             {error && (
-              <p className="text-red-500 mb-4 bg-red-50 p-2 rounded-lg">{error}</p>
+              <p className="text-red-500 mb-4 bg-red-50 p-2 rounded-lg">
+                {error}
+              </p>
             )}
             <div className="space-y-6">
               {/* DNI y Nombre */}
@@ -404,7 +490,7 @@ const Visits = () => {
                 </div>
               </div>
 
-              {/* Número de Departamento y Motivo */}
+              {/* Número de Departamento y Propietario */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                 <div className="md:col-span-3">
                   <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -422,18 +508,43 @@ const Visits = () => {
                 </div>
                 <div className="md:col-span-9">
                   <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Motivo de la Visita
+                    Propietario
                   </label>
-                  <Input
-                    type="text"
-                    value={motivo}
-                    onChange={handleMotivoChange}
-                    placeholder="Ejemplo: Reunión familiar"
-                  />
+                  <select
+                    className="border rounded p-3 w-full"
+                    value={idUsuarioPropietario ?? ""}
+                    onChange={(e) =>
+                      setIdUsuarioPropietario(Number(e.target.value))
+                    }
+                    disabled={propietarios.length === 0}
+                  >
+                    <option value="">Seleccione un propietario</option>
+                    {propietarios.map((prop) => (
+                      <option key={prop.ID_USUARIO} value={prop.ID_USUARIO}>
+                        {prop.NOMBRE_COMPLETO}
+                      </option>
+                    ))}
+                  </select>
                   <p className="text-xs text-gray-500 mt-1">
-                    Máximo 80 caracteres. ({motivo.length}/80)
+                    Seleccione el propietario del departamento.
                   </p>
                 </div>
+              </div>
+
+              {/* Motivo (ahora en línea separada) */}
+              <div className="grid grid-cols-1">
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Motivo de la Visita
+                </label>
+                <Input
+                  type="text"
+                  value={motivo}
+                  onChange={handleMotivoChange}
+                  placeholder="Ejemplo: Reunión familiar"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Máximo 80 caracteres. ({motivo.length}/80)
+                </p>
               </div>
             </div>
 
@@ -448,7 +559,6 @@ const Visits = () => {
             </div>
           </Card>
         )}
-
         {/* Historial de Visitas */}
         {activeTab === "history" && (
           <Card>
@@ -509,6 +619,9 @@ const Visits = () => {
                       DNI
                     </th>
                     <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                      Propietario
+                    </th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
                       Fecha Ingreso
                     </th>
                     <th className="py-3 px-4 border-b text-left text-sm font-semibold">
@@ -525,7 +638,10 @@ const Visits = () => {
                 <tbody>
                   {filteredVisitas.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-4 text-center text-gray-500">
+                      <td
+                        colSpan={9}
+                        className="py-4 text-center text-gray-500"
+                      >
                         No hay visitas para mostrar.
                       </td>
                     </tr>
@@ -541,6 +657,9 @@ const Visits = () => {
                         <td className="py-3 px-4">{visita.NRO_DPTO ?? "-"}</td>
                         <td className="py-3 px-4">{visita.NOMBRE_VISITANTE}</td>
                         <td className="py-3 px-4">{visita.DNI_VISITANTE}</td>
+                        <td className="py-3 px-4">
+                          {visita.NOMBRE_PROPIETARIO ?? "-"}
+                        </td>
                         <td className="py-3 px-4">
                           {new Date(visita.FECHA_INGRESO).toLocaleString()}
                         </td>
