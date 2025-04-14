@@ -1149,6 +1149,7 @@ const Visits = () => {
                           <td className="py-3 px-4">{fechaLlegadaFormatted}</td>
                           <td className="py-3 px-4">
                             {(() => {
+                              // Si HORA_LLEGADA es null o undefined, mostrar "-"
                               if (!visita.HORA_LLEGADA) {
                                 console.log(
                                   "HORA_LLEGADA es null o undefined:",
@@ -1156,6 +1157,7 @@ const Visits = () => {
                                 );
                                 return "-";
                               }
+
                               try {
                                 console.log(
                                   "HORA_LLEGADA raw:",
@@ -1163,11 +1165,16 @@ const Visits = () => {
                                   "ID:",
                                   visita.ID_VISITA_PROGRAMADA
                                 );
-                                if (
-                                  !/^\d{2}:\d{2}:\d{2}$/.test(
-                                    visita.HORA_LLEGADA
-                                  )
+
+                                // Normalizar HORA_LLEGADA para aceptar formatos como "HH:mm:ss" o "HH:mm"
+                                let normalizedTime = visita.HORA_LLEGADA.trim();
+                                if (/^\d{2}:\d{2}$/.test(normalizedTime)) {
+                                  // Si es "HH:mm", agregar ":00" para que sea "HH:mm:ss"
+                                  normalizedTime = `${normalizedTime}:00`;
+                                } else if (
+                                  !/^\d{2}:\d{2}:\d{2}$/.test(normalizedTime)
                                 ) {
+                                  // Si no coincide con "HH:mm:ss" ni "HH:mm", es un formato inválido
                                   console.warn(
                                     "Formato de HORA_LLEGADA inválido:",
                                     visita.HORA_LLEGADA,
@@ -1176,8 +1183,10 @@ const Visits = () => {
                                   );
                                   return "-";
                                 }
+
+                                // Crear un objeto Date para formatear la hora
                                 const date = new Date(
-                                  `1970-01-01T${visita.HORA_LLEGADA}`
+                                  `1970-01-01T${normalizedTime}`
                                 );
                                 if (isNaN(date.getTime())) {
                                   console.warn(
@@ -1188,6 +1197,8 @@ const Visits = () => {
                                   );
                                   return "-";
                                 }
+
+                                // Formatear la hora como "HH:mm AM/PM"
                                 return date.toLocaleTimeString([], {
                                   hour: "2-digit",
                                   minute: "2-digit",
