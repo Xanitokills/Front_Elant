@@ -18,6 +18,7 @@ import Login from "./pages/Login";
 import LoginConfig from "./components/LoginConfig";
 import Reservations from "./components/Reservations"; 
 import MenuSubmenuGestion from "./components/MenuSubmenuGestion"; 
+import VisitasProgramadas from "./components/visitasProgramadas";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { FaBars } from "react-icons/fa";
 
@@ -98,6 +99,7 @@ const App = () => {
           <Route path="/ChangePass" element={<ChangePassword />} />
           <Route path="/reservas" element={<Reservations />} />
           <Route path="/menu-submenu" element={<MenuSubmenuGestion />} />
+          <Route path="/VisitasProgramadas" element={<VisitasProgramadas />} />
            {/* New Route */}
           <Route
             path="/settings/:section"
