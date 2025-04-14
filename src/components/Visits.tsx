@@ -261,7 +261,8 @@ const Visits = () => {
   // Fetch scheduled visits from backend
   const fetchScheduledVisits = async () => {
     try {
-      const response = await fetch(`${API_URL}/scheduled-visits`, {
+      const response = await fetch(`${API_URL}/all-scheduled-visits`, {
+        // Cambiado a /all-scheduled-visits
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -292,7 +293,6 @@ const Visits = () => {
       });
     }
   };
-
   // Fetch owners by department number
   const fetchOwners = async (nroDpto: string) => {
     if (!nroDpto || isNaN(parseInt(nroDpto))) {
@@ -602,30 +602,29 @@ const Visits = () => {
           ? 1
           : 0
         : visita.ESTADO;
-  
+
     const matchEstado =
       filter.estado === "todos"
         ? true
         : filter.estado === "activas"
         ? estadoNum === 1
         : estadoNum === 0;
-  
-    const matchFecha =
-      filter.fecha === "" || fechaIngreso === filter.fecha;
-  
+
+    const matchFecha = filter.fecha === "" || fechaIngreso === filter.fecha;
+
     const matchNombre =
       filter.nombre === "" ||
       visita.NOMBRE_VISITANTE.toLowerCase().includes(
         filter.nombre.toLowerCase()
       );
-  
+
     const matchDpto =
       filter.nroDpto === "" ||
       (visita.NRO_DPTO && visita.NRO_DPTO.toString() === filter.nroDpto);
-  
+
     return matchEstado && matchFecha && matchNombre && matchDpto;
   });
-  
+
   // Export to CSV
   const exportToCSV = () => {
     const headers =
