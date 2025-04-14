@@ -191,8 +191,8 @@ const Visits = () => {
   >([]);
   const [filter, setFilter] = useState({
     nombre: "",
-    fecha: "",
-    estado: "todos",
+    fecha: currentDate,
+    estado: "activas",
     nroDpto: "",
   });
   const [filterScheduled, setFilterScheduled] = useState({
@@ -592,7 +592,6 @@ const Visits = () => {
     setFilter((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Filter visits
   const filteredVisitas = visitas.filter((visita) => {
     const fechaIngreso = new Date(visita.FECHA_INGRESO)
       .toISOString()
@@ -603,20 +602,30 @@ const Visits = () => {
           ? 1
           : 0
         : visita.ESTADO;
-    return (
-      (filter.nombre === "" ||
-        visita.NOMBRE_VISITANTE.toLowerCase().includes(
-          filter.nombre.toLowerCase()
-        )) &&
-      (filter.fecha === "" || fechaIngreso === filter.fecha) &&
-      (filter.nroDpto === "" ||
-        (visita.NRO_DPTO && visita.NRO_DPTO.toString() === filter.nroDpto)) &&
-      (filter.estado === "todos" ||
-        (filter.estado === "activas" && estadoNum === 1) ||
-        (filter.estado === "terminadas" && estadoNum === 0))
-    );
+  
+    const matchEstado =
+      filter.estado === "todos"
+        ? true
+        : filter.estado === "activas"
+        ? estadoNum === 1
+        : estadoNum === 0;
+  
+    const matchFecha =
+      filter.fecha === "" || fechaIngreso === filter.fecha;
+  
+    const matchNombre =
+      filter.nombre === "" ||
+      visita.NOMBRE_VISITANTE.toLowerCase().includes(
+        filter.nombre.toLowerCase()
+      );
+  
+    const matchDpto =
+      filter.nroDpto === "" ||
+      (visita.NRO_DPTO && visita.NRO_DPTO.toString() === filter.nroDpto);
+  
+    return matchEstado && matchFecha && matchNombre && matchDpto;
   });
-
+  
   // Export to CSV
   const exportToCSV = () => {
     const headers =
