@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FaSearch, FaSave, FaFileExport } from "react-icons/fa";
+import { FaSearch, FaSave, FaFileExport, FaSignOutAlt } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 import styled, { keyframes } from "styled-components";
 import Swal from "sweetalert2";
@@ -107,7 +107,7 @@ const Button = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem 1.5rem;
+  padding: 0.5rem 1rem;
   border-radius: 0.375rem;
   transition: background-color 0.2s ease, transform 0.2s ease;
   &:hover {
@@ -116,21 +116,21 @@ const Button = styled.button`
 `;
 
 const TableRow = styled.tr<{
-  estado: number;
-  delay: number;
-  isHighlighted?: boolean;
+  $estado: number;
+  $delay: number;
+  $isHighlighted?: boolean;
 }>`
   animation: ${fadeIn} 0.5s ease-out forwards;
-  animation-delay: ${(props) => props.delay}s;
+  animation-delay: ${(props) => props.$delay}s;
   background-color: ${(props) =>
-    props.isHighlighted
+    props.$isHighlighted
       ? "rgba(37, 99, 235, 0.3)"
-      : props.estado === 1
+      : props.$estado === 1
       ? "#f0fff4"
       : "#fef2f2"};
   &:hover {
     background-color: ${(props) =>
-      props.isHighlighted ? "rgba(37, 99, 235, 0.4)" : "#f9fafb"};
+      props.$isHighlighted ? "rgba(37, 99, 235, 0.4)" : "#f9fafb"};
   }
 `;
 
@@ -150,7 +150,7 @@ interface Visitante {
   ID_USUARIO_REGISTRO: number;
   ID_USUARIO_PROPIETARIO: number;
   NOMBRE_PROPIETARIO: string;
-  ESTADO: number;
+  ESTADO: number | boolean; // Allow boolean due to SQL Server BIT type
 }
 
 const Visits = () => {
@@ -161,7 +161,12 @@ const Visits = () => {
   const [idUsuarioPropietario, setIdUsuarioPropietario] = useState("");
   const [propietarios, setPropietarios] = useState<Propietario[]>([]);
   const [visitas, setVisitas] = useState<Visitante[]>([]);
-  const [filter, setFilter] = useState({ nombre: "", fecha: "" });
+  const [filter, setFilter] = useState({
+    nombre: "",
+    fecha: "",
+    estado: "todos",
+    nroDpto: "",
+  });
   const [error, setError] = useState("");
   const { userId } = useAuth();
   const now = new Date();
@@ -181,8 +186,16 @@ const Visits = () => {
       });
       if (!response.ok) throw new Error("Error al obtener las visitas");
       const data = await response.json();
+      // Convert ESTADO from boolean to number
+      const normalizedData = data.map((visit: Visitante) => ({
+        ...visit,
+        ESTADO:
+          visit.ESTADO === true ? 1 : visit.ESTADO === false ? 0 : visit.ESTADO,
+      }));
       setVisitas(
-        data.sort((a: Visitante, b: Visitante) => b.ID_VISITA - a.ID_VISITA)
+        normalizedData.sort(
+          (a: Visitante, b: Visitante) => b.ID_VISITA - a.ID_VISITA
+        )
       );
     } catch (err) {
       console.error("Error al obtener las visitas:", err);
@@ -233,6 +246,52 @@ const Visits = () => {
     }
   };
 
+  // End a visit
+  const handleEndVisit = async (idVisita: number) => {
+    Swal.fire({
+      title: "¿Confirmar?",
+      text: "¿Estás seguro de terminar esta visita?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#2563eb",
+      cancelButtonColor: "#ef4444",
+      confirmButtonText: "Sí, terminar",
+      cancelButtonText: "Cancelar",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          const response = await fetch(`${API_URL}/visits/${idVisita}/end`, {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || "Error al terminar la visita");
+          }
+          Swal.fire({
+            icon: "success",
+            title: "Éxito",
+            text: "Visita terminada correctamente",
+            timer: 2000,
+            showConfirmButton: false,
+          });
+          await fetchVisits();
+        } catch (err) {
+          console.error("Error al terminar la visita:", err);
+          Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "No se pudo terminar la visita",
+            timer: 2000,
+            showConfirmButton: false,
+          });
+        }
+      }
+    });
+  };
+
   useEffect(() => {
     fetchVisits();
     const interval = setInterval(fetchVisits, 5000);
@@ -241,8 +300,8 @@ const Visits = () => {
 
   // Handle DNI search
   const handleSearchDni = async () => {
-    if (!/^[0-9]{8,}$/.test(dni)) {
-      setError("El DNI debe tener al menos 8 dígitos numéricos");
+    if (!/^[0-9]{8}$/.test(dni)) {
+      setError("El DNI debe tener exactamente 8 dígitos numéricos");
       return;
     }
     setError("");
@@ -315,7 +374,7 @@ const Visits = () => {
           fecha_ingreso: new Date().toISOString(),
           motivo,
           id_usuario_registro: userId || 1,
-          id_usuario_propietario: parseInt(idUsuarioPropietario), // Nuevo
+          id_usuario_propietario: parseInt(idUsuarioPropietario),
           estado: 1,
         }),
       });
@@ -323,7 +382,6 @@ const Visits = () => {
         const errorData = await response.json();
         throw new Error(errorData.message || "Error al grabar la visita");
       }
-      const newVisit = await response.json();
       Swal.fire({
         icon: "success",
         title: "Éxito",
@@ -339,7 +397,7 @@ const Visits = () => {
       setIdUsuarioPropietario("");
       setPropietarios([]);
       setActiveTab("history");
-      setHighlightedVisitId(newVisit.ID_VISITA);
+      setHighlightedVisitId((await response.json()).ID_VISITA || null);
       setTimeout(() => {
         setHighlightedVisitId(null);
       }, 10000);
@@ -357,7 +415,9 @@ const Visits = () => {
   };
 
   // Handle filter changes
-  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFilterChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
     setFilter((prev) => ({ ...prev, [name]: value }));
   };
@@ -367,30 +427,46 @@ const Visits = () => {
     const fechaIngreso = new Date(visita.FECHA_INGRESO)
       .toISOString()
       .slice(0, 10);
+    const estadoNum =
+      typeof visita.ESTADO === "boolean"
+        ? visita.ESTADO
+          ? 1
+          : 0
+        : visita.ESTADO;
     return (
       (filter.nombre === "" ||
         visita.NOMBRE_VISITANTE.toLowerCase().includes(
           filter.nombre.toLowerCase()
         )) &&
-      (filter.fecha === "" || fechaIngreso === filter.fecha)
+      (filter.fecha === "" || fechaIngreso === filter.fecha) &&
+      (filter.nroDpto === "" ||
+        (visita.NRO_DPTO && visita.NRO_DPTO.toString() === filter.nroDpto)) &&
+      (filter.estado === "todos" ||
+        (filter.estado === "activas" && estadoNum === 1) ||
+        (filter.estado === "terminadas" && estadoNum === 0))
     );
   });
 
   // Export to CSV
   const exportToCSV = () => {
     const headers =
-      "ID Visita,Número Dpto,Nombre Visitante,DNI,Fecha Ingreso,Fecha Salida,Motivo,Propietario,Estado\n";
+      "ID Visita,Número Dpto,Nombre Visitante,DNI,Propietario,Fecha Ingreso,Fecha Salida,Motivo,Estado\n";
     const rows = filteredVisitas
-      .map(
-        (visita) =>
-          `${visita.ID_VISITA},${visita.NRO_DPTO ?? "-"},${
-            visita.NOMBRE_VISITANTE
-          },${visita.DNI_VISITANTE},${visita.FECHA_INGRESO},${
-            visita.FECHA_SALIDA ?? "-"
-          },${visita.MOTIVO},${visita.NOMBRE_PROPIETARIO ?? "-"},${
-            visita.ESTADO
-          }`
-      )
+      .map((visita) => {
+        const estadoNum =
+          typeof visita.ESTADO === "boolean"
+            ? visita.ESTADO
+              ? 1
+              : 0
+            : visita.ESTADO;
+        return `${visita.ID_VISITA},${visita.NRO_DPTO ?? "-"},${
+          visita.NOMBRE_VISITANTE
+        },${visita.DNI_VISITANTE},${visita.NOMBRE_PROPIETARIO ?? "-"},${
+          visita.FECHA_INGRESO
+        },${visita.FECHA_SALIDA ?? "-"},${visita.MOTIVO},${
+          estadoNum === 1 ? "Activa" : "Terminada"
+        }`;
+      })
       .join("\n");
     const csv = headers + rows;
     const blob = new Blob([csv], { type: "text/csv" });
@@ -510,12 +586,9 @@ const Visits = () => {
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Propietario
                   </label>
-                  <select
-                    className="border rounded p-3 w-full"
-                    value={idUsuarioPropietario ?? ""}
-                    onChange={(e) =>
-                      setIdUsuarioPropietario(Number(e.target.value))
-                    }
+                  <Select
+                    value={idUsuarioPropietario}
+                    onChange={(e) => setIdUsuarioPropietario(e.target.value)}
                     disabled={propietarios.length === 0}
                   >
                     <option value="">Seleccione un propietario</option>
@@ -524,14 +597,14 @@ const Visits = () => {
                         {prop.NOMBRE_COMPLETO}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   <p className="text-xs text-gray-500 mt-1">
                     Seleccione el propietario del departamento.
                   </p>
                 </div>
               </div>
 
-              {/* Motivo (ahora en línea separada) */}
+              {/* Motivo (en fila completa) */}
               <div className="grid grid-cols-1">
                 <label className="block text-sm font-medium text-gray-600 mb-1">
                   Motivo de la Visita
@@ -559,12 +632,44 @@ const Visits = () => {
             </div>
           </Card>
         )}
+
         {/* Historial de Visitas */}
         {activeTab === "history" && (
           <Card>
             <h2 className="text-lg font-semibold mb-4">Historial de Visitas</h2>
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full md:w-1/2">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 w-full md:w-4/5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    Estado
+                  </label>
+                  <Select
+                    name="estado"
+                    value={filter.estado}
+                    onChange={handleFilterChange}
+                  >
+                    <option value="todos">Todos</option>
+                    <option value="activas">Visitas Activas</option>
+                    <option value="terminadas">Visitas Terminadas</option>
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    Número de Departamento
+                  </label>
+                  <Input
+                    type="text"
+                    name="nroDpto"
+                    value={filter.nroDpto}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === "" || /^[0-9]*$/.test(value)) {
+                        setFilter((prev) => ({ ...prev, nroDpto: value }));
+                      }
+                    }}
+                    placeholder="Ejemplo: 101"
+                  />
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Nombre del Visitante
@@ -633,55 +738,85 @@ const Visits = () => {
                     <th className="py-3 px-4 border-b text-left text-sm font-semibold">
                       Estado
                     </th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                      Acciones
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredVisitas.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={9}
+                        colSpan={10}
                         className="py-4 text-center text-gray-500"
                       >
                         No hay visitas para mostrar.
                       </td>
                     </tr>
                   ) : (
-                    filteredVisitas.map((visita, index) => (
-                      <TableRow
-                        key={visita.ID_VISITA}
-                        estado={visita.ESTADO}
-                        delay={index * 0.1}
-                        isHighlighted={visita.ID_VISITA === highlightedVisitId}
-                      >
-                        <td className="py-3 px-4">{visita.ID_VISITA}</td>
-                        <td className="py-3 px-4">{visita.NRO_DPTO ?? "-"}</td>
-                        <td className="py-3 px-4">{visita.NOMBRE_VISITANTE}</td>
-                        <td className="py-3 px-4">{visita.DNI_VISITANTE}</td>
-                        <td className="py-3 px-4">
-                          {visita.NOMBRE_PROPIETARIO ?? "-"}
-                        </td>
-                        <td className="py-3 px-4">
-                          {new Date(visita.FECHA_INGRESO).toLocaleString()}
-                        </td>
-                        <td className="py-3 px-4">
-                          {visita.FECHA_SALIDA
-                            ? new Date(visita.FECHA_SALIDA).toLocaleString()
-                            : "-"}
-                        </td>
-                        <td className="py-3 px-4">{visita.MOTIVO}</td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
-                              visita.ESTADO === 1
-                                ? "bg-green-200 text-green-800"
-                                : "bg-red-200 text-red-800"
-                            }`}
-                          >
-                            {visita.ESTADO === 1 ? "Activo" : "Inactivo"}
-                          </span>
-                        </td>
-                      </TableRow>
-                    ))
+                    filteredVisitas.map((visita, index) => {
+                      const estadoNum =
+                        typeof visita.ESTADO === "boolean"
+                          ? visita.ESTADO
+                            ? 1
+                            : 0
+                          : visita.ESTADO;
+                      return (
+                        <TableRow
+                          key={visita.ID_VISITA}
+                          $estado={estadoNum}
+                          $delay={index * 0.1}
+                          $isHighlighted={
+                            visita.ID_VISITA === highlightedVisitId
+                          }
+                        >
+                          <td className="py-3 px-4">{visita.ID_VISITA}</td>
+                          <td className="py-3 px-4">
+                            {visita.NRO_DPTO ?? "-"}
+                          </td>
+                          <td className="py-3 px-4">
+                            {visita.NOMBRE_VISITANTE}
+                          </td>
+                          <td className="py-3 px-4">{visita.DNI_VISITANTE}</td>
+                          <td className="py-3 px-4">
+                            {visita.NOMBRE_PROPIETARIO ?? "-"}
+                          </td>
+                          <td className="py-3 px-4">
+                            {new Date(visita.FECHA_INGRESO).toLocaleString()}
+                          </td>
+                          <td className="py-3 px-4">
+                            {visita.FECHA_SALIDA
+                              ? new Date(visita.FECHA_SALIDA).toLocaleString()
+                              : "-"}
+                          </td>
+                          <td className="py-3 px-4">{visita.MOTIVO}</td>
+                          <td className="py-3 px-4">
+                            <span
+                              className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
+                                estadoNum === 1
+                                  ? "bg-green-200 text-green-800"
+                                  : "bg-red-200 text-red-800"
+                              }`}
+                            >
+                              {estadoNum === 1 ? "Activa" : "Terminada"}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            {estadoNum === 1 ? (
+                              <Button
+                                className="bg-red-600 text-white hover:bg-red-700 px-2 py-1"
+                                onClick={() => handleEndVisit(visita.ID_VISITA)}
+                                title="Terminar Visita"
+                              >
+                                <FaSignOutAlt />
+                              </Button>
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
