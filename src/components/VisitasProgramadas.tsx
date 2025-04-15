@@ -101,6 +101,62 @@ const Button = styled.button`
   }
 `;
 
+// Nuevos estilos para el selector de hora
+const TimePickerContainer = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+`;
+
+const TimeSelect = styled.select`
+  border: 1px solid #d1d5db;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  background: linear-gradient(145deg, #ffffff, #f9fafb);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1f2937;
+  &:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    transform: translateY(-1px);
+  }
+  &:hover {
+    border-color: #2563eb;
+  }
+`;
+
+const AMPMButton = styled.button<{ selected: boolean }>`
+  padding: 0.75rem 1rem;
+  border-radius: 0.375rem;
+  background: ${(props) =>
+    props.selected
+      ? "linear-gradient(145deg, #2563eb, #1e40af)"
+      : "linear-gradient(145deg, #ffffff, #f9fafb)"};
+  color: ${(props) => (props.selected ? "#ffffff" : "#4b5563")};
+  font-weight: 600;
+  font-size: 0.875rem;
+  border: 1px solid ${(props) => (props.selected ? "#1e40af" : "#d1d5db")};
+  transition: all 0.2s ease;
+  box-shadow: ${(props) =>
+    props.selected
+      ? "0 4px 6px rgba(37, 99, 235, 0.2)"
+      : "0 2px 4px rgba(0, 0, 0, 0.05)"};
+  &:hover {
+    transform: translateY(-1px);
+    background: ${(props) =>
+      props.selected
+        ? "linear-gradient(145deg, #1e40af, #2563eb)"
+        : "#e5e7eb"};
+  }
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+`;
+
 const TableRow = styled.tr<{ $estado: number; $delay: number }>`
   animation: ${fadeIn} 0.5s ease-out forwards;
   animation-delay: ${(props) => props.$delay}s;
@@ -217,6 +273,9 @@ const VisitasProgramadas = () => {
   const [motivo, setMotivo] = useState("");
   const [fechaLlegada, setFechaLlegada] = useState(currentDate);
   const [horaLlegada, setHoraLlegada] = useState<string>("");
+  const [hour, setHour] = useState<string>("12");
+  const [minute, setMinute] = useState<string>("00");
+  const [period, setPeriod] = useState<"AM" | "PM">("AM");
   const [visitasProgramadas, setVisitasProgramadas] = useState<
     VisitaProgramada[]
   >([]);
@@ -229,6 +288,25 @@ const VisitasProgramadas = () => {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"create" | "history">("create");
   const [isCanceling, setIsCanceling] = useState(false);
+
+  // Generar opciones para horas (1-12) y minutos (00, 15, 30, 45)
+  const hours = Array.from({ length: 12 }, (_, i) =>
+    (i + 1).toString().padStart(2, "0")
+  );
+  const minutes = ["00", "10", "20", "30", "40", "50"];
+
+
+  // Actualizar horaLlegada cuando cambian hora, minuto o período
+  useEffect(() => {
+    let militaryHour = parseInt(hour);
+    if (period === "PM" && militaryHour !== 12) {
+      militaryHour += 12;
+    } else if (period === "AM" && militaryHour === 12) {
+      militaryHour = 0;
+    }
+    const formattedHour = militaryHour.toString().padStart(2, "0");
+    setHoraLlegada(`${formattedHour}:${minute}`);
+  }, [hour, minute, period]);
 
   const fetchOwnerDepartments = async () => {
     try {
@@ -509,6 +587,9 @@ const VisitasProgramadas = () => {
       setMotivo("");
       setFechaLlegada(currentDate);
       setHoraLlegada("");
+      setHour("12");
+      setMinute("00");
+      setPeriod("AM");
       setActiveTab("history");
     } catch (err) {
       const error = err as Error;
@@ -814,17 +895,49 @@ const VisitasProgramadas = () => {
                 </div>
                 <div className="md:col-span-6">
                   <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Hora de Llegada
+                    Hora de Llegada Tentativa
                   </label>
-                  <Input
-                    type="time"
-                    value={horaLlegada}
-                    onChange={(e) => setHoraLlegada(e.target.value)}
-                    required
-                    className="appearance-none"
-                  />
+                  <TimePickerContainer>
+                    <TimeSelect
+                      value={hour}
+                      onChange={(e) => setHour(e.target.value)}
+                      required
+                    >
+                      {hours.map((h) => (
+                        <option key={h} value={h}>
+                          {h}
+                        </option>
+                      ))}
+                    </TimeSelect>
+                    <span className="text-gray-600 font-bold">:</span>
+                    <TimeSelect
+                      value={minute}
+                      onChange={(e) => setMinute(e.target.value)}
+                      required
+                    >
+                      {minutes.map((m) => (
+                        <option key={m} value={m}>
+                          {m}
+                        </option>
+                      ))}
+                    </TimeSelect>
+                    <div className="flex gap-2">
+                      <AMPMButton
+                        selected={period === "AM"}
+                        onClick={() => setPeriod("AM")}
+                      >
+                        AM
+                      </AMPMButton>
+                      <AMPMButton
+                        selected={period === "PM"}
+                        onClick={() => setPeriod("PM")}
+                      >
+                        PM
+                      </AMPMButton>
+                    </div>
+                  </TimePickerContainer>
                   <p className="text-xs text-gray-500 mt-1">
-                    Seleccione la hora de llegada (formato 12 horas AM/PM).
+                    Seleccione la hora y período (AM/PM) de llegada.
                   </p>
                 </div>
               </div>
