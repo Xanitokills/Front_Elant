@@ -202,28 +202,6 @@ const formatTime = (timeInput: string | null): string => {
   }
 };
 
-const parseTimeTo24Hour = (timeInput: string): string | null => {
-  if (!timeInput) return null;
-  const timeRegex = /^(\d{1,2}):(\d{2})\s*(AM|PM|a\.m\.|p\.m\.)$/i;
-  const match = timeInput.match(timeRegex);
-  if (!match) return null;
-
-  let hours = parseInt(match[1], 10);
-  const minutes = match[2];
-  const period = match[3].toLowerCase();
-
-  if (hours < 1 || hours > 12) return null;
-  if (parseInt(minutes, 10) > 59) return null;
-
-  if (period.includes("pm") && hours !== 12) {
-    hours += 12;
-  } else if (period.includes("am") && hours === 12) {
-    hours = 0;
-  }
-
-  return `${hours.toString().padStart(2, "0")}:${minutes}`;
-};
-
 const VisitasProgramadas = () => {
   const { userId } = useAuth();
   const now = new Date();
@@ -238,9 +216,7 @@ const VisitasProgramadas = () => {
   const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
   const [motivo, setMotivo] = useState("");
   const [fechaLlegada, setFechaLlegada] = useState(currentDate);
-  const [hora, setHora] = useState<string>("");
-  const [minutos, setMinutos] = useState<string>("");
-  const [periodo, setPeriodo] = useState<string>("");
+  const [horaLlegada, setHoraLlegada] = useState<string>("");
   const [visitasProgramadas, setVisitasProgramadas] = useState<
     VisitaProgramada[]
   >([]);
@@ -253,24 +229,6 @@ const VisitasProgramadas = () => {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"create" | "history">("create");
   const [isCanceling, setIsCanceling] = useState(false);
-
-  const horasOptions = Array.from({ length: 12 }, (_, i) => {
-    const hora = (i + 1).toString().padStart(2, "0");
-    return (
-      <option key={hora} value={hora}>
-        {hora}
-      </option>
-    );
-  });
-
-  const minutosOptions = Array.from({ length: 60 }, (_, i) => {
-    const minuto = i.toString().padStart(2, "0");
-    return (
-      <option key={minuto} value={minuto}>
-        {minuto}
-      </option>
-    );
-  });
 
   const fetchOwnerDepartments = async () => {
     try {
@@ -439,12 +397,12 @@ const VisitasProgramadas = () => {
   };
 
   const handleSaveScheduledVisit = async () => {
-    if (!dni || !nombreVisitante || !nroDpto || !fechaLlegada || !motivo) {
+    if (!dni || !nombreVisitante || !nroDpto || !fechaLlegada || !motivo || !horaLlegada) {
       setError("Por favor, complete todos los campos obligatorios");
       Swal.fire({
         icon: "warning",
         title: "Campos incompletos",
-        text: "Todos los campos son obligatorios, excepto la hora de llegada",
+        text: "Todos los campos, incluyendo la hora de llegada, son obligatorios",
         timer: 2000,
         showConfirmButton: false,
       });
@@ -498,22 +456,19 @@ const VisitasProgramadas = () => {
       });
       return;
     }
-    let horaLlegadaFormatted = null;
-    if (hora && minutos && periodo) {
-      const horaCompleta = `${hora}:${minutos} ${periodo}`;
-      horaLlegadaFormatted = parseTimeTo24Hour(horaCompleta);
-      if (!horaLlegadaFormatted) {
-        setError("Formato de hora inválido. Seleccione hora, minutos y AM/PM.");
-        Swal.fire({
-          icon: "error",
-          title: "Hora inválida",
-          text: "Formato de hora inválido. Seleccione hora, minutos y AM/PM.",
-          timer: 2000,
-          showConfirmButton: false,
-        });
-        return;
-      }
+    const timeMatch = horaLlegada.match(/^(\d{2}:\d{2})$/);
+    if (!timeMatch) {
+      setError("Formato de hora inválido.");
+      Swal.fire({
+        icon: "error",
+        title: "Hora inválida",
+        text: "Por favor, seleccione una hora válida.",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
     }
+    const horaLlegadaFormatted = horaLlegada;
     try {
       const response = await fetch(`${API_URL}/scheduled-visits`, {
         method: "POST",
@@ -553,9 +508,7 @@ const VisitasProgramadas = () => {
       );
       setMotivo("");
       setFechaLlegada(currentDate);
-      setHora("");
-      setMinutos("");
-      setPeriodo("");
+      setHoraLlegada("");
       setActiveTab("history");
     } catch (err) {
       const error = err as Error;
@@ -861,34 +814,17 @@ const VisitasProgramadas = () => {
                 </div>
                 <div className="md:col-span-6">
                   <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Hora Tentativa (Opcional)
+                    Hora de Llegada
                   </label>
-                  <div className="flex space-x-2">
-                    <Select
-                      value={hora}
-                      onChange={(e) => setHora(e.target.value)}
-                    >
-                      <option value="">Hora</option>
-                      {horasOptions}
-                    </Select>
-                    <Select
-                      value={minutos}
-                      onChange={(e) => setMinutos(e.target.value)}
-                    >
-                      <option value="">Min</option>
-                      {minutosOptions}
-                    </Select>
-                    <Select
-                      value={periodo}
-                      onChange={(e) => setPeriodo(e.target.value)}
-                    >
-                      <option value="">--</option>
-                      <option value="AM">AM</option>
-                      <option value="PM">PM</option>
-                    </Select>
-                  </div>
+                  <Input
+                    type="time"
+                    value={horaLlegada}
+                    onChange={(e) => setHoraLlegada(e.target.value)}
+                    required
+                    className="appearance-none"
+                  />
                   <p className="text-xs text-gray-500 mt-1">
-                    Seleccione la hora aproximada de llegada.
+                    Seleccione la hora de llegada (formato 12 horas AM/PM).
                   </p>
                 </div>
               </div>
