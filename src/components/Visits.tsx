@@ -648,7 +648,8 @@ const Visits = () => {
       const localDate = new Date(
         now.toLocaleString("en-US", { timeZone: "America/Lima" })
       );
-      const fechaIngreso = localDate.toISOString().slice(0, 19) + "-05:00";
+      //const fechaIngreso = localDate.toISOString().slice(0, 19) + "-05:00";
+      const fechaIngreso = localDate.toISOString().slice(0, 19).replace("T", " ");
 
       const response = await fetch(`${API_URL}/visits`, {
         method: "POST",
