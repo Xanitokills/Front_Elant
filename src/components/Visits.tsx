@@ -384,6 +384,9 @@ const Visits = () => {
     const fechaLlegadaFormatted = new Date(fechaLlegada)
       .toISOString()
       .split("T")[0];
+    console.log("fechaLlegada:", fechaLlegada);
+    console.log("fechaLlegadaFormatted:", fechaLlegadaFormatted);
+    console.log("currentDate:", currentDate);
     if (fechaLlegadaFormatted !== currentDate) {
       Swal.fire({
         icon: "error",
