@@ -150,9 +150,10 @@ interface Visitante {
   NRO_DPTO: number | null;
   NOMBRE_VISITANTE: string;
   DNI_VISITANTE: string;
-  FECHA_INGRESO: string; // Fecha en formato YYYY-MM-DD
-  HORA_INGRESO: string; // Hora en formato HH:MM:SS
+  FECHA_INGRESO: string;
+  HORA_INGRESO: string;
   FECHA_SALIDA: string | null;
+  HORA_SALIDA: string | null;
   MOTIVO: string;
   ID_USUARIO_REGISTRO: number;
   ID_USUARIO_PROPIETARIO: number;
@@ -260,7 +261,7 @@ const Visits = () => {
   const localDate = new Date(
     now.toLocaleString("en-US", { timeZone: "America/Lima" })
   );
-  const currentDate = localDate.toISOString().slice(0, 10); // Ejemplo: '2025-04-15'
+  const currentDate = localDate.toISOString().slice(0, 10);
 
   const [dni, setDni] = useState("");
   const [nombreVisitante, setNombreVisitante] = useState("");
@@ -274,7 +275,7 @@ const Visits = () => {
   >([]);
   const [filter, setFilter] = useState({
     nombre: "",
-    estado: "activas", // Por defecto, mostrar visitas activas
+    estado: "activas",
     nroDpto: "",
   });
   const [filterScheduled, setFilterScheduled] = useState({
@@ -318,7 +319,8 @@ const Visits = () => {
       const normalizedData = data.map((visit: Visitante) => {
         let fechaIngreso = visit.FECHA_INGRESO;
         let horaIngreso = "";
-        let fechaSalida = visit.FECHA_SALIDA;
+        let fechaSalida = null;
+        let horaSalida = null;
 
         if (fechaIngreso) {
           if (typeof fechaIngreso === "string" && fechaIngreso.includes("T")) {
@@ -328,10 +330,10 @@ const Visits = () => {
           }
         }
 
-        if (fechaSalida) {
-          if (typeof fechaSalida === "string" && fechaSalida.includes("T")) {
-            fechaSalida = formatDate(fechaSalida);
-          }
+        if (visit.FECHA_SALIDA) {
+          const date = new Date(visit.FECHA_SALIDA);
+          fechaSalida = formatDate(date);
+          horaSalida = formatTime(date);
         }
 
         return {
@@ -339,6 +341,7 @@ const Visits = () => {
           FECHA_INGRESO: fechaIngreso,
           HORA_INGRESO: horaIngreso,
           FECHA_SALIDA: fechaSalida,
+          HORA_SALIDA: horaSalida,
           ESTADO:
             visit.ESTADO === true ? 1 : visit.ESTADO === false ? 0 : visit.ESTADO,
         };
@@ -447,11 +450,21 @@ const Visits = () => {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
+          const now = new Date();
+          const localDate = new Date(
+            now.toLocaleString("en-US", { timeZone: "America/Lima" })
+          );
+          const fechaSalida = localDate.toISOString().slice(0, 19) + "-05:00";
+
           const response = await fetch(`${API_URL}/visits/${idVisita}/end`, {
             method: "PUT",
             headers: {
+              "Content-Type": "application/json",
               Authorization: `Bearer ${localStorage.getItem("token")}`,
             },
+            body: JSON.stringify({
+              fecha_salida: fechaSalida,
+            }),
           });
           if (!response.ok) {
             const errorData = await response.json();
@@ -631,12 +644,11 @@ const Visits = () => {
     }
     setError("");
     try {
-      // Obtener la fecha y hora local en Lima
       const now = new Date();
       const localDate = new Date(
         now.toLocaleString("en-US", { timeZone: "America/Lima" })
       );
-      const fechaIngreso = localDate.toISOString().slice(0, 19) + "-05:00"; // Ejemplo: 2025-04-15T00:28:57-05:00
+      const fechaIngreso = localDate.toISOString().slice(0, 19) + "-05:00";
 
       const response = await fetch(`${API_URL}/visits`, {
         method: "POST",
@@ -731,7 +743,7 @@ const Visits = () => {
   // Export to CSV
   const exportToCSV = () => {
     const headers =
-      "ID Visita,Número Dpto,Nombre Visitante,DNI,Propietario,Fecha Ingreso,Hora Ingreso,Fecha Salida,Motivo,Estado\n";
+      "ID Visita,Número Dpto,Nombre Visitante,DNI,Propietario,Fecha Ingreso,Hora Ingreso,Fecha Salida,Hora Salida,Motivo,Estado\n";
     const rows = filteredVisitas
       .map((visita) => {
         const estadoNum =
@@ -745,8 +757,8 @@ const Visits = () => {
         },${visita.DNI_VISITANTE},${visita.NOMBRE_PROPIETARIO ?? "-"},${
           visita.FECHA_INGRESO
         },${visita.HORA_INGRESO},${visita.FECHA_SALIDA ? visita.FECHA_SALIDA : "-"},${
-          visita.MOTIVO
-        },${estadoNum === 1 ? "Activa" : "Terminada"}`;
+          visita.HORA_SALIDA ? visita.HORA_SALIDA : "-"
+        },${visita.MOTIVO},${estadoNum === 1 ? "Activa" : "Terminada"}`;
       })
       .join("\n");
     const csv = headers + rows;
@@ -891,7 +903,7 @@ const Visits = () => {
                 </div>
               </div>
 
-              {/* Motivo (en fila completa) */}
+              {/* Motivo */}
               <div className="grid grid-cols-1">
                 <label className="block text-sm font-medium text-gray-600 mb-1">
                   Motivo de la Visita
@@ -980,7 +992,6 @@ const Visits = () => {
               </div>
             </div>
 
-            {/* Tabla de Visitas */}
             <div className="overflow-x-auto">
               <table className="min-w-full bg-white border border-gray-200">
                 <thead>
@@ -1010,6 +1021,9 @@ const Visits = () => {
                       Fecha Salida
                     </th>
                     <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                      Hora Salida
+                    </th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
                       Motivo
                     </th>
                     <th className="py-3 px-4 border-b text-left text-sm font-semibold">
@@ -1024,7 +1038,7 @@ const Visits = () => {
                   {filteredVisitas.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={11}
+                        colSpan={12}
                         className="py-4 text-center text-gray-500"
                       >
                         No hay visitas para mostrar.
@@ -1062,6 +1076,9 @@ const Visits = () => {
                           <td className="py-3 px-4">{visita.HORA_INGRESO}</td>
                           <td className="py-3 px-4">
                             {visita.FECHA_SALIDA ? visita.FECHA_SALIDA : "-"}
+                          </td>
+                          <td className="py-3 px-4">
+                            {visita.HORA_SALIDA ? visita.HORA_SALIDA : "-"}
                           </td>
                           <td className="py-3 px-4">{visita.MOTIVO}</td>
                           <td className="py-3 px-4">
