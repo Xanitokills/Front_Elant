@@ -133,7 +133,6 @@ const formatDate = (dateInput: string | Date): string => {
   try {
     let date: Date;
     if (typeof dateInput === "string") {
-      // Handle both "YYYY-MM-DD" and ISO formats like "2025-04-14T00:00:00.000Z"
       if (dateInput.includes("T")) {
         date = new Date(dateInput);
       } else {
@@ -159,14 +158,12 @@ const formatTime = (timeInput: string | null): string => {
   try {
     let normalizedTime: string;
     if (timeInput.includes("T")) {
-      // Handle ISO format like "1970-01-01T15:00:00.000Z"
       const date = new Date(timeInput);
       if (isNaN(date.getTime())) return "-";
       const hours = date.getUTCHours().toString().padStart(2, "0");
       const minutes = date.getUTCMinutes().toString().padStart(2, "0");
       normalizedTime = `${hours}:${minutes}`;
     } else {
-      // Handle "HH:mm" or "HH:mm:ss.sssssss"
       const timeMatch = timeInput.match(/^(\d{2}:\d{2})/);
       if (!timeMatch) return "-";
       normalizedTime = timeMatch[1];
@@ -184,9 +181,34 @@ const formatTime = (timeInput: string | null): string => {
   }
 };
 
+const parseTimeTo24Hour = (timeInput: string): string | null => {
+  if (!timeInput) return null;
+  const timeRegex = /^(\d{1,2}):(\d{2})\s*(AM|PM|a\.m\.|p\.m\.)$/i;
+  const match = timeInput.match(timeRegex);
+  if (!match) return null;
+
+  let hours = parseInt(match[1], 10);
+  const minutes = match[2];
+  const period = match[3].toLowerCase();
+
+  if (hours < 1 || hours > 12) return null;
+  if (parseInt(minutes, 10) > 59) return null;
+
+  if (period.includes("pm") && hours !== 12) {
+    hours += 12;
+  } else if (period.includes("am") && hours === 12) {
+    hours = 0;
+  }
+
+  return `${hours.toString().padStart(2, "0")}:${minutes}`;
+};
+
 const VisitasProgramadas = () => {
   const { userId } = useAuth();
-  const currentDate = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const utcOffset = -5 * 60; // UTC-5 en minutos
+  const localDate = new Date(now.getTime() + utcOffset * 60 * 1000);
+  const currentDate = localDate.toISOString().slice(0, 10); // '2025-04-14'
 
   const [dni, setDni] = useState("");
   const [nombreVisitante, setNombreVisitante] = useState("");
@@ -201,13 +223,13 @@ const VisitasProgramadas = () => {
   >([]);
   const [filter, setFilter] = useState({
     nombre: "",
-    fecha: "",
+    fecha: currentDate,
     nroDpto: "",
     estado: "1",
   });
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"create" | "history">("create");
-  const [isCanceling, setIsCanceling] = useState(false); // Nueva bandera
+  const [isCanceling, setIsCanceling] = useState(false);
 
   const fetchOwnerDepartments = async () => {
     try {
@@ -247,7 +269,7 @@ const VisitasProgramadas = () => {
   };
 
   const fetchScheduledVisits = async () => {
-    if (isCanceling) return; // Evitar fetch mientras se está cancelando
+    if (isCanceling) return;
     try {
       const response = await fetch(`${API_URL}/scheduled-visits`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
@@ -422,9 +444,9 @@ const VisitasProgramadas = () => {
       });
       return;
     }
-    const fechaLlegadaDate = new Date(fechaLlegada);
-    const today = new Date(currentDate);
-    if (fechaLlegadaDate < today) {
+    const fechaLlegadaFormatted = fechaLlegada.split("T")[0];
+    const todayFormatted = currentDate.split("T")[0];
+    if (fechaLlegadaFormatted < todayFormatted) {
       setError("La fecha de llegada no puede ser anterior a hoy");
       Swal.fire({
         icon: "error",
@@ -434,6 +456,21 @@ const VisitasProgramadas = () => {
         showConfirmButton: false,
       });
       return;
+    }
+    let horaLlegadaFormatted = null;
+    if (horaLlegada) {
+      horaLlegadaFormatted = parseTimeTo24Hour(horaLlegada);
+      if (!horaLlegadaFormatted) {
+        setError("Formato de hora inválido. Use HH:MM AM/PM (Ejemplo: 01:50 PM)");
+        Swal.fire({
+          icon: "error",
+          title: "Hora inválida",
+          text: "Formato de hora inválido. Use HH:MM AM/PM (Ejemplo: 01:50 PM)",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+        return;
+      }
     }
     try {
       const response = await fetch(`${API_URL}/scheduled-visits`, {
@@ -447,7 +484,7 @@ const VisitasProgramadas = () => {
           dni_visitante: dni,
           nombre_visitante: nombreVisitante.toUpperCase(),
           fecha_llegada: fechaLlegada,
-          hora_llegada: horaLlegada || null,
+          hora_llegada: horaLlegadaFormatted,
           motivo,
           id_usuario_propietario: userId,
         }),
@@ -497,7 +534,6 @@ const VisitasProgramadas = () => {
   };
 
   const handleCancelVisit = async (idVisita: number) => {
-    // Mostrar mensaje de confirmación
     const result = await Swal.fire({
       icon: "warning",
       title: "¿Estás seguro?",
@@ -508,32 +544,39 @@ const VisitasProgramadas = () => {
       confirmButtonColor: "#d33",
       cancelButtonColor: "#3085d6",
     });
-  
+
     if (!result.isConfirmed) {
-      return; // Si el usuario cancela, no hacemos nada
+      return;
     }
-  
-    setIsCanceling(true); // Activar la bandera
+
+    setIsCanceling(true);
     try {
-      const response = await fetch(`${API_URL}/scheduled-visits/${idVisita}/cancel`, {
-        method: "PUT",
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-  
+      const response = await fetch(
+        `${API_URL}/scheduled-visits/${idVisita}/cancel`,
+        {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+
       if (!response.ok) {
         const errorData = await response.json();
         if (response.status === 400) {
-          if (errorData.message === "La visita ya está procesada o cancelada" || errorData.message === "No se pudo cancelar la visita: estado no válido") {
-            // Verificar el estado actual de la visita
+          if (
+            errorData.message === "La visita ya está procesada o cancelada" ||
+            errorData.message === "No se pudo cancelar la visita: estado no válido"
+          ) {
             const visitResponse = await fetch(`${API_URL}/scheduled-visits`, {
               headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
             });
-            if (!visitResponse.ok) throw new Error("Error al verificar el estado de la visita");
+            if (!visitResponse.ok)
+              throw new Error("Error al verificar el estado de la visita");
             const visits = await visitResponse.json();
-            const visit = visits.find((v: VisitaProgramada) => v.ID_VISITA_PROGRAMADA === idVisita);
-  
+            const visit = visits.find(
+              (v: VisitaProgramada) => v.ID_VISITA_PROGRAMADA === idVisita
+            );
+
             if (!visit || visit.ESTADO === 0) {
-              // Si la visita no existe en la lista (porque ya fue procesada) o tiene ESTADO = 0, considerarlo un éxito
               Swal.fire({
                 icon: "success",
                 title: "Éxito",
@@ -559,7 +602,7 @@ const VisitasProgramadas = () => {
           showConfirmButton: false,
         });
       }
-  
+
       await fetchScheduledVisits();
     } catch (err) {
       console.error("Error al cancelar visita:", err);
@@ -571,12 +614,20 @@ const VisitasProgramadas = () => {
         showConfirmButton: false,
       });
     } finally {
-      setIsCanceling(false); // Desactivar la bandera
+      setIsCanceling(false);
     }
   };
 
   const filteredVisitasProgramadas = visitasProgramadas.filter((visita) => {
     const fechaLlegada = formatDate(visita.FECHA_LLEGADA);
+    const filterFechaFormatted = filter.fecha
+      ? new Date(filter.fecha).toLocaleDateString("es-PE", {
+          day: "numeric",
+          month: "numeric",
+          year: "numeric",
+          timeZone: "America/Lima",
+        })
+      : "";
     const estadoNum =
       typeof visita.ESTADO === "boolean"
         ? visita.ESTADO
@@ -588,7 +639,7 @@ const VisitasProgramadas = () => {
         visita.NOMBRE_VISITANTE.toLowerCase().includes(
           filter.nombre.toLowerCase()
         )) &&
-      (filter.fecha === "" || fechaLlegada === filter.fecha) &&
+      (filterFechaFormatted === "" || fechaLlegada === filterFechaFormatted) &&
       (filter.nroDpto === "" ||
         visita.NRO_DPTO.toString() === filter.nroDpto) &&
       (filter.estado === "" || estadoNum.toString() === filter.estado)
@@ -776,12 +827,13 @@ const VisitasProgramadas = () => {
                     Hora Tentativa (Opcional)
                   </label>
                   <Input
-                    type="time"
+                    type="text"
                     value={horaLlegada}
                     onChange={(e) => setHoraLlegada(e.target.value)}
+                    placeholder="Ejemplo: 01:50 PM"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Ingrese la hora aproximada de llegada.
+                    Ingrese la hora aproximada de llegada (HH:MM AM/PM).
                   </p>
                 </div>
               </div>
