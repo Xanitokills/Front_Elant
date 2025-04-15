@@ -136,18 +136,39 @@ const formatDate = (dateInput: string | Date): string => {
       if (dateInput.includes("T")) {
         date = new Date(dateInput);
       } else {
-        date = new Date(`${dateInput}T00:00:00-05:00`);
+        date = new Date(dateInput);
       }
     } else {
       date = dateInput;
     }
     if (isNaN(date.getTime())) return "-";
-    return date.toLocaleDateString("es-PE", {
-      day: "numeric",
-      month: "numeric",
-      year: "numeric",
-      timeZone: "America/Lima",
-    });
+    const year = date.getUTCFullYear();
+    const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
+    const day = date.getUTCDate().toString().padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  } catch {
+    return "-";
+  }
+};
+
+const formatDateForDisplay = (dateInput: string | Date): string => {
+  if (!dateInput) return "-";
+  try {
+    let date: Date;
+    if (typeof dateInput === "string") {
+      if (dateInput.includes("T")) {
+        date = new Date(dateInput);
+      } else {
+        date = new Date(dateInput);
+      }
+    } else {
+      date = dateInput;
+    }
+    if (isNaN(date.getTime())) return "-";
+    const year = date.getUTCFullYear();
+    const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
+    const day = date.getUTCDate().toString().padStart(2, "0");
+    return `${year}-${month}-${day}`;
   } catch {
     return "-";
   }
@@ -217,7 +238,9 @@ const VisitasProgramadas = () => {
   const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
   const [motivo, setMotivo] = useState("");
   const [fechaLlegada, setFechaLlegada] = useState(currentDate);
-  const [horaLlegada, setHoraLlegada] = useState("");
+  const [hora, setHora] = useState<string>("");
+  const [minutos, setMinutos] = useState<string>("");
+  const [periodo, setPeriodo] = useState<string>("");
   const [visitasProgramadas, setVisitasProgramadas] = useState<
     VisitaProgramada[]
   >([]);
@@ -230,6 +253,24 @@ const VisitasProgramadas = () => {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"create" | "history">("create");
   const [isCanceling, setIsCanceling] = useState(false);
+
+  const horasOptions = Array.from({ length: 12 }, (_, i) => {
+    const hora = (i + 1).toString().padStart(2, "0");
+    return (
+      <option key={hora} value={hora}>
+        {hora}
+      </option>
+    );
+  });
+
+  const minutosOptions = Array.from({ length: 60 }, (_, i) => {
+    const minuto = i.toString().padStart(2, "0");
+    return (
+      <option key={minuto} value={minuto}>
+        {minuto}
+      </option>
+    );
+  });
 
   const fetchOwnerDepartments = async () => {
     try {
@@ -458,14 +499,15 @@ const VisitasProgramadas = () => {
       return;
     }
     let horaLlegadaFormatted = null;
-    if (horaLlegada) {
-      horaLlegadaFormatted = parseTimeTo24Hour(horaLlegada);
+    if (hora && minutos && periodo) {
+      const horaCompleta = `${hora}:${minutos} ${periodo}`;
+      horaLlegadaFormatted = parseTimeTo24Hour(horaCompleta);
       if (!horaLlegadaFormatted) {
-        setError("Formato de hora inválido. Use HH:MM AM/PM (Ejemplo: 01:50 PM)");
+        setError("Formato de hora inválido. Seleccione hora, minutos y AM/PM.");
         Swal.fire({
           icon: "error",
           title: "Hora inválida",
-          text: "Formato de hora inválido. Use HH:MM AM/PM (Ejemplo: 01:50 PM)",
+          text: "Formato de hora inválido. Seleccione hora, minutos y AM/PM.",
           timer: 2000,
           showConfirmButton: false,
         });
@@ -511,7 +553,9 @@ const VisitasProgramadas = () => {
       );
       setMotivo("");
       setFechaLlegada(currentDate);
-      setHoraLlegada("");
+      setHora("");
+      setMinutos("");
+      setPeriodo("");
       setActiveTab("history");
     } catch (err) {
       const error = err as Error;
@@ -620,14 +664,7 @@ const VisitasProgramadas = () => {
 
   const filteredVisitasProgramadas = visitasProgramadas.filter((visita) => {
     const fechaLlegada = formatDate(visita.FECHA_LLEGADA);
-    const filterFechaFormatted = filter.fecha
-      ? new Date(filter.fecha).toLocaleDateString("es-PE", {
-          day: "numeric",
-          month: "numeric",
-          year: "numeric",
-          timeZone: "America/Lima",
-        })
-      : "";
+    const filterFechaFormatted = filter.fecha || "";
     const estadoNum =
       typeof visita.ESTADO === "boolean"
         ? visita.ESTADO
@@ -661,7 +698,7 @@ const VisitasProgramadas = () => {
           visita.NOMBRE_VISITANTE
         },${visita.DNI_VISITANTE},${
           visita.NOMBRE_PROPIETARIO || "-"
-        },${formatDate(visita.FECHA_LLEGADA)},${formatTime(
+        },${formatDateForDisplay(visita.FECHA_LLEGADA)},${formatTime(
           visita.HORA_LLEGADA
         )},${visita.MOTIVO},${estadoNum === 1 ? "Pendiente" : "Procesada"}`;
       })
@@ -826,14 +863,32 @@ const VisitasProgramadas = () => {
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Hora Tentativa (Opcional)
                   </label>
-                  <Input
-                    type="text"
-                    value={horaLlegada}
-                    onChange={(e) => setHoraLlegada(e.target.value)}
-                    placeholder="Ejemplo: 01:50 PM"
-                  />
+                  <div className="flex space-x-2">
+                    <Select
+                      value={hora}
+                      onChange={(e) => setHora(e.target.value)}
+                    >
+                      <option value="">Hora</option>
+                      {horasOptions}
+                    </Select>
+                    <Select
+                      value={minutos}
+                      onChange={(e) => setMinutos(e.target.value)}
+                    >
+                      <option value="">Min</option>
+                      {minutosOptions}
+                    </Select>
+                    <Select
+                      value={periodo}
+                      onChange={(e) => setPeriodo(e.target.value)}
+                    >
+                      <option value="">--</option>
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </Select>
+                  </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Ingrese la hora aproximada de llegada (HH:MM AM/PM).
+                    Seleccione la hora aproximada de llegada.
                   </p>
                 </div>
               </div>
@@ -1010,7 +1065,7 @@ const VisitasProgramadas = () => {
                             {visita.NOMBRE_PROPIETARIO || "-"}
                           </td>
                           <td className="py-3 px-4">
-                            {formatDate(visita.FECHA_LLEGADA)}
+                            {formatDateForDisplay(visita.FECHA_LLEGADA)}
                           </td>
                           <td className="py-3 px-4">
                             {formatTime(visita.HORA_LLEGADA)}
