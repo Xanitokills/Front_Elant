@@ -150,7 +150,8 @@ interface Visitante {
   NRO_DPTO: number | null;
   NOMBRE_VISITANTE: string;
   DNI_VISITANTE: string;
-  FECHA_INGRESO: string;
+  FECHA_INGRESO: string; // Fecha en formato YYYY-MM-DD
+  HORA_INGRESO: string; // Hora en formato HH:MM:SS
   FECHA_SALIDA: string | null;
   MOTIVO: string;
   ID_USUARIO_REGISTRO: number;
@@ -172,12 +173,94 @@ interface VisitaProgramada {
   ESTADO: number | boolean;
 }
 
+// Función para normalizar fechas a YYYY-MM-DD
+const formatDate = (dateInput: string | Date): string => {
+  if (!dateInput) return "-";
+  try {
+    let date: Date;
+    if (typeof dateInput === "string") {
+      if (dateInput.includes("T")) {
+        date = new Date(dateInput);
+      } else {
+        date = new Date(`${dateInput}T00:00:00Z`);
+      }
+    } else {
+      date = dateInput;
+    }
+    if (isNaN(date.getTime())) return "-";
+    const year = date.getUTCFullYear();
+    const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
+    const day = date.getUTCDate().toString().padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  } catch {
+    return "-";
+  }
+};
+
+// Función para extraer hora en formato HH:MM:SS en hora local de Lima
+const formatTime = (dateInput: string | Date): string => {
+  if (!dateInput) return "-";
+  try {
+    let date: Date;
+    if (typeof dateInput === "string") {
+      if (dateInput.includes("T")) {
+        date = new Date(dateInput);
+      } else {
+        date = new Date(`${dateInput}T00:00:00Z`);
+      }
+    } else {
+      date = dateInput;
+    }
+    if (isNaN(date.getTime())) return "-";
+    return date.toLocaleTimeString("es-PE", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+      timeZone: "America/Lima",
+    });
+  } catch {
+    return "-";
+  }
+};
+
+// Función para formatear fecha y hora combinadas
+const formatDateTime = (dateInput: string | Date): string => {
+  if (!dateInput) return "-";
+  try {
+    let date: Date;
+    if (typeof dateInput === "string") {
+      if (dateInput.includes("T")) {
+        date = new Date(dateInput);
+      } else {
+        date = new Date(`${dateInput}T00:00:00Z`);
+      }
+    } else {
+      date = dateInput;
+    }
+    if (isNaN(date.getTime())) return "-";
+    return date.toLocaleString("es-PE", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+      timeZone: "America/Lima",
+    });
+  } catch {
+    return "-";
+  }
+};
+
 const Visits = () => {
   // Ajustar la fecha actual a UTC-5
   const now = new Date();
-  const utcOffset = -5 * 60; // UTC-5 en minutos
-  const localDate = new Date(now.getTime() + utcOffset * 60 * 1000);
-  const currentDate = localDate.toISOString().slice(0, 10); // Ejemplo: '2025-04-13'
+  const localDate = new Date(
+    now.toLocaleString("en-US", { timeZone: "America/Lima" })
+  );
+  const currentDate = localDate.toISOString().slice(0, 10); // Ejemplo: '2025-04-15'
 
   const [dni, setDni] = useState("");
   const [nombreVisitante, setNombreVisitante] = useState("");
@@ -191,13 +274,12 @@ const Visits = () => {
   >([]);
   const [filter, setFilter] = useState({
     nombre: "",
-    fecha: currentDate,
-    estado: "activas",
+    estado: "activas", // Por defecto, mostrar visitas activas
     nroDpto: "",
   });
   const [filterScheduled, setFilterScheduled] = useState({
     nombre: "",
-    fecha: currentDate, // Por defecto, mostrar visitas de hoy
+    fecha: currentDate,
     nroDpto: "",
   });
   const [error, setError] = useState("");
@@ -211,16 +293,13 @@ const Visits = () => {
 
   // Filtrar visitas programadas
   const filteredVisitasProgramadas = visitasProgramadas.filter((visita) => {
-    const fechaLlegada = new Date(visita.FECHA_LLEGADA)
-      .toISOString()
-      .split("T")[0];
+    const fechaLlegada = formatDate(visita.FECHA_LLEGADA);
     return (
       (filterScheduled.nombre === "" ||
         visita.NOMBRE_VISITANTE.toLowerCase().includes(
           filterScheduled.nombre.toLowerCase()
         )) &&
-      (filterScheduled.fecha === "" ||
-        fechaLlegada === filterScheduled.fecha) &&
+      (filterScheduled.fecha === "" || fechaLlegada === filterScheduled.fecha) &&
       (filterScheduled.nroDpto === "" ||
         visita.NRO_DPTO.toString() === filterScheduled.nroDpto)
     );
@@ -236,11 +315,34 @@ const Visits = () => {
       });
       if (!response.ok) throw new Error("Error al obtener las visitas");
       const data = await response.json();
-      const normalizedData = data.map((visit: Visitante) => ({
-        ...visit,
-        ESTADO:
-          visit.ESTADO === true ? 1 : visit.ESTADO === false ? 0 : visit.ESTADO,
-      }));
+      const normalizedData = data.map((visit: Visitante) => {
+        let fechaIngreso = visit.FECHA_INGRESO;
+        let horaIngreso = "";
+        let fechaSalida = visit.FECHA_SALIDA;
+
+        if (fechaIngreso) {
+          if (typeof fechaIngreso === "string" && fechaIngreso.includes("T")) {
+            const date = new Date(fechaIngreso);
+            fechaIngreso = formatDate(date);
+            horaIngreso = formatTime(date);
+          }
+        }
+
+        if (fechaSalida) {
+          if (typeof fechaSalida === "string" && fechaSalida.includes("T")) {
+            fechaSalida = formatDate(fechaSalida);
+          }
+        }
+
+        return {
+          ...visit,
+          FECHA_INGRESO: fechaIngreso,
+          HORA_INGRESO: horaIngreso,
+          FECHA_SALIDA: fechaSalida,
+          ESTADO:
+            visit.ESTADO === true ? 1 : visit.ESTADO === false ? 0 : visit.ESTADO,
+        };
+      });
       setVisitas(
         normalizedData.sort(
           (a: Visitante, b: Visitante) => b.ID_VISITA - a.ID_VISITA
@@ -262,7 +364,6 @@ const Visits = () => {
   const fetchScheduledVisits = async () => {
     try {
       const response = await fetch(`${API_URL}/all-scheduled-visits`, {
-        // Cambiado a /all-scheduled-visits
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -272,6 +373,7 @@ const Visits = () => {
       const data = await response.json();
       const normalizedData = data.map((visit: VisitaProgramada) => ({
         ...visit,
+        FECHA_LLEGADA: formatDate(visit.FECHA_LLEGADA),
         ESTADO:
           visit.ESTADO === true ? 1 : visit.ESTADO === false ? 0 : visit.ESTADO,
       }));
@@ -293,6 +395,7 @@ const Visits = () => {
       });
     }
   };
+
   // Fetch owners by department number
   const fetchOwners = async (nroDpto: string) => {
     if (!nroDpto || isNaN(parseInt(nroDpto))) {
@@ -381,12 +484,7 @@ const Visits = () => {
     idVisitaProgramada: number,
     fechaLlegada: string
   ) => {
-    const fechaLlegadaFormatted = new Date(fechaLlegada)
-      .toISOString()
-      .split("T")[0];
-    console.log("fechaLlegada:", fechaLlegada);
-    console.log("fechaLlegadaFormatted:", fechaLlegadaFormatted);
-    console.log("currentDate:", currentDate);
+    const fechaLlegadaFormatted = formatDate(fechaLlegada);
     if (fechaLlegadaFormatted !== currentDate) {
       Swal.fire({
         icon: "error",
@@ -533,6 +631,13 @@ const Visits = () => {
     }
     setError("");
     try {
+      // Obtener la fecha y hora local en Lima
+      const now = new Date();
+      const localDate = new Date(
+        now.toLocaleString("en-US", { timeZone: "America/Lima" })
+      );
+      const fechaIngreso = localDate.toISOString().slice(0, 19) + "-05:00"; // Ejemplo: 2025-04-15T00:28:57-05:00
+
       const response = await fetch(`${API_URL}/visits`, {
         method: "POST",
         headers: {
@@ -543,7 +648,7 @@ const Visits = () => {
           nro_dpto: parseInt(nroDpto),
           dni_visitante: dni,
           nombre_visitante: nombreVisitante,
-          fecha_ingreso: new Date().toISOString(),
+          fecha_ingreso: fechaIngreso,
           motivo,
           id_usuario_registro: userId || 1,
           id_usuario_propietario: parseInt(idUsuarioPropietario),
@@ -596,9 +701,6 @@ const Visits = () => {
   };
 
   const filteredVisitas = visitas.filter((visita) => {
-    const fechaIngreso = new Date(visita.FECHA_INGRESO)
-      .toISOString()
-      .slice(0, 10);
     const estadoNum =
       typeof visita.ESTADO === "boolean"
         ? visita.ESTADO
@@ -613,8 +715,6 @@ const Visits = () => {
         ? estadoNum === 1
         : estadoNum === 0;
 
-    const matchFecha = filter.fecha === "" || fechaIngreso === filter.fecha;
-
     const matchNombre =
       filter.nombre === "" ||
       visita.NOMBRE_VISITANTE.toLowerCase().includes(
@@ -625,13 +725,13 @@ const Visits = () => {
       filter.nroDpto === "" ||
       (visita.NRO_DPTO && visita.NRO_DPTO.toString() === filter.nroDpto);
 
-    return matchEstado && matchFecha && matchNombre && matchDpto;
+    return matchEstado && matchNombre && matchDpto;
   });
 
   // Export to CSV
   const exportToCSV = () => {
     const headers =
-      "ID Visita,Número Dpto,Nombre Visitante,DNI,Propietario,Fecha Ingreso,Fecha Salida,Motivo,Estado\n";
+      "ID Visita,Número Dpto,Nombre Visitante,DNI,Propietario,Fecha Ingreso,Hora Ingreso,Fecha Salida,Motivo,Estado\n";
     const rows = filteredVisitas
       .map((visita) => {
         const estadoNum =
@@ -644,9 +744,9 @@ const Visits = () => {
           visita.NOMBRE_VISITANTE
         },${visita.DNI_VISITANTE},${visita.NOMBRE_PROPIETARIO ?? "-"},${
           visita.FECHA_INGRESO
-        },${visita.FECHA_SALIDA ?? "-"},${visita.MOTIVO},${
-          estadoNum === 1 ? "Activa" : "Terminada"
-        }`;
+        },${visita.HORA_INGRESO},${visita.FECHA_SALIDA ? visita.FECHA_SALIDA : "-"},${
+          visita.MOTIVO
+        },${estadoNum === 1 ? "Activa" : "Terminada"}`;
       })
       .join("\n");
     const csv = headers + rows;
@@ -824,7 +924,7 @@ const Visits = () => {
           <Card>
             <h2 className="text-lg font-semibold mb-4">Historial de Visitas</h2>
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 w-full md:w-4/5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full md:w-3/4">
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Estado
@@ -868,18 +968,6 @@ const Visits = () => {
                     placeholder="Filtrar por nombre"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Fecha de Ingreso
-                  </label>
-                  <Input
-                    type="date"
-                    name="fecha"
-                    value={filter.fecha}
-                    onChange={handleFilterChange}
-                    max={currentDate}
-                  />
-                </div>
               </div>
               <div className="flex justify-end mt-4 md:mt-0">
                 <Button
@@ -916,6 +1004,9 @@ const Visits = () => {
                       Fecha Ingreso
                     </th>
                     <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                      Hora Ingreso
+                    </th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
                       Fecha Salida
                     </th>
                     <th className="py-3 px-4 border-b text-left text-sm font-semibold">
@@ -933,7 +1024,7 @@ const Visits = () => {
                   {filteredVisitas.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={10}
+                        colSpan={11}
                         className="py-4 text-center text-gray-500"
                       >
                         No hay visitas para mostrar.
@@ -967,13 +1058,10 @@ const Visits = () => {
                           <td className="py-3 px-4">
                             {visita.NOMBRE_PROPIETARIO ?? "-"}
                           </td>
+                          <td className="py-3 px-4">{visita.FECHA_INGRESO}</td>
+                          <td className="py-3 px-4">{visita.HORA_INGRESO}</td>
                           <td className="py-3 px-4">
-                            {new Date(visita.FECHA_INGRESO).toLocaleString()}
-                          </td>
-                          <td className="py-3 px-4">
-                            {visita.FECHA_SALIDA
-                              ? new Date(visita.FECHA_SALIDA).toLocaleString()
-                              : "-"}
+                            {visita.FECHA_SALIDA ? visita.FECHA_SALIDA : "-"}
                           </td>
                           <td className="py-3 px-4">{visita.MOTIVO}</td>
                           <td className="py-3 px-4">
@@ -1066,7 +1154,7 @@ const Visits = () => {
                         fecha: e.target.value,
                       }))
                     }
-                    min={currentDate} // No permitir fechas pasadas
+                    min={currentDate}
                   />
                 </div>
               </div>
@@ -1122,12 +1210,9 @@ const Visits = () => {
                             ? 1
                             : 0
                           : visita.ESTADO;
-                      // Normalizar la fecha para evitar problemas de zona horaria
-                      const fechaLlegadaDate = new Date(visita.FECHA_LLEGADA);
-                      const fechaLlegadaFormatted = fechaLlegadaDate
-                        .toISOString()
-                        .split("T")[0];
+                      const fechaLlegadaFormatted = formatDate(visita.FECHA_LLEGADA);
                       const currentDateObj = new Date(currentDate);
+                      const fechaLlegadaDate = new Date(visita.FECHA_LLEGADA);
                       const isToday = fechaLlegadaFormatted === currentDate;
                       const isPastDate = fechaLlegadaDate < currentDateObj;
                       const isFutureDate = fechaLlegadaDate > currentDateObj;
@@ -1152,69 +1237,31 @@ const Visits = () => {
                           <td className="py-3 px-4">{fechaLlegadaFormatted}</td>
                           <td className="py-3 px-4">
                             {(() => {
-                              // Si HORA_LLEGADA es null o undefined, mostrar "-"
                               if (!visita.HORA_LLEGADA) {
-                                console.log(
-                                  "HORA_LLEGADA es null o undefined:",
-                                  visita.ID_VISITA_PROGRAMADA
-                                );
                                 return "-";
                               }
-
                               try {
-                                console.log(
-                                  "HORA_LLEGADA raw:",
-                                  visita.HORA_LLEGADA,
-                                  "ID:",
-                                  visita.ID_VISITA_PROGRAMADA
-                                );
-
-                                // Normalizar HORA_LLEGADA para aceptar formatos como "HH:mm:ss" o "HH:mm"
                                 let normalizedTime = visita.HORA_LLEGADA.trim();
                                 if (/^\d{2}:\d{2}$/.test(normalizedTime)) {
-                                  // Si es "HH:mm", agregar ":00" para que sea "HH:mm:ss"
                                   normalizedTime = `${normalizedTime}:00`;
                                 } else if (
                                   !/^\d{2}:\d{2}:\d{2}$/.test(normalizedTime)
                                 ) {
-                                  // Si no coincide con "HH:mm:ss" ni "HH:mm", es un formato inválido
-                                  console.warn(
-                                    "Formato de HORA_LLEGADA inválido:",
-                                    visita.HORA_LLEGADA,
-                                    "ID:",
-                                    visita.ID_VISITA_PROGRAMADA
-                                  );
                                   return "-";
                                 }
-
-                                // Crear un objeto Date para formatear la hora
                                 const date = new Date(
                                   `1970-01-01T${normalizedTime}`
                                 );
                                 if (isNaN(date.getTime())) {
-                                  console.warn(
-                                    "Fecha inválida para HORA_LLEGADA:",
-                                    visita.HORA_LLEGADA,
-                                    "ID:",
-                                    visita.ID_VISITA_PROGRAMADA
-                                  );
                                   return "-";
                                 }
-
-                                // Formatear la hora como "HH:mm AM/PM"
                                 return date.toLocaleTimeString([], {
                                   hour: "2-digit",
                                   minute: "2-digit",
                                   hour12: true,
+                                  timeZone: "America/Lima",
                                 });
                               } catch (error) {
-                                console.error(
-                                  "Error procesando HORA_LLEGADA:",
-                                  visita.HORA_LLEGADA,
-                                  "ID:",
-                                  visita.ID_VISITA_PROGRAMADA,
-                                  error
-                                );
                                 return "-";
                               }
                             })()}
