@@ -13,6 +13,7 @@ interface AuthContextType {
   userName: string | null;
   userId: number | null;
   role: string | null;
+  userPermissions: string[]; // Nuevo campo
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
@@ -25,33 +26,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userName, setUserName] = useState<string | null>(null);
   const [userId, setUserId] = useState<number | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [userPermissions, setUserPermissions] = useState<string[]>([]); // Nuevo estado
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Validar sesión al iniciar la app
   useEffect(() => {
     const validateSession = async () => {
       const token = localStorage.getItem("token");
-
+  
       if (!token) {
         setIsAuthenticated(false);
         setUserId(null);
+        setUserPermissions([]);
         setIsLoading(false);
         return;
       }
-
+  
       try {
         const response = await fetch(`${API_URL}/validate`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-
+  
         if (response.ok) {
           const data = await response.json();
+          console.log("Datos de /validate:", data); // Depurar
           setIsAuthenticated(true);
           const savedName = localStorage.getItem("userName");
           const savedRole = localStorage.getItem("role");
           setUserName(data.userName || savedName || null);
           setRole(data.role || savedRole || null);
           setUserId(data.user?.id);
+          setUserPermissions(data.permissions || localStorage.getItem("permissions")?.split(",") || []);
         } else {
           logout();
         }
@@ -62,7 +66,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsLoading(false);
       }
     };
-
+  
     validateSession();
   }, []);
 
@@ -85,12 +89,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem("userName", data.userName);
       localStorage.setItem("role", data.role);
       localStorage.setItem("userId", String(data.user.id));
+      localStorage.setItem("permissions", data.permissions?.join(",") || ""); // Guardar permisos
 
-      // Actualizar el estado de React inmediatamente
+      // Actualizar el estado
       setIsAuthenticated(true);
       setUserName(data.userName);
       setRole(data.role);
       setUserId(data.user.id);
+      setUserPermissions(data.permissions || []);
     } catch (error) {
       console.error("Error al iniciar sesión:", error);
       throw error;
@@ -103,6 +109,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUserName(null);
     setUserId(null);
     setRole(null);
+    setUserPermissions([]);
   };
 
   return (
@@ -112,6 +119,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         userName,
         userId,
         role,
+        userPermissions, // Nuevo
         isLoading,
         login,
         logout,

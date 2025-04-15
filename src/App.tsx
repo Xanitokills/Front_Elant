@@ -16,9 +16,11 @@ import Dashboard from "./pages/Dashboard";
 import ChangePassword from "./components/ChangePassword";
 import Login from "./pages/Login";
 import LoginConfig from "./components/LoginConfig";
-import Reservations from "./components/Reservations"; 
-import MenuSubmenuGestion from "./components/MenuSubmenuGestion"; 
-import VisitasProgramadas from "./components/visitasProgramadas";
+import Reservations from "./components/Reservations";
+import MenuSubmenuGestion from "./components/MenuSubmenuGestion";
+import VisitasProgramadas from "./components/VisitasProgramadas";
+import Unauthorized from "./pages/Unauthorized";
+import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { FaBars } from "react-icons/fa";
 
@@ -43,7 +45,6 @@ const App = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-100 relative">
-      {/* Sidebar escritorio */}
       {!isLoginPage && (
         <div className="hidden md:block fixed top-0 left-0 z-50">
           <Sidebar
@@ -53,7 +54,6 @@ const App = () => {
         </div>
       )}
 
-      {/* Sidebar móvil con overlay */}
       {!isLoginPage && sidebarOpen && (
         <>
           <div
@@ -69,7 +69,6 @@ const App = () => {
         </>
       )}
 
-      {/* Header móvil */}
       {!isLoginPage && (
         <div className="md:hidden fixed top-0 left-0 z-40 w-full bg-gray-900 p-4 flex items-center justify-between text-white">
           <button
@@ -82,34 +81,54 @@ const App = () => {
         </div>
       )}
 
-      {/* Contenido principal */}
       <div
         className={`flex-1 overflow-y-auto transition-all duration-300 px-4 w-full ${
           !isLoginPage ? "md:ml-64 pt-24 md:pt-4" : ""
         }`}
       >
         <Routes>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/personal/movimientos" element={<Movements />} />
-          <Route path="/users" element={<Users />} />
-          <Route path="/user-list" element={<UserList />} />
-          <Route path="/movements-list" element={<MovementsList />} />
-          <Route path="/visits" element={<Visits />} />
-          <Route path="/LoginConfig" element={<LoginConfig />} />
-          <Route path="/ChangePass" element={<ChangePassword />} />
-          <Route path="/reservas" element={<Reservations />} />
-          <Route path="/menu-submenu" element={<MenuSubmenuGestion />} />
-          <Route path="/VisitasProgramadas" element={<VisitasProgramadas />} />
-           {/* New Route */}
-          <Route
-            path="/settings/:section"
-            element={
-              <div className="p-6">
-                <h1 className="text-2xl font-bold">Configuración</h1>
-              </div>
-            }
-          />
           <Route path="/login" element={<Login />} />
+          <Route path="/unauthorized" element={<Unauthorized />} />
+
+          {/* Ajusta estos permisos según tu base de datos */}
+          <Route element={<ProtectedRoute requiredPermission="Dashboard" />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+          </Route>
+          <Route element={<ProtectedRoute requiredPermission="Movimientos" />}>
+            <Route path="/personal/movimientos" element={<Movements />} />
+            <Route path="/movements-list" element={<MovementsList />} />
+          </Route>
+          <Route element={<ProtectedRoute requiredPermission="Usuarios" />}>
+            <Route path="/users" element={<Users />} />
+            <Route path="/user-list" element={<UserList />} />
+          </Route>
+          <Route element={<ProtectedRoute requiredPermission="Visitas" />}>
+            <Route path="/visits" element={<Visits />} />
+            <Route path="/VisitasProgramadas" element={<VisitasProgramadas />} />
+          </Route>
+          <Route element={<ProtectedRoute requiredPermission="Reservas" />}>
+            <Route path="/reservas" element={<Reservations />} />
+          </Route>
+          <Route element={<ProtectedRoute requiredPermission="MenuSubmenu" />}>
+            <Route path="/menu-submenu" element={<MenuSubmenuGestion />} />
+          </Route>
+          <Route element={<ProtectedRoute requiredPermission="ConfigLogin" />}>
+            <Route path="/LoginConfig" element={<LoginConfig />} />
+          </Route>
+          <Route element={<ProtectedRoute requiredPermission="CambiarContraseña" />}>
+            <Route path="/ChangePass" element={<ChangePassword />} />
+          </Route>
+          <Route element={<ProtectedRoute requiredPermission="Configuración" />}>
+            <Route
+              path="/settings/:section"
+              element={
+                <div className="p-6">
+                  <h1 className="text-2xl font-bold">Configuración</h1>
+                </div>
+              }
+            />
+          </Route>
+
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
