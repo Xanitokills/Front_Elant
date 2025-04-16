@@ -86,56 +86,80 @@ const App = () => {
           !isLoginPage ? "md:ml-64 pt-24 md:pt-4" : ""
         }`}
       >
-<Routes>
-  <Route path="/login" element={<Login />} />
-  <Route path="/unauthorized" element={<Unauthorized />} />
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/unauthorized" element={<Unauthorized />} />
 
-  {/* Permisos ajustados */}
-  <Route element={<ProtectedRoute requiredPermission="Usuarios" />}>
-    <Route path="/dashboard" element={<Dashboard />} /> {/* Temporalmente Usuarios */}
-  </Route>
-  <Route element={<ProtectedRoute requiredPermission="Control de Ingresos y Salidas" />}>
-    <Route path="/personal/movimientos" element={<Movements />} />
-    <Route path="/movements-list" element={<MovementsList />} />
-  </Route>
-  <Route element={<ProtectedRoute requiredPermission="Registrar Usuarios" />}>
-    <Route path="/users" element={<Users />} />
-  </Route>
-  <Route element={<ProtectedRoute requiredPermission="Lista de Usuarios" />}>
-    <Route path="/user-list" element={<UserList />} />
-  </Route>
-  <Route element={<ProtectedRoute requiredPermission="Gestión Visitas" />}>
-    <Route path="/visits" element={<Visits />} />
-  </Route>
-  <Route element={<ProtectedRoute requiredPermission="Visitas Programadas" />}>
-    <Route path="/VisitasProgramadas" element={<VisitasProgramadas />} />
-  </Route>
-  <Route element={<ProtectedRoute requiredPermission="Reservas" />}>
-    <Route path="/reservas" element={<Reservations />} />
-  </Route>
-  <Route element={<ProtectedRoute requiredPermission="Gestión de Menús y Submenús" />}>
-    <Route path="/menu-submenu" element={<MenuSubmenuGestion />} />
-  </Route>
-  <Route element={<ProtectedRoute requiredPermission="Login" />}>
-    <Route path="/LoginConfig" element={<LoginConfig />} />
-  </Route>
-  <Route element={<ProtectedRoute requiredPermission="Cambio Contraseña" />}>
-    <Route path="/ChangePass" element={<ChangePassword />} />
-  </Route>
-  <Route element={<ProtectedRoute requiredPermission="Configuración" />}>
-    <Route
-      path="/settings/:section"
-      element={
-        <div className="p-6">
-          <h1 className="text-2xl font-bold">Configuración</h1>
-        </div>
-      }
-    />
-  </Route>
+          <Route element={<ProtectedRoute requiredPermission="Dashboard" />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+          </Route>
+          <Route
+            element={
+              <ProtectedRoute requiredPermission="Control de Ingresos y Salidas" />
+            }
+          >
+            <Route path="/personal/movimientos" element={<Movements />} />
+            <Route path="/movements-list" element={<MovementsList />} />
+          </Route>
+          <Route
+            element={<ProtectedRoute requiredPermission="Registrar Usuarios" />}
+          >
+            <Route path="/users" element={<Users />} />
+          </Route>
+          <Route
+            element={<ProtectedRoute requiredPermission="Lista de Usuarios" />}
+          >
+            <Route path="/user-list" element={<UserList />} />
+          </Route>
+          <Route
+            element={<ProtectedRoute requiredPermission="Gestión Visitas" />}
+          >
+            <Route path="/visits" element={<Visits />} />
+          </Route>
+          <Route
+            element={
+              <ProtectedRoute requiredPermission="Visitas Programadas" />
+            }
+          >
+            <Route
+              path="/VisitasProgramadas"
+              element={<VisitasProgramadas />}
+            />
+          </Route>
+          <Route element={<ProtectedRoute requiredPermission="Reservas" />}>
+            <Route path="/reservas" element={<Reservations />} />
+          </Route>
+          <Route
+            element={
+              <ProtectedRoute requiredPermission="Gestión de Menús y Submenús" />
+            }
+          >
+            <Route path="/menu-submenu" element={<MenuSubmenuGestion />} />
+          </Route>
+          <Route element={<ProtectedRoute requiredPermission="Login" />}>
+            <Route path="/LoginConfig" element={<LoginConfig />} />
+          </Route>
+          <Route
+            element={<ProtectedRoute requiredPermission="Cambio Contraseña" />}
+          >
+            <Route path="/ChangePass" element={<ChangePassword />} />
+          </Route>
+          <Route
+            element={<ProtectedRoute requiredPermission="Configuración" />}
+          >
+            <Route
+              path="/settings/:section"
+              element={
+                <div className="p-6">
+                  <h1 className="text-2xl font-bold">Configuración</h1>
+                </div>
+              }
+            />
+          </Route>
 
-  <Route path="/" element={<Navigate to="/dashboard" replace />} />
-  <Route path="*" element={<Navigate to="/dashboard" replace />} />
-</Routes>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
       </div>
     </div>
   );
