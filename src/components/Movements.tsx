@@ -30,8 +30,16 @@ const Movements = () => {
   const currentDate = now.toISOString().slice(0, 10);
 
   const fetchMovements = async () => {
+    const token = localStorage.getItem("token"); // O sessionStorage, dependiendo de dónde guardas el token
+
     try {
-      const response = await fetch(`${API_URL}/movements`);
+      const response = await fetch(`${API_URL}/movements`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`, // Agrega el token en el header
+        },
+      });
+
       if (!response.ok) throw new Error("Error al obtener los movimientos");
       const data = await response.json();
       setMovimientos(data);
@@ -39,7 +47,6 @@ const Movements = () => {
       console.error("Error al obtener los movimientos:", error);
     }
   };
-
   useEffect(() => {
     fetchMovements();
     const interval = setInterval(fetchMovements, 5000);
@@ -57,12 +64,13 @@ const Movements = () => {
     const headers =
       "ID Acceso,ID Usuario,Nombre,Correo,Nro Dpto,Fecha Acceso,Éxito,Motivo Fallo,Puerta,Descripción\n";
     const rows = movimientos
-      .map((mov) =>
-        `${mov.ID_ACCESO},${mov.ID_USUARIO},${mov.nombre},${mov.CORREO},${
-          mov.NRO_DPTO ?? "-"
-        },${mov.FECHA_ACCESO},${mov.EXITO ? "Sí" : "No"},${
-          mov.MOTIVO_FALLO ?? "-"
-        },${mov.puerta},${mov.descripcion}`
+      .map(
+        (mov) =>
+          `${mov.ID_ACCESO},${mov.ID_USUARIO},${mov.nombre},${mov.CORREO},${
+            mov.NRO_DPTO ?? "-"
+          },${mov.FECHA_ACCESO},${mov.EXITO ? "Sí" : "No"},${
+            mov.MOTIVO_FALLO ?? "-"
+          },${mov.puerta},${mov.descripcion}`
       )
       .join("\n");
 
@@ -77,11 +85,23 @@ const Movements = () => {
   };
 
   const handleBuscarPorDNI = async () => {
+    const token = localStorage.getItem("token"); // O sessionStorage
+
     if (!dni)
-      return Swal.fire("Advertencia", "Por favor, ingresa un DNI válido", "warning");
+      return Swal.fire(
+        "Advertencia",
+        "Por favor, ingresa un DNI válido",
+        "warning"
+      );
 
     try {
-      const response = await fetch(`${API_URL}/usuarios/${dni}`);
+      const response = await fetch(`${API_URL}/usuarios/${dni}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`, // Agrega el token en el header
+        },
+      });
+
       if (!response.ok) throw new Error("Usuario no encontrado");
       const data = await response.json();
 
@@ -101,11 +121,17 @@ const Movements = () => {
       });
 
       if (result.isConfirmed) {
-        const postResponse = await fetch(`${API_URL}/movements/registrar-acceso`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dni }),
-        });
+        const postResponse = await fetch(
+          `${API_URL}/movements/registrar-acceso`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`, // Agrega el token en el header
+            },
+            body: JSON.stringify({ dni }),
+          }
+        );
 
         const resultData = await postResponse.json();
 
@@ -125,7 +151,6 @@ const Movements = () => {
       setDni("");
     }
   };
-
   const filteredMovimientos = movimientos.filter((mov) => {
     const fechaAcceso = new Date(mov.FECHA_ACCESO).toISOString().slice(0, 10);
     const texto = filter.valor.toLowerCase();
@@ -150,7 +175,9 @@ const Movements = () => {
 
       {/* Registro por DNI */}
       <div className="bg-white p-4 md:p-8 rounded-lg shadow-lg mb-6 transform transition-all duration-300 hover:shadow-xl">
-        <h2 className="text-lg font-semibold mb-4">Registrar ingreso por DNI</h2>
+        <h2 className="text-lg font-semibold mb-4">
+          Registrar ingreso por DNI
+        </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-600 mb-1">
