@@ -22,7 +22,7 @@ import VisitasProgramadas from "./components/VisitasProgramadas";
 import Unauthorized from "./pages/Unauthorized";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { FaBars } from "react-icons/fa";
+import { FaBars, FaSpinner } from "react-icons/fa"; // Importa FaSpinner
 
 // Main App component
 const App = () => {
@@ -33,8 +33,15 @@ const App = () => {
   // Loading state when checking authentication
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-white text-xl">Cargando...</p>
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="flex flex-col items-center space-y-4">
+          {/* Spinner animado */}
+          <FaSpinner className="animate-spin text-4xl text-blue-600" />
+          {/* Texto elegante */}
+          <p className="text-lg font-semibold text-gray-700 animate-pulse">
+            Cargando SoftHome
+          </p>
+        </div>
       </div>
     );
   }
@@ -99,23 +106,31 @@ const App = () => {
           {/* Route for login page */}
           <Route path="/login" element={<Login />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
-          
+
           {/* Protected Routes */}
           <Route element={<ProtectedRoute requiredPermission="Dashboard" />}>
             <Route path="/dashboard" element={<Dashboard />} />
           </Route>
 
           {/* Movements and related pages */}
-          <Route element={<ProtectedRoute requiredPermission="Control de Ingresos y Salidas" />}>
+          <Route
+            element={
+              <ProtectedRoute requiredPermission="Control de Ingresos y Salidas" />
+            }
+          >
             <Route path="/personal/movimientos" element={<Movements />} />
             <Route path="/movements-list" element={<MovementsList />} />
           </Route>
 
           {/* Users and related pages */}
-          <Route element={<ProtectedRoute requiredPermission="Registrar Usuarios" />}>
+          <Route
+            element={<ProtectedRoute requiredPermission="Registrar Usuarios" />}
+          >
             <Route path="/users" element={<Users />} />
           </Route>
-          <Route element={<ProtectedRoute requiredPermission="Lista de Usuarios" />}>
+          <Route
+            element={<ProtectedRoute requiredPermission="Lista de Usuarios" />}
+          >
             <Route path="/user-list" element={<UserList />} />
           </Route>
 
@@ -123,7 +138,9 @@ const App = () => {
           <Route element={<ProtectedRoute requiredPermission="Gestión Visitas" />}>
             <Route path="/visits" element={<Visits />} />
           </Route>
-          <Route element={<ProtectedRoute requiredPermission="Visitas Programadas" />}>
+          <Route
+            element={<ProtectedRoute requiredPermission="Visitas Programadas" />}
+          >
             <Route path="/VisitasProgramadas" element={<VisitasProgramadas />} />
           </Route>
 
@@ -131,23 +148,32 @@ const App = () => {
           <Route element={<ProtectedRoute requiredPermission="Reservas" />}>
             <Route path="/reservas" element={<Reservations />} />
           </Route>
-          <Route element={<ProtectedRoute requiredPermission="Gestión de Menús y Submenús" />}>
+          <Route
+            element={
+              <ProtectedRoute requiredPermission="Gestión de Menús y Submenús" />
+            }
+          >
             <Route path="/menu-submenu" element={<MenuSubmenuGestion />} />
           </Route>
           <Route element={<ProtectedRoute requiredPermission="Login" />}>
             <Route path="/LoginConfig" element={<LoginConfig />} />
           </Route>
-          <Route element={<ProtectedRoute requiredPermission="Cambio Contraseña" />}>
+          <Route
+            element={<ProtectedRoute requiredPermission="Cambio Contraseña" />}
+          >
             <Route path="/ChangePass" element={<ChangePassword />} />
           </Route>
 
           {/* Settings page with section param */}
           <Route element={<ProtectedRoute requiredPermission="Configuración" />}>
-            <Route path="/settings/:section" element={
-              <div className="p-6">
-                <h1 className="text-2xl font-bold">Configuración</h1>
-              </div>
-            } />
+            <Route
+              path="/settings/:section"
+              element={
+                <div className="p-6">
+                  <h1 className="text-2xl font-bold">Configuración</h1>
+                </div>
+              }
+            />
           </Route>
 
           {/* Redirect to dashboard if route not found */}
