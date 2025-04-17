@@ -10,6 +10,7 @@ import {
   FaArrowDown,
 } from "react-icons/fa";
 import { iconOptions } from "../components/iconList";
+import { useAuth } from "../context/AuthContext";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -41,6 +42,7 @@ const Container = styled.div`
   padding: 1.5rem;
   background-color: #f3f4f6;
   min-height: 100vh;
+
   @media (min-width: 768px) {
     padding: 2rem;
   }
@@ -61,9 +63,11 @@ const Card = styled.div`
   margin-bottom: 1.5rem;
   transition: box-shadow 0.2s ease;
   animation: ${fadeIn} 0.5s ease-out;
+
   &:hover {
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
   }
+
   @media (min-width: 768px) {
     padding: 2rem;
   }
@@ -95,9 +99,16 @@ interface IconOption {
   icon: JSX.Element;
 }
 
+interface Assignments {
+  menus: number[];
+  submenus: number[];
+}
+
 const MenuSubmenuGestion = () => {
+  const { refreshSidebar } = useAuth();
   const [menus, setMenus] = useState<MenuWithSubmenu[]>([]);
   const [tiposUsuario, setTiposUsuario] = useState<TipoUsuario[]>([]);
+  const [assignments, setAssignments] = useState<Assignments>({ menus: [], submenus: [] });
   const [newMenu, setNewMenu] = useState({ nombre: "", icono: "", url: "" });
   const [newSubmenu, setNewSubmenu] = useState({
     nombre: "",
@@ -161,10 +172,39 @@ const MenuSubmenuGestion = () => {
     }
   };
 
+  // Fetch assignments
+  const fetchAssignments = async (idTipoUsuario: string) => {
+    if (!idTipoUsuario) {
+      setAssignments({ menus: [], submenus: [] });
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/rol-menu-submenu/${idTipoUsuario}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Error al obtener asignaciones");
+      const data = await res.json();
+      setAssignments(data);
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudieron cargar las asignaciones",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      setAssignments({ menus: [], submenus: [] });
+    }
+  };
+
   useEffect(() => {
     fetchMenus();
     fetchTiposUsuario();
   }, []);
+
+  useEffect(() => {
+    fetchAssignments(selectedTipoUsuario);
+  }, [selectedTipoUsuario]);
 
   // Icon options for react-select
   const selectIconOptions: IconOption[] = iconOptions.map((opt) => ({
@@ -599,6 +639,7 @@ const MenuSubmenuGestion = () => {
         }),
       });
       if (!res.ok) throw new Error("Error al asignar menú");
+      const data = await res.json();
       Swal.fire({
         icon: "success",
         title: "Éxito",
@@ -606,6 +647,10 @@ const MenuSubmenuGestion = () => {
         timer: 2000,
         showConfirmButton: false,
       });
+      fetchAssignments(selectedTipoUsuario);
+      if (data.refreshSidebar) {
+        await refreshSidebar();
+      }
     } catch (error) {
       Swal.fire({
         icon: "error",
@@ -646,6 +691,7 @@ const MenuSubmenuGestion = () => {
           }),
         });
         if (!res.ok) throw new Error("Error al eliminar asignación de menú");
+        const data = await res.json();
         Swal.fire({
           icon: "success",
           title: "Éxito",
@@ -653,6 +699,10 @@ const MenuSubmenuGestion = () => {
           timer: 2000,
           showConfirmButton: false,
         });
+        fetchAssignments(selectedTipoUsuario);
+        if (data.refreshSidebar) {
+          await refreshSidebar();
+        }
       } catch (error) {
         Swal.fire({
           icon: "error",
@@ -684,6 +734,7 @@ const MenuSubmenuGestion = () => {
         }),
       });
       if (!res.ok) throw new Error("Error al asignar submenú");
+      const data = await res.json();
       Swal.fire({
         icon: "success",
         title: "Éxito",
@@ -691,6 +742,10 @@ const MenuSubmenuGestion = () => {
         timer: 2000,
         showConfirmButton: false,
       });
+      fetchAssignments(selectedTipoUsuario);
+      if (data.refreshSidebar) {
+        await refreshSidebar();
+      }
     } catch (error) {
       Swal.fire({
         icon: "error",
@@ -728,6 +783,7 @@ const MenuSubmenuGestion = () => {
           body: JSON.stringify({ idTipoUsuario, idSubmenu }),
         });
         if (!res.ok) throw new Error();
+        const data = await res.json();
         Swal.fire({
           icon: "success",
           title: "Éxito",
@@ -735,6 +791,10 @@ const MenuSubmenuGestion = () => {
           timer: 2000,
           showConfirmButton: false,
         });
+        fetchAssignments(selectedTipoUsuario);
+        if (data.refreshSidebar) {
+          await refreshSidebar();
+        }
       } catch {
         Swal.fire({
           icon: "error",
@@ -845,9 +905,7 @@ const MenuSubmenuGestion = () => {
                     value={selectIconOptions.find(
                       (opt) => opt.value === newMenu.icono
                     )}
-                    onChange={(
-                      option: SingleValue<IconOption>
-                    ) =>
+                    onChange={(option: SingleValue<IconOption>) =>
                       setNewMenu({
                         ...newMenu,
                         icono: option ? option.value : "",
@@ -969,9 +1027,7 @@ const MenuSubmenuGestion = () => {
                     value={selectIconOptions.find(
                       (opt) => opt.value === newSubmenu.icono
                     )}
-                    onChange={(
-                      option: SingleValue<IconOption>
-                    ) =>
+                    onChange={(option: SingleValue<IconOption>) =>
                       setNewSubmenu({
                         ...newSubmenu,
                         icono: option ? option.value : "",
@@ -1239,32 +1295,40 @@ const MenuSubmenuGestion = () => {
                             <span className="font-medium">
                               {menu.MENU_NOMBRE}
                             </span>
+                            <span className="ml-2 text-sm text-gray-500">
+                              {assignments.menus.includes(menu.ID_MENU)
+                                ? "(Asignado)"
+                                : "(No asignado)"}
+                            </span>
                           </div>
                           <div className="flex space-x-3">
-                            <button
-                              className="bg-green-600 text-white px-4 py-1 rounded-lg hover:bg-green-700 transition-colors duration-200"
-                              onClick={() =>
-                                handleAssignMenuToRole(
-                                  parseInt(selectedTipoUsuario),
-                                  menu.ID_MENU,
-                                  menu.MENU_NOMBRE
-                                )
-                              }
-                            >
-                              Asignar
-                            </button>
-                            <button
-                              className="bg-red-600 text-white px-4 py-1 rounded-lg hover:bg-red-700 transition-colors duration-200"
-                              onClick={() =>
-                                handleRemoveMenuFromRole(
-                                  parseInt(selectedTipoUsuario),
-                                  menu.ID_MENU,
-                                  menu.MENU_NOMBRE
-                                )
-                              }
-                            >
-                              Desasignar
-                            </button>
+                            {assignments.menus.includes(menu.ID_MENU) ? (
+                              <button
+                                className="bg-red-600 text-white px-4 py-1 rounded-lg hover:bg-red-700 transition-colors duration-200"
+                                onClick={() =>
+                                  handleRemoveMenuFromRole(
+                                    parseInt(selectedTipoUsuario),
+                                    menu.ID_MENU,
+                                    menu.MENU_NOMBRE
+                                  )
+                                }
+                              >
+                                Desasignar
+                              </button>
+                            ) : (
+                              <button
+                                className="bg-green-600 text-white px-4 py-1 rounded-lg hover:bg-green-700 transition-colors duration-200"
+                                onClick={() =>
+                                  handleAssignMenuToRole(
+                                    parseInt(selectedTipoUsuario),
+                                    menu.ID_MENU,
+                                    menu.MENU_NOMBRE
+                                  )
+                                }
+                              >
+                                Asignar
+                              </button>
+                            )}
                           </div>
                         </li>
                       ))
@@ -1304,32 +1368,40 @@ const MenuSubmenuGestion = () => {
                               <span className="font-medium">
                                 {item.SUBMENU_NOMBRE}
                               </span>
+                              <span className="ml-2 text-sm text-gray-500">
+                                {assignments.submenus.includes(item.ID_SUBMENU!)
+                                  ? "(Asignado)"
+                                  : "(No asignado)"}
+                              </span>
                             </div>
                             <div className="flex space-x-3">
-                              <button
-                                className="bg-green-600 text-white px-4 py-1 rounded-lg hover:bg-green-700 transition-colors duration-200"
-                                onClick={() =>
-                                  handleAssignSubmenuToRole(
-                                    parseInt(selectedTipoUsuario),
-                                    item.ID_SUBMENU!,
-                                    item.SUBMENU_NOMBRE!
-                                  )
-                                }
-                              >
-                                Asignar
-                              </button>
-                              <button
-                                className="bg-red-600 text-white px-4 py-1 rounded-lg hover:bg-red-700 transition-colors duration-200"
-                                onClick={() =>
-                                  handleRemoveSubmenuFromRole(
-                                    parseInt(selectedTipoUsuario),
-                                    item.ID_SUBMENU!,
-                                    item.SUBMENU_NOMBRE!
-                                  )
-                                }
-                              >
-                                Desasignar
-                              </button>
+                              {assignments.submenus.includes(item.ID_SUBMENU!) ? (
+                                <button
+                                  className="bg-red-600 text-white px-4 py-1 rounded-lg hover:bg-red-700 transition-colors duration-200"
+                                  onClick={() =>
+                                    handleRemoveSubmenuFromRole(
+                                      parseInt(selectedTipoUsuario),
+                                      item.ID_SUBMENU!,
+                                      item.SUBMENU_NOMBRE!
+                                    )
+                                  }
+                                >
+                                  Desasignar
+                                </button>
+                              ) : (
+                                <button
+                                  className="bg-green-600 text-white px-4 py-1 rounded-lg hover:bg-green-700 transition-colors duration-200"
+                                  onClick={() =>
+                                    handleAssignSubmenuToRole(
+                                      parseInt(selectedTipoUsuario),
+                                      item.ID_SUBMENU!,
+                                      item.SUBMENU_NOMBRE!
+                                    )
+                                  }
+                                >
+                                  Asignar
+                                </button>
+                              )}
                             </div>
                           </li>
                         ))
