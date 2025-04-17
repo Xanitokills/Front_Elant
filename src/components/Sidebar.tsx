@@ -1,6 +1,5 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
-import axios from "axios";
 import * as FaIcons from "react-icons/fa";
 import {
   FaChevronDown,
@@ -10,13 +9,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import styled from "styled-components";
 
-// Función para obtener el componente de ícono correspondiente
-const getIconComponent = (iconName: string) => {
-  const Icon = FaIcons[iconName as keyof typeof FaIcons];
-  return Icon ? <Icon /> : null;
-};
-
-// Estilos con styled-components
+// Estilos con styled-components (sin cambios)
 const SidebarContainer = styled.div.withConfig({
   shouldForwardProp: (prop) => prop !== "sidebarOpen",
 })<{ sidebarOpen: boolean }>`
@@ -137,7 +130,7 @@ const MenuList = styled.div`
 
 const MenuItem = styled.div`
   position: relative;
-  margin-bottom: 1rem; /* Más espacio entre elementos del menú */
+  margin-bottom: 1rem;
 `;
 
 const MenuButtonWrapper = styled.div`
@@ -164,7 +157,7 @@ const MenuButton = styled.button<{ isOpen: boolean }>`
 const SubmenuList = styled.nav`
   position: relative;
   margin-left: 1rem;
-  margin-top: 0.5rem; /* Más espacio entre el menú y el submenú */
+  margin-top: 0.5rem;
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.3s ease-in-out;
@@ -181,7 +174,7 @@ const SubmenuItem = styled(NavLink)`
   padding: 0.5rem 0.75rem;
   border-radius: 0.75rem;
   font-size: 0.875rem;
-  margin-bottom: 0.5rem; /* Más espacio entre elementos del submenú */
+  margin-bottom: 0.5rem;
   transition: background-color 0.2s ease, color 0.2s ease;
 
   &:hover {
@@ -207,6 +200,12 @@ const LogoutButton = styled.button`
   }
 `;
 
+// Función para obtener el componente de ícono correspondiente
+const getIconComponent = (iconName: string) => {
+  const Icon = FaIcons[iconName as keyof typeof FaIcons];
+  return Icon ? <Icon /> : null;
+};
+
 interface SidebarStructure {
   title: string;
   icon: JSX.Element | null;
@@ -220,16 +219,11 @@ const Sidebar = ({
   closeSidebar: () => void;
   sidebarOpen: boolean;
 }) => {
-  const { logout, userId, userName, role, isAuthenticated, isLoading } =
+  const { logout, userName, role, isAuthenticated, isLoading, sidebarData } =
     useAuth();
-  const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>(
-    {}
-  );
+  const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({});
   const [searchTerm, setSearchTerm] = useState("");
-  const [sidebarStructure, setSidebarStructure] = useState<SidebarStructure[]>(
-    []
-  );
-  const hasFetchedRef = useRef(false);
+  const [sidebarStructure, setSidebarStructure] = useState<SidebarStructure[]>([]);
 
   const toggleSection = (title: string) => {
     setOpenSections((prev) => {
@@ -246,72 +240,27 @@ const Sidebar = ({
     setSearchTerm(e.target.value.toLowerCase());
   };
 
+  // Procesar los datos del menú desde AuthContext
   useEffect(() => {
-    console.log("🧠 useEffect ejecutado (Sidebar)");
-    console.log("👤 userId actual:", userId);
-
-    const fetchSidebar = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token || !userId) {
-          console.warn("Falta token o userId");
-          return;
-        }
-
-        const API_URL = import.meta.env.VITE_API_URL;
-        console.log(`📡 Llamando a: ${API_URL}/sidebar/${userId}`);
-
-        const res = await axios.get(`${API_URL}/sidebar/${userId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        console.log("Menús obtenidos:", res.data);
-
-        const menuObject = res.data[0];
-        const menusData = menuObject[Object.keys(menuObject)[0]];
-        console.log("Datos de menús JSON:", menusData);
-
-        let menus;
-        if (typeof menusData === "string") {
-          menus = JSON.parse(menusData);
-        } else {
-          console.error(
-            "Formato de datos no válido, se esperaba una cadena:",
-            menusData
-          );
-          return;
-        }
-
-        console.log("Estructura de menús:", menus);
-
-        const structure = menus.map((menu: any) => ({
-          title: menu.MENU_NOMBRE,
-          icon: getIconComponent(menu.MENU_ICONO),
-          items: menu.SUBMENUS.sort(
-            (a: any, b: any) => a.SUBMENU_ORDEN - b.SUBMENU_ORDEN
-          ).map((sub: any) => ({
-            label: sub.SUBMENU_NOMBRE,
-            path: sub.SUBMENU_URL,
-            icon: getIconComponent(sub.SUBMENU_ICONO),
-          })),
-        }));
-
-        console.log("Estructura procesada del sidebar:", structure);
-        setSidebarStructure(structure);
-        hasFetchedRef.current = true;
-      } catch (err) {
-        console.error("❌ Error al obtener el menú:", err);
-      }
-    };
-
-    if (!isLoading && isAuthenticated && userId && !hasFetchedRef.current) {
-      fetchSidebar();
+    if (sidebarData && sidebarData.length > 0) {
+      const structure = sidebarData.map((menu: any) => ({
+        title: menu.MENU_NOMBRE,
+        icon: getIconComponent(menu.MENU_ICONO),
+        items: menu.SUBMENUS.sort(
+          (a: any, b: any) => a.SUBMENU_ORDEN - b.SUBMENU_ORDEN
+        ).map((sub: any) => ({
+          label: sub.SUBMENU_NOMBRE,
+          path: sub.SUBMENU_URL,
+          icon: getIconComponent(sub.SUBMENU_ICONO),
+        })),
+      }));
+      setSidebarStructure(structure);
+    } else {
+      setSidebarStructure([]);
     }
-  }, [isLoading, isAuthenticated, userId]);
+  }, [sidebarData]);
 
-  if (isLoading || !isAuthenticated || !userId) {
+  if (isLoading || !isAuthenticated) {
     console.log("⏳ Esperando a que el contexto esté listo...");
     return null;
   }
