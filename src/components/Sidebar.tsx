@@ -209,6 +209,7 @@ const getIconComponent = (iconName: string) => {
 interface SidebarStructure {
   title: string;
   icon: JSX.Element | null;
+  path?: string; // Agregado para manejar la URL del menú
   items: { label: string; path: string; icon: JSX.Element | null }[];
 }
 
@@ -246,13 +247,16 @@ const Sidebar = ({
       const structure = sidebarData.map((menu: any) => ({
         title: menu.MENU_NOMBRE,
         icon: getIconComponent(menu.MENU_ICONO),
-        items: menu.SUBMENUS.sort(
-          (a: any, b: any) => a.SUBMENU_ORDEN - b.SUBMENU_ORDEN
-        ).map((sub: any) => ({
-          label: sub.SUBMENU_NOMBRE,
-          path: sub.SUBMENU_URL,
-          icon: getIconComponent(sub.SUBMENU_ICONO),
-        })),
+        path: menu.MENU_URL, // Incluir la URL del menú
+        items: menu.SUBMENUS
+          ? menu.SUBMENUS.sort(
+              (a: any, b: any) => a.SUBMENU_ORDEN - b.SUBMENU_ORDEN
+            ).map((sub: any) => ({
+              label: sub.SUBMENU_NOMBRE,
+              path: sub.SUBMENU_URL,
+              icon: getIconComponent(sub.SUBMENU_ICONO),
+            }))
+          : [], // Array vacío si no hay submenús
       }));
       setSidebarStructure(structure);
     } else {
@@ -303,6 +307,24 @@ const Sidebar = ({
               const filteredItems = section.items.filter((item) =>
                 item.label.toLowerCase().includes(searchTerm)
               );
+
+              // Si el menú no tiene submenús y tiene una URL, renderizar como NavLink directo
+              if (section.items.length === 0 && section.path) {
+                return (
+                  <MenuItem key={section.title}>
+                    <SubmenuItem
+                      to={section.path}
+                      onClick={closeSidebar}
+                      className="font-bold"
+                    >
+                      {section.icon}
+                      {section.title}
+                    </SubmenuItem>
+                  </MenuItem>
+                );
+              }
+
+              // Si tiene submenús, renderizar como sección desplegable
               if (filteredItems.length === 0) return null;
 
               return (
