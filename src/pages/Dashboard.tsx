@@ -134,7 +134,7 @@ const Dashboard = () => {
   ];
   const simulatedDocuments = [
     { name: "Reglamento Interno", type: "PDF", url: "#" },
-    { name: "Normas de Convivencia", type: "Word", url: "#" },
+    { name: "Normas de Convivencia", insider: "Word", url: "#" },
     { name: "Presupuesto 2025", type: "Excel", url: "#" },
   ];
   const accountInfo = {
@@ -255,14 +255,13 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-blue-0 py-8 px-4 sm:px-6 lg:px-8">
-      <Element name="top">
+    <>
+      <Element name="top" />
+      <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Encabezado con Título y Logo */}
           <div className={`bg-gradient-to-r from-[${COLOR_DARK_GRAY}] via-[${COLOR_VIBRANT_BLUE}] to-[${COLOR_LIGHT_BLUE}] text-white py-4 px-6 rounded-2xl shadow-xl flex items-center justify-between mb-8 animate-slide-in-down`}>
-            <h1 className="text-2xl font-bold">
-              Panel Principal
-            </h1>
+            <h1 className="text-2xl font-bold">Panel Principal</h1>
             <div className="relative">
               <div className="bg-white rounded-full h-24 w-24 flex items-center justify-center shadow-lg hover:scale-105 transition-transform duration-300">
                 <img src={LOGO_PATH} alt="Softhome Logo" className="h-20 w-20 rounded-full object-contain" />
@@ -351,10 +350,7 @@ const Dashboard = () => {
           {(isSuperUser || isAdmin || isSecurity) && (
             <Element name="debtors">
               <div className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}>
-                <div
-                  onClick={showDebtors}
-                  className="text-red-600 flex items-center cursor-pointer"
-                >
+                <div onClick={showDebtors} className="text-red-600 flex items-center cursor-pointer">
                   <FaExclamationCircle className="mr-3 text-3xl" />
                   <p className="font-semibold text-lg">
                     {isLoading ? (
@@ -507,11 +503,7 @@ const Dashboard = () => {
                   className={`w-full mb-4 text-[${COLOR_DARK_GRAY}]`}
                 />
                 {imagePreview && (
-                  <img
-                    src={imagePreview}
-                    alt="Vista previa"
-                    className="max-w-full max-h-48 rounded-lg mb-4 shadow-sm"
-                  />
+                  <img src={imagePreview} alt="Vista previa" className="max-w-full max-h-48 rounded-lg mb-4 shadow-sm" />
                 )}
                 <div className="flex justify-end gap-3">
                   <button
@@ -566,7 +558,7 @@ const Dashboard = () => {
 
           {/* Botón para subir al inicio */}
           {showScrollTop && (
-            <Link to="top" smooth={true} duration={500}>
+            <Link to="top" smooth={true} duration={500} offset={-100}>
               <button
                 className="fixed bottom-6 right-6 bg-transparent border-2 border-[#60a5fa] text-[#60a5fa] p-3 rounded-full shadow-md hover:border-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300 z-50"
                 title="Subir al inicio"
@@ -576,8 +568,8 @@ const Dashboard = () => {
             </Link>
           )}
         </div>
-      </Element>
-    </div>
+      </div>
+    </>
   );
 };
 
