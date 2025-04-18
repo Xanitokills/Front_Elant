@@ -134,7 +134,7 @@ const Dashboard = () => {
   ];
   const simulatedDocuments = [
     { name: "Reglamento Interno", type: "PDF", url: "#" },
-    { name: "Normas de Convivencia", insider: "Word", url: "#" },
+    { name: "Normas de Convivencia", type: "Word", url: "#" },
     { name: "Presupuesto 2025", type: "Excel", url: "#" },
   ];
   const accountInfo = {
@@ -260,7 +260,12 @@ const Dashboard = () => {
       <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           {/* Encabezado con Título y Logo */}
-          <div className={`bg-gradient-to-r from-[${COLOR_DARK_GRAY}] via-[${COLOR_VIBRANT_BLUE}] to-[${COLOR_LIGHT_BLUE}] text-white py-4 px-6 rounded-2xl shadow-xl flex items-center justify-between mb-8 animate-slide-in-down`}>
+          <div
+            className="bg-gradient-to-r from-[#4a5568] via-[#60a5fa] to-[#93c5fd] text-white py-4 px-6 rounded-2xl shadow-xl flex items-center justify-between mb-8 animate-slide-in-down"
+            style={{
+              background: `linear-gradient(to right, ${COLOR_DARK_GRAY}, ${COLOR_VIBRANT_BLUE}, ${COLOR_LIGHT_BLUE})`,
+            }}
+          >
             <h1 className="text-2xl font-bold">Panel Principal</h1>
             <div className="relative">
               <div className="bg-white rounded-full h-24 w-24 flex items-center justify-center shadow-lg hover:scale-105 transition-transform duration-300">
