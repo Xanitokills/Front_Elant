@@ -1,12 +1,18 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { FaBell, FaExclamationCircle, FaInfoCircle, FaCopy, FaFileDownload, FaEye, FaCalendarAlt, FaBuilding, FaFileAlt, FaUser } from "react-icons/fa";
+import { FaBell, FaExclamationCircle, FaInfoCircle, FaCopy, FaFileDownload, FaEye, FaCalendarAlt, FaBuilding, FaFileAlt, FaArrowUp } from "react-icons/fa";
 import Swal from "sweetalert2";
 import { Link, Element } from "react-scroll";
 
 const API_URL = import.meta.env.VITE_API_URL; // Cargar la URL desde .env
 const LOGO_PATH = "/LogoSoftHome/Logo_SoftHome_1.png"; // Ruta del logo
+
+// Definición de colores como variables globales
+const COLOR_DARK_GRAY = "#4a5568"; // Gris azulado oscuro
+const COLOR_LIGHT_BLUE = "#93c5fd"; // Azul claro
+const COLOR_VIBRANT_BLUE = "#60a5fa"; // Azul vibrante
+const COLOR_VERDE = "#6caeb6"; // Verde azulado para bordes
 
 const Dashboard = () => {
   const { isAuthenticated } = useAuth();
@@ -18,6 +24,7 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [reportData, setReportData] = useState({ description: "", image: null as File | null });
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -90,6 +97,16 @@ const Dashboard = () => {
       fetchDashboardData();
     }
   }, [isAuthenticated, token, navigate, isSuperUser, isAdmin, isSecurity]);
+
+  // Controlar visibilidad del botón de subir
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 100);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Datos simulados para pruebas
   const simulatedPendingPayments = 5;
@@ -238,312 +255,328 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-blue-200 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Encabezado con Título y Logo */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-400 text-white py-4 px-6 rounded-2xl shadow-xl flex items-center justify-between mb-8 animate-slide-in-down">
-          <h1 className="text-2xl font-bold">
-            Softhome - Panel de Control
-          </h1>
-          <div className="relative">
-            <div className="bg-gradient-to-r from-blue-200 to-blue-400 rounded-full h-24 w-24 flex items-center justify-center shadow-lg hover:scale-105 transition-transform duration-300">
-              <img src={LOGO_PATH} alt="Softhome Logo" className="h-20 w-20 rounded-full object-contain" />
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-blue-0 py-8 px-4 sm:px-6 lg:px-8">
+      <Element name="top">
+        <div className="max-w-7xl mx-auto">
+          {/* Encabezado con Título y Logo */}
+          <div className={`bg-gradient-to-r from-[${COLOR_DARK_GRAY}] via-[${COLOR_VIBRANT_BLUE}] to-[${COLOR_LIGHT_BLUE}] text-white py-4 px-6 rounded-2xl shadow-xl flex items-center justify-between mb-8 animate-slide-in-down`}>
+            <h1 className="text-2xl font-bold">
+              Panel Principal
+            </h1>
+            <div className="relative">
+              <div className="bg-white rounded-full h-24 w-24 flex items-center justify-center shadow-lg hover:scale-105 transition-transform duration-300">
+                <img src={LOGO_PATH} alt="Softhome Logo" className="h-20 w-20 rounded-full object-contain" />
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Card de Bienvenida con Movimiento */}
-        <div className="bg-white border border-blue-200 p-6 rounded-2xl shadow-xl mb-8 animate-bounce shadow-[0_4px_6px_rgba(37,99,235,0.2)]">
-          <div className="flex items-center">
-            <FaUser className="text-blue-600 text-3xl mr-4" />
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800">¡Bienvenido, {userName}!</h2>
-              <p className="text-sm text-gray-600">
-                {isSuperUser
-                  ? "Gestiona todo el edificio desde aquí"
-                  : isAdmin
-                  ? "Administra las actividades del edificio"
-                  : isSecurity
-                  ? "Mantente al tanto de las alertas"
-                  : "Accede a la información del edificio"}
-              </p>
+          {/* Card de Bienvenida con Movimiento */}
+          <div className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 animate-bounce shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}>
+            <div className="flex items-center">
+              <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 448 512" className={`text-[${COLOR_VIBRANT_BLUE}] text-3xl mr-4`} height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+                <path d="M224 256c70.7 0 128-57.3 128-128S294.7 0 224 0 96 57.3 96 128s57.3 128 128 128zm89.6 32h-16.7c-22.2 10.2-46.9 16-72.9 16s-50.6-5.8-72.9-16h-16.7C60.2 288 0 348.2 0 422.4V464c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48v-41.6c0-74.2-60.2-134.4-134.4-134.4z"></path>
+              </svg>
+              <div>
+                <h2 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}]`}>¡Bienvenido, {userName}!</h2>
+                <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>
+                  {isSuperUser
+                    ? "Gestiona todo el edificio desde aquí"
+                    : isAdmin
+                    ? "Administra las actividades del edificio"
+                    : isSecurity
+                    ? "Mantente al tanto de las alertas"
+                    : "Accede a la información del edificio"}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Botones de Navegación */}
-        <div className="flex flex-wrap gap-4 mb-8 justify-center">
-          {(isSuperUser || isAdmin || isSecurity) && (
-            <Link to="debtors" smooth={true} duration={500}>
-              <button className="flex items-center bg-blue-600 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-blue-500 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                <FaExclamationCircle className="mr-2" />
-                Deudores
+          {/* Botones de Navegación */}
+          <div className="flex flex-wrap gap-4 mb-8 justify-center">
+            {(isSuperUser || isAdmin || isSecurity) && (
+              <Link to="debtors" smooth={true} duration={500}>
+                <button className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                  <FaExclamationCircle className="mr-2" />
+                  Deudores
+                </button>
+              </Link>
+            )}
+            <Link to="account" smooth={true} duration={500}>
+              <button className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                <FaInfoCircle className="mr-2" />
+                Cuenta Mancomunada
               </button>
             </Link>
-          )}
-          <Link to="account" smooth={true} duration={500}>
-            <button className="flex items-center bg-blue-600 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-blue-500 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-              <FaInfoCircle className="mr-2" />
-              Cuenta Mancomunada
-            </button>
-          </Link>
-          <Link to="news" smooth={true} duration={500}>
-            <button className="flex items-center bg-blue-600 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-blue-500 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-              <FaBell className="mr-2" />
-              Noticias
-            </button>
-          </Link>
-          <Link to="events" smooth={true} duration={500}>
-            <button className="flex items-center bg-blue-600 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-blue-500 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-              <FaCalendarAlt className="mr-2" />
-              Eventos
-            </button>
-          </Link>
-          <Link to="documents" smooth={true} duration={500}>
-            <button className="flex items-center bg-blue-600 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-blue-500 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-              <FaFileDownload className="mr-2" />
-              Documentos
-            </button>
-          </Link>
-        </div>
+            <Link to="news" smooth={true} duration={500}>
+              <button className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                <FaBell className="mr-2" />
+                Noticias
+              </button>
+            </Link>
+            <Link to="events" smooth={true} duration={500}>
+              <button className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                <FaCalendarAlt className="mr-2" />
+                Eventos
+              </button>
+            </Link>
+            <Link to="documents" smooth={true} duration={500}>
+              <button className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                <FaFileDownload className="mr-2" />
+                Documentos
+              </button>
+            </Link>
+          </div>
 
-        {/* Botones de Acción */}
-        <div className="flex flex-wrap gap-4 mb-8 justify-center">
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center bg-blue-600 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-blue-500 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
-          >
-            <FaExclamationCircle className="mr-2" />
-            Reportar Problema
-          </button>
-          {(isSuperUser || isAdmin) && (
+          {/* Botones de Acción */}
+          <div className="flex flex-wrap gap-4 mb-8 justify-center">
             <button
-              onClick={() => navigate("/news")}
-              className="flex items-center bg-blue-600 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-blue-500 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+              onClick={() => setShowModal(true)}
+              className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
             >
-              <FaInfoCircle className="mr-2" />
-              Gestionar Noticias
+              <FaExclamationCircle className="mr-2" />
+              Reportar Problema
             </button>
-          )}
-        </div>
-
-        {/* Alerta de Pagos Pendientes */}
-        {(isSuperUser || isAdmin || isSecurity) && (
-          <Element name="debtors">
-            <div className="bg-white border border-blue-200 p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(37,99,235,0.2)]">
-              <div
-                onClick={showDebtors}
-                className="text-red-600 flex items-center cursor-pointer"
+            {(isSuperUser || isAdmin) && (
+              <button
+                onClick={() => navigate("/news")}
+                className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
               >
-                <FaExclamationCircle className="mr-3 text-3xl" />
-                <p className="font-semibold text-lg">
-                  {isLoading ? (
-                    <span className="inline-block w-6 h-6 border-4 border-t-blue-600 border-gray-200 rounded-full animate-spin"></span>
-                  ) : (
-                    `¡Atención! Hay ${pendingPayments || simulatedPendingPayments} departamentos con expensas pendientes.`
-                  )}
+                <FaInfoCircle className="mr-2" />
+                Gestionar Noticias
+              </button>
+            )}
+          </div>
+
+          {/* Alerta de Pagos Pendientes */}
+          {(isSuperUser || isAdmin || isSecurity) && (
+            <Element name="debtors">
+              <div className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}>
+                <div
+                  onClick={showDebtors}
+                  className="text-red-600 flex items-center cursor-pointer"
+                >
+                  <FaExclamationCircle className="mr-3 text-3xl" />
+                  <p className="font-semibold text-lg">
+                    {isLoading ? (
+                      <span className={`inline-block w-6 h-6 border-4 border-t-[${COLOR_VIBRANT_BLUE}] border-gray-200 rounded-full animate-spin`}></span>
+                    ) : (
+                      `¡Atención! Hay ${pendingPayments || simulatedPendingPayments} departamentos con expensas pendientes.`
+                    )}
+                  </p>
+                </div>
+              </div>
+            </Element>
+          )}
+
+          {/* Card de Cuenta Mancomunada */}
+          <Element name="account">
+            <div className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}>
+              <div className="flex items-center mb-4">
+                <FaBuilding className={`text-[${COLOR_VIBRANT_BLUE}] text-3xl mr-3`} />
+                <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}]`}>Cuenta Mancomunada</h3>
+              </div>
+              <div className="space-y-3">
+                <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>
+                  <strong>Banco:</strong> {accountInfo.bank}
+                </p>
+                <p className={`text-[${COLOR_DARK_GRAY}] text-lg flex items-center`}>
+                  <strong>Número de Cuenta:</strong> {accountInfo.accountNumber}
+                  <button
+                    onClick={() => copyToClipboard(accountInfo.accountNumber, "Número de Cuenta")}
+                    className={`ml-3 text-[${COLOR_VIBRANT_BLUE}] hover:text-[${COLOR_LIGHT_BLUE}] transition-colors`}
+                  >
+                    <FaCopy />
+                  </button>
+                </p>
+                <p className={`text-[${COLOR_DARK_GRAY}] text-lg flex items-center`}>
+                  <strong>CCI:</strong> {accountInfo.cci}
+                  <button
+                    onClick={() => copyToClipboard(accountInfo.cci, "CCI")}
+                    className={`ml-3 text-[${COLOR_VIBRANT_BLUE}] hover:text-[${COLOR_LIGHT_BLUE}] transition-colors`}
+                  >
+                    <FaCopy />
+                  </button>
+                </p>
+                <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>
+                  <strong>Titular:</strong> {accountInfo.holder}
+                </p>
+                <p className={`text-sm text-[${COLOR_DARK_GRAY}] mt-3`}>
+                  Usa esta cuenta para tus pagos de expensas. Contacta al administrador para dudas.
                 </p>
               </div>
             </div>
           </Element>
-        )}
 
-        {/* Card de Cuenta Mancomunada */}
-        <Element name="account">
-          <div className="bg-white border border-blue-200 p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(37,99,235,0.2)]">
-            <div className="flex items-center mb-4">
-              <FaBuilding className="text-blue-600 text-3xl mr-3" />
-              <h3 className="text-xl font-semibold text-gray-800">Cuenta Mancomunada</h3>
-            </div>
-            <div className="space-y-3">
-              <p className="text-gray-700 text-lg">
-                <strong>Banco:</strong> {accountInfo.bank}
-              </p>
-              <p className="text-gray-700 text-lg flex items-center">
-                <strong>Número de Cuenta:</strong> {accountInfo.accountNumber}
-                <button
-                  onClick={() => copyToClipboard(accountInfo.accountNumber, "Número de Cuenta")}
-                  className="ml-3 text-gray-600 hover:text-blue-600 transition-colors"
-                >
-                  <FaCopy />
-                </button>
-              </p>
-              <p className="text-gray-700 text-lg flex items-center">
-                <strong>CCI:</strong> {accountInfo.cci}
-                <button
-                  onClick={() => copyToClipboard(accountInfo.cci, "CCI")}
-                  className="ml-3 text-gray-600 hover:text-blue-600 transition-colors"
-                >
-                  <FaCopy />
-                </button>
-              </p>
-              <p className="text-gray-700 text-lg">
-                <strong>Titular:</strong> {accountInfo.holder}
-              </p>
-              <p className="text-sm text-gray-500 mt-3">
-                Usa esta cuenta para tus pagos de expensas. Contacta al administrador para dudas.
-              </p>
-            </div>
-          </div>
-        </Element>
-
-        {/* Card de Noticias */}
-        <Element name="news">
-          <div
-            className="bg-white border border-blue-200 p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(37,99,235,0.2)]"
-            aria-live="polite"
-          >
-            <div className="flex items-center mb-4">
-              <FaBell className="text-blue-600 text-3xl mr-3" />
-              <h3 className="text-xl font-semibold text-gray-800">Noticias del Edificio</h3>
-            </div>
-            {isLoading ? (
-              <span className="inline-block w-6 h-6 border-4 border-t-blue-600 border-gray-200 rounded-full animate-spin"></span>
-            ) : (news.length > 0 ? news : simulatedNews).slice(0, 3).map((item, index) => (
-              <div key={index} className="flex items-start mb-4 border-b border-gray-200 pb-4 last:border-b-0">
-                <span className="text-blue-600 mr-3 text-xl">•</span>
-                <div>
-                  <p className="font-semibold text-gray-800 text-lg">{item.title}</p>
-                  <p className="text-gray-600">{item.description}</p>
-                  <p className="text-sm text-gray-500">{item.date}</p>
+          {/* Card de Noticias */}
+          <Element name="news">
+            <div
+              className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}
+              aria-live="polite"
+            >
+              <div className="flex items-center mb-4">
+                <FaBell className={`text-[${COLOR_VIBRANT_BLUE}] text-3xl mr-3`} />
+                <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}]`}>Noticias del Edificio</h3>
+              </div>
+              {isLoading ? (
+                <span className={`inline-block w-6 h-6 border-4 border-t-[${COLOR_VIBRANT_BLUE}] border-gray-200 rounded-full animate-spin`}></span>
+              ) : (news.length > 0 ? news : simulatedNews).slice(0, 3).map((item, index) => (
+                <div key={index} className={`flex items-start mb-4 border-b border-[${COLOR_VERDE}] pb-4 last:border-b-0`}>
+                  <span className={`text-[${COLOR_VIBRANT_BLUE}] mr-3 text-xl`}>•</span>
+                  <div>
+                    <p className={`font-semibold text-[${COLOR_DARK_GRAY}] text-lg`}>{item.title}</p>
+                    <p className={`text-[${COLOR_DARK_GRAY}]`}>{item.description}</p>
+                    <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>{item.date}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </Element>
-
-        {/* Card de Eventos */}
-        <Element name="events">
-          <div className="bg-white border border-blue-200 p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(37,99,235,0.2)]">
-            <div className="flex items-center mb-4">
-              <FaCalendarAlt className="text-blue-600 text-3xl mr-3" />
-              <h3 className="text-xl font-semibold text-gray-800">Eventos Próximos</h3>
+              ))}
             </div>
-            {isLoading ? (
-              <span className="inline-block w-6 h-6 border-4 border-t-blue-600 border-gray-200 rounded-full animate-spin"></span>
-            ) : (events.length > 0 ? events : simulatedEvents).map((event, index) => (
-              <div key={index} className="text-gray-600 text-lg mb-3">
-                <span className="font-medium">{event.date}:</span> {event.title}
-              </div>
-            ))}
-          </div>
-        </Element>
+          </Element>
 
-        {/* Card de Documentos */}
-        <Element name="documents">
-          <div className="bg-white border border-blue-200 p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(37,99,235,0.2)]">
-            <div className="flex items-center mb-4">
-              <FaFileAlt className="text-blue-600 text-3xl mr-3" />
-              <h3 className="text-xl font-semibold text-gray-800">Documentos del Edificio</h3>
-            </div>
-            {isLoading ? (
-              <span className="inline-block w-6 h-6 border-4 border-t-blue-600 border-gray-200 rounded-full animate-spin"></span>
-            ) : (documents.length > 0 ? documents : simulatedDocuments).map((doc, index) => (
-              <div
-                key={index}
-                className="flex justify-between items-center mb-3 border-b border-gray-200 pb-3 last:border-b-0"
-              >
-                <span className="text-gray-600 text-lg">{doc.name} ({doc.type})</span>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => previewDocument(doc.url)}
-                    className="text-blue-600 hover:text-blue-800 flex items-center text-lg hover:underline"
-                  >
-                    Ver
-                    <FaEye className="ml-2" />
-                  </button>
-                  <a
-                    href={doc.url}
-                    download
-                    className="text-blue-600 hover:text-blue-800 flex items-center text-lg hover:underline"
-                  >
-                    Descargar
-                    <FaFileDownload className="ml-2" />
-                  </a>
+          {/* Card de Eventos */}
+          <Element name="events">
+            <div className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}>
+              <div className="flex items-center mb-4">
+                <FaCalendarAlt className={`text-[${COLOR_VIBRANT_BLUE}] text-3xl mr-3`} />
+                <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}]`}>Eventos Próximos</h3>
+              </div>
+              {isLoading ? (
+                <span className={`inline-block w-6 h-6 border-4 border-t-[${COLOR_VIBRANT_BLUE}] border-gray-200 rounded-full animate-spin`}></span>
+              ) : (events.length > 0 ? events : simulatedEvents).map((event, index) => (
+                <div key={index} className={`text-[${COLOR_DARK_GRAY}] text-lg mb-3`}>
+                  <span className="font-medium">{event.date}:</span> {event.title}
                 </div>
-              </div>
-            ))}
-          </div>
-        </Element>
+              ))}
+            </div>
+          </Element>
 
-        {/* Modal para Reportar Problema */}
-        {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-white p-6 rounded-2xl w-full max-w-lg shadow-2xl animate-fade-in">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">Reportar un Problema</h3>
-              <textarea
-                name="description"
-                value={reportData.description}
-                onChange={handleReportChange}
-                placeholder="Describe el problema..."
-                rows={4}
-                className="w-full p-3 border border-gray-300 rounded-lg mb-4 resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              />
-              <input
-                type="file"
-                accept="image/*"
-                ref={fileInputRef}
-                onChange={handleImageChange}
-                className="w-full mb-4 text-gray-600"
-              />
-              {imagePreview && (
-                <img
-                  src={imagePreview}
-                  alt="Vista previa"
-                  className="max-w-full max-h-48 rounded-lg mb-4 shadow-sm"
+          {/* Card de Documentos */}
+          <Element name="documents">
+            <div className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}>
+              <div className="flex items-center mb-4">
+                <FaFileAlt className={`text-[${COLOR_VIBRANT_BLUE}] text-3xl mr-3`} />
+                <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}]`}>Documentos del Edificio</h3>
+              </div>
+              {isLoading ? (
+                <span className={`inline-block w-6 h-6 border-4 border-t-[${COLOR_VIBRANT_BLUE}] border-gray-200 rounded-full animate-spin`}></span>
+              ) : (documents.length > 0 ? documents : simulatedDocuments).map((doc, index) => (
+                <div
+                  key={index}
+                  className={`flex justify-between items-center mb-3 border-b border-[${COLOR_VERDE}] pb-3 last:border-b-0`}
+                >
+                  <span className={`text-[${COLOR_DARK_GRAY}] text-lg`}>{doc.name} ({doc.type})</span>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => previewDocument(doc.url)}
+                      className={`text-[${COLOR_VIBRANT_BLUE}] hover:text-[${COLOR_LIGHT_BLUE}] flex items-center text-lg hover:underline`}
+                    >
+                      Ver
+                      <FaEye className="ml-2" />
+                    </button>
+                    <a
+                      href={doc.url}
+                      download
+                      className={`text-[${COLOR_VIBRANT_BLUE}] hover:text-[${COLOR_LIGHT_BLUE}] flex items-center text-lg hover:underline`}
+                    >
+                      Descargar
+                      <FaFileDownload className="ml-2" />
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Element>
+
+          {/* Modal para Reportar Problema */}
+          {showModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+              <div className="bg-white p-6 rounded-2xl w-full max-w-lg shadow-2xl animate-fade-in">
+                <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}] mb-4`}>Reportar un Problema</h3>
+                <textarea
+                  name="description"
+                  value={reportData.description}
+                  onChange={handleReportChange}
+                  placeholder="Describe el problema..."
+                  rows={4}
+                  className={`w-full p-3 border border-[${COLOR_VERDE}] rounded-lg mb-4 resize-y focus:outline-none focus:ring-2 focus:ring-[${COLOR_VIBRANT_BLUE}] transition-all`}
                 />
-              )}
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={submitReport}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-2xl shadow-md hover:bg-blue-500 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
-                >
-                  Enviar
-                </button>
-                <button
-                  onClick={() => {
-                    setShowModal(false);
-                    setReportData({ description: "", image: null });
-                    setImagePreview(null);
-                    if (fileInputRef.current) fileInputRef.current.value = "";
-                  }}
-                  className="bg-gray-600 text-white px-6 py-2 rounded-2xl shadow-md hover:bg-gray-700 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Modal para Previsualizar Documentos */}
-        {showPreviewModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-white p-6 rounded-2xl w-full max-w-4xl shadow-2xl animate-fade-in">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">Previsualizar Documento</h3>
-              <div className="w-full h-[60vh] mb-4">
-                {previewUrl ? (
-                  <iframe
-                    src={previewUrl}
-                    className="w-full h-full rounded-lg border border-gray-300"
-                    title="Vista previa del documento"
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={fileInputRef}
+                  onChange={handleImageChange}
+                  className={`w-full mb-4 text-[${COLOR_DARK_GRAY}]`}
+                />
+                {imagePreview && (
+                  <img
+                    src={imagePreview}
+                    alt="Vista previa"
+                    className="max-w-full max-h-48 rounded-lg mb-4 shadow-sm"
                   />
-                ) : (
-                  <p className="text-gray-600">No se puede previsualizar el documento.</p>
                 )}
-              </div>
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setShowPreviewModal(false)}
-                  className="bg-gray-600 text-white px-6 py-2 rounded-2xl shadow-md hover:bg-gray-700 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
-                >
-                  Cerrar
-                </button>
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={submitReport}
+                    className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-2 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+                  >
+                    Enviar
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowModal(false);
+                      setReportData({ description: "", image: null });
+                      setImagePreview(null);
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                    }}
+                    className="bg-gray-600 text-white px-6 py-2 rounded-2xl shadow-md hover:bg-gray-700 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+                  >
+                    Cancelar
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+
+          {/* Modal para Previsualizar Documentos */}
+          {showPreviewModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+              <div className="bg-white p-6 rounded-2xl w-full max-w-4xl shadow-2xl animate-fade-in">
+                <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}] mb-4`}>Previsualizar Documento</h3>
+                <div className="w-full h-[60vh] mb-4">
+                  {previewUrl ? (
+                    <iframe
+                      src={previewUrl}
+                      className={`w-full h-full rounded-lg border border-[${COLOR_VERDE}]`}
+                      title="Vista previa del documento"
+                    />
+                  ) : (
+                    <p className={`text-[${COLOR_DARK_GRAY}]`}>No se puede previsualizar el documento.</p>
+                  )}
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setShowPreviewModal(false)}
+                    className="bg-gray-600 text-white px-6 py-2 rounded-2xl shadow-md hover:bg-gray-700 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Botón para subir al inicio */}
+          {showScrollTop && (
+            <Link to="top" smooth={true} duration={500}>
+              <button
+                className="fixed bottom-6 right-6 bg-transparent border-2 border-[#60a5fa] text-[#60a5fa] p-3 rounded-full shadow-md hover:border-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300 z-50"
+                title="Subir al inicio"
+              >
+                <FaArrowUp className="text-xl" />
+              </button>
+            </Link>
+          )}
+        </div>
+      </Element>
     </div>
   );
 };
