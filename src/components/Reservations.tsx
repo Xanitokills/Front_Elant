@@ -26,7 +26,7 @@ interface Document {
 
 interface Reservation {
   id: number;
-  areaId: number;
+  areaId: string; // Changed to string to match API's TIPO_AREA
   areaName: string;
   date: string;
   startTime: string;
@@ -145,16 +145,29 @@ const Reservations = () => {
         cancelToken: cancelTokenSource.current.token,
       });
       const validReservations = res.data.filter(
-        (reservation) =>
-          reservation.startTime != null &&
-          reservation.endTime != null &&
+        (reservation): reservation is Reservation =>
+          reservation != null &&
+          typeof reservation === "object" &&
+          typeof reservation.id === "number" &&
+          typeof reservation.areaId === "string" &&
+          typeof reservation.areaName === "string" &&
+          typeof reservation.date === "string" &&
           typeof reservation.startTime === "string" &&
-          typeof reservation.endTime === "string"
+          typeof reservation.endTime === "string" &&
+          typeof reservation.status === "number" &&
+          typeof reservation.departmentNumber === "number"
       );
+      console.log("Valid Reservations:", validReservations); // Debug log
+      if (validReservations.length === 0 && res.data.length > 0) {
+        console.warn("No valid reservations found after filtering.");
+        setErrorMessage("No se encontraron reservas válidas.");
+      }
       setReservations(validReservations);
     } catch (err) {
       if (axios.isCancel(err)) return;
+      console.error("Error fetching reservations:", err);
       setReservations([]);
+      setErrorMessage("Error al cargar las reservas.");
     }
   };
 
@@ -221,7 +234,7 @@ const Reservations = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const areaResponse = await axios.post(`${API_URL}/reservations/areas`, formData, {
+      const areaResponse = await axios.post(`${API_URL}/reservations/ Elsewhereareas`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
@@ -231,7 +244,6 @@ const Reservations = () => {
       const areaId = areaResponse.data.id;
       console.log("Área creada con ID:", areaId);
 
-      // Upload documents
       for (const doc of newArea.documents) {
         if (doc.name && doc.file) {
           const docFormData = new FormData();
@@ -258,8 +270,6 @@ const Reservations = () => {
 
       Swal.fire("¡Éxito!", "Área y documentos creados con éxito", "success");
       setNewArea({ name: "", description: "", capacity: 0, status: 1, image: null, documents: [] });
-
-      // Update newReservation.area to the newly created area and fetch its details
       setNewReservation({ ...newReservation, area: areaId.toString() });
       fetchAreas();
     } catch (err) {
@@ -369,11 +379,17 @@ const Reservations = () => {
     let interval: NodeJS.Timeout | null = null;
     if (isAuthenticated && !isLoading && userId) {
       fetchUserReservations();
-      interval = setInterval(fetchUserReservations, 5000);
+      interval = setInterval(() => {
+        if (isMounted.current) {
+          fetchUserReservations();
+        }
+      }, 5000);
     }
     return () => {
       isMounted.current = false;
       if (interval) clearInterval(interval);
+      cancelTokenSource.current.cancel("Component unmounted");
+      cancelTokenSource.current = axios.CancelToken.source();
     };
   }, [isAuthenticated, isLoading, userId]);
 
@@ -593,7 +609,6 @@ const Reservations = () => {
     <div className="p-6 bg-gray-100 min-h-screen">
       <h1 className="text-2xl font-bold mb-6">Control de Reservas</h1>
 
-      {/* Submenú */}
       <div className="mb-6">
         <div className="flex space-x-4 border-b">
           <button
@@ -623,9 +638,22 @@ const Reservations = () => {
         </div>
       </div>
 
-      {/* Vista: Mis Reservas */}
       {activeTab === "myReservations" && isAuthenticated && (
         <div className="bg-white p-6 rounded-lg shadow-md">
+          {errorMessage && (
+            <div className="p-3 text-center text-red-500">
+              {errorMessage}
+              <button
+                onClick={() => {
+                  setErrorMessage("");
+                  fetchUserReservations();
+                }}
+                className="ml-2 text-blue-500 underline"
+              >
+                Reintentar
+              </button>
+            </div>
+          )}
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
               <div>
@@ -674,7 +702,7 @@ const Reservations = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredReservations.map((res) => (
+              {filteredReservations.filter((res): res is Reservation => res != null).map((res) => (
                 <tr key={res.id} className="border-b">
                   <td className="p-3">{res.id}</td>
                   <td className="p-3">{res.areaName || "N/A"}</td>
@@ -694,7 +722,6 @@ const Reservations = () => {
         </div>
       )}
 
-      {/* Vista: Crear Reserva */}
       {activeTab === "createReservation" && (
         <div>
           {isLoadingAreas ? (
@@ -880,10 +907,8 @@ const Reservations = () => {
         </div>
       )}
 
-      {/* Vista: Administrar Áreas */}
       {activeTab === "manageAreas" && (
         <div>
-          {/* Formulario para crear un área con documentos */}
           <div className="bg-white p-6 rounded-lg shadow-md mb-6">
             <h2 className="text-lg font-semibold mb-4">Crear Nueva Área</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -986,7 +1011,6 @@ const Reservations = () => {
             </button>
           </div>
 
-          {/* Formulario para editar un área */}
           {editArea && (
             <div className="bg-white p-6 rounded-lg shadow-md mb-6">
               <h2 className="text-lg font-semibold mb-4">Editar Área: {editArea.name}</h2>
@@ -1056,7 +1080,6 @@ const Reservations = () => {
             </div>
           )}
 
-          {/* Lista de áreas existentes */}
           <div className="bg-white p-6 rounded-lg shadow-md">
             <h2 className="text-lg font-semibold mb-4">Áreas Existentes</h2>
             {isLoadingAreas ? (
