@@ -416,7 +416,7 @@ const Dashboard = () => {
   const renderIcon = (iconName: string | null) => {
     if (!iconName || !iconMap[iconName]) return null;
     const IconComponent = iconMap[iconName];
-    return <IconComponent className="mr-2" />;
+    return <IconComponent className="mr-2 text-xl sm:text-2xl" />;
   };
 
   // Normalizar NOMBRE_ELEMENTO para IDs de navegación
@@ -427,29 +427,83 @@ const Dashboard = () => {
       .replace(/[^a-z0-9-]/g, "");
   };
 
+  // Obtener clases de estilo para cada sección
+  const getSectionStyles = (key: string) => {
+    const keyLower = key.toLowerCase();
+    if (keyLower.includes("deudores") || keyLower.includes("pagos")) {
+      return {
+        textColor: dashboardData.hasDebt ? "text-red-600" : "text-gray-800",
+        borderColor: dashboardData.hasDebt ? "border-red-600" : "border-green-600",
+      };
+    }
+    if (keyLower.includes("cuenta") || keyLower.includes("mancomunada")) {
+      return { textColor: "text-gray-800", borderColor: "border-blue-700" };
+    }
+    if (keyLower.includes("noticias")) {
+      return { textColor: "text-gray-800", borderColor: "border-indigo-600" };
+    }
+    if (keyLower.includes("eventos")) {
+      return { textColor: "text-gray-800", borderColor: "border-teal-600" };
+    }
+    if (keyLower.includes("mantenimientos") || keyLower.includes("mantenimiento")) {
+      return { textColor: "text-gray-800", borderColor: "border-purple-600" };
+    }
+    if (keyLower.includes("documentos")) {
+      return { textColor: "text-gray-800", borderColor: "border-gray-700" };
+    }
+    if (keyLower.includes("encargos")) {
+      return { textColor: dashboardData.encargos.length > 0 ? "text-yellow-600" : "text-gray-800", borderColor: "border-yellow-600" };
+    }
+    return { textColor: "text-gray-800", borderColor: "border-gray-700" };
+  };
+
+  // Obtener conteo de notificaciones para cada sección
+  const getNotificationCount = (key: string): number => {
+    const keyLower = key.toLowerCase();
+    if (keyLower.includes("deudores") || keyLower.includes("pagos")) {
+      return dashboardData.hasDebt ? dashboardData.pendingPayments : 0;
+    }
+    if (keyLower.includes("encargos")) {
+      return dashboardData.encargos.length;
+    }
+    if (keyLower.includes("noticias")) {
+      return dashboardData.news.length;
+    }
+    if (keyLower.includes("eventos")) {
+      return dashboardData.events.length;
+    }
+    if (keyLower.includes("mantenimientos") || keyLower.includes("mantenimiento")) {
+      return dashboardData.maintenanceEvents.length;
+    }
+    if (keyLower.includes("documentos")) {
+      return dashboardData.documents.length;
+    }
+    return 0;
+  };
+
   // Deducir qué datos renderizar según NOMBRE_ELEMENTO
   const renderSectionContent = (key: string) => {
     if (isLoading) {
       return (
         <span
-          className={`inline-block w-6 h-6 border-4 border-t-[${COLOR_VIBRANT_BLUE}] border-gray-200 rounded-full animate-spin`}
+          className={`inline-block w-6 h-6 border-4 border-t-gray-600 border-gray-200 rounded-full animate-spin`}
         ></span>
       );
     }
 
+    const { textColor } = getSectionStyles(key);
     const keyLower = key.toLowerCase();
 
     // Deudores
     if (keyLower.includes("deudores") || keyLower.includes("pagos")) {
+      const contentColor = dashboardData.hasDebt ? "text-red-600" : "text-gray-600";
       return (
         <div
-          className={`flex items-center ${
-            dashboardData.hasDebt ? "text-red-600" : "text-green-600"
-          } cursor-pointer`}
+          className={`flex items-center ${contentColor} cursor-pointer`}
           onClick={showDebtors}
         >
-          <FaMoneyBillWave className="mr-3 text-3xl" />
-          <p className="font-semibold text-lg">
+          <FaMoneyBillWave className="mr-3 text-2xl sm:text-3xl" />
+          <p className={`font-semibold text-base sm:text-lg ${dashboardData.hasDebt ? "text-red-600" : "text-gray-800"}`}>
             {dashboardData.hasDebt
               ? `¡Atención! Tienes ${dashboardData.pendingPayments} pagos pendientes por un total de S/ ${dashboardData.totalDebt.toFixed(
                   2
@@ -464,50 +518,51 @@ const Dashboard = () => {
     if (keyLower.includes("cuenta") || keyLower.includes("mancomunada")) {
       return dashboardData.accountInfo ? (
         <div className="space-y-3">
-          <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>
+          <p className={`text-base sm:text-lg ${textColor}`}>
             <strong>Banco:</strong> {dashboardData.accountInfo.bank}
           </p>
-          <p className={`text-[${COLOR_DARK_GRAY}] text-lg flex items-center`}>
+          <p className={`text-base sm:text-lg ${textColor} flex items-center flex-wrap`}>
             <strong>Número de Cuenta:</strong> {dashboardData.accountInfo.accountNumber}
             <button
               onClick={() => copyToClipboard(dashboardData.accountInfo.accountNumber, "Número de Cuenta")}
-              className={`ml-3 text-[${COLOR_VIBRANT_BLUE}] hover:text-[${COLOR_LIGHT_BLUE}] transition-colors`}
+              className="ml-3 text-gray-600 hover:text-gray-500 transition-colors"
             >
-              <FaCopy />
+              <FaCopy className="text-lg" />
             </button>
           </p>
-          <p className={`text-[${COLOR_DARK_GRAY}] text-lg flex items-center`}>
+          <p className={`text-base sm:text-lg ${textColor} flex items-center flex-wrap`}>
             <strong>CCI:</strong> {dashboardData.accountInfo.cci}
             <button
               onClick={() => copyToClipboard(dashboardData.accountInfo.cci, "CCI")}
-              className={`ml-3 text-[${COLOR_VIBRANT_BLUE}] hover:text-[${COLOR_LIGHT_BLUE}] transition-colors`}
+              className="ml-3 text-gray-600 hover:text-gray-500 transition-colors"
             >
-              <FaCopy />
+              <FaCopy className="text-lg" />
             </button>
           </p>
-          <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>
+          <p className={`text-base sm:text-lg ${textColor}`}>
             <strong>Titular:</strong> {dashboardData.accountInfo.holder}
           </p>
-          <p className={`text-sm text-[${COLOR_DARK_GRAY}] mt-3`}>
+          <p className="text-sm text-gray-600 mt-3">
             Usa esta cuenta para tus pagos de expensas. Contacta al administrador para dudas.
           </p>
         </div>
       ) : (
-        <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>No hay cuenta mancomunada disponible.</p>
+        <p className={`text-base sm:text-lg ${textColor}`}>No hay cuenta mancomunada disponible.</p>
       );
     }
 
     // Encargos
     if (keyLower.includes("encargos")) {
+      const contentColor = dashboardData.encargos.length > 0 ? "text-yellow-600" : "text-gray-600";
       return dashboardData.encargos.length > 0 ? (
-        <div onClick={showEncargos} className="text-yellow-600 flex items-center cursor-pointer">
-          <FaExclamationCircle className="mr-3 text-3xl" />
-          <p className="font-semibold text-lg">
+        <div onClick={showEncargos} className={`${contentColor} flex items-center cursor-pointer`}>
+          <FaExclamationCircle className="mr-3 text-2xl sm:text-3xl" />
+          <p className={`font-semibold text-base sm:text-lg ${textColor}`}>
             ¡Atención! Tienes {dashboardData.encargos.length} encargos pendientes en recepción.
           </p>
         </div>
       ) : (
-        <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>No tienes encargos pendientes.</p>
+        <p className={`text-base sm:text-lg ${textColor}`}>No tienes encargos pendientes.</p>
       );
     }
 
@@ -517,18 +572,18 @@ const Dashboard = () => {
         dashboardData.news.map((item, index) => (
           <div
             key={index}
-            className={`flex items-start mb-4 border-b border-[${COLOR_VERDE}] pb-4 last:border-b-0`}
+            className="flex items-start mb-4 border-b border-gray-200 pb-4 last:border-b-0"
           >
-            <span className={`text-[${COLOR_VIBRANT_BLUE}] mr-3 text-xl`}>•</span>
-            <div>
-              <p className={`font-semibold text-[${COLOR_DARK_GRAY}] text-lg`}>{item.title}</p>
-              <p className={`text-[${COLOR_DARK_GRAY}]`}>{item.description}</p>
-              <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>{item.date}</p>
+            <span className="text-gray-600 mr-3 text-xl">•</span>
+            <div className="w-full">
+              <p className={`font-semibold text-base sm:text-lg ${textColor}`}>{item.title}</p>
+              <p className="text-gray-600 text-sm sm:text-base overflow-wrap break-word">{item.description}</p>
+              <p className="text-gray-600 text-xs sm:text-sm">{item.date}</p>
             </div>
           </div>
         ))
       ) : (
-        <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>No hay noticias disponibles.</p>
+        <p className={`text-base sm:text-lg ${textColor}`}>No hay noticias disponibles.</p>
       );
     }
 
@@ -538,27 +593,27 @@ const Dashboard = () => {
         dashboardData.events.map((event, index) => (
           <div
             key={index}
-            className={`flex items-start mb-4 border-b border-[${COLOR_VERDE}] pb-4 last:border-b-0`}
+            className="flex items-start mb-4 border-b border-gray-200 pb-4 last:border-b-0"
           >
-            <span className={`text-[${COLOR_VIBRANT_BLUE}] mr-3 text-xl`}>•</span>
-            <div>
-              <p className={`font-semibold text-[${COLOR_DARK_GRAY}] text-lg`}>
+            <span className="text-gray-600 mr-3 text-xl">•</span>
+            <div className="w-full">
+              <p className={`font-semibold text-base sm:text-lg ${textColor}`}>
                 {event.date} ({event.type}): {event.title}
               </p>
-              <p className={`text-[${COLOR_DARK_GRAY}]`}>{event.description}</p>
+              <p className="text-gray-600 text-sm sm:text-base overflow-wrap break-word">{item.description}</p>
               {event.startTime && event.endTime && (
-                <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>
+                <p className="text-gray-600 text-xs sm:text-sm">
                   Horario: {event.startTime} - {event.endTime}
                 </p>
               )}
               {event.location && (
-                <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>Ubicación: {event.location}</p>
+                <p className="text-gray-600 text-xs sm:text-sm">Ubicación: {event.location}</p>
               )}
             </div>
           </div>
         ))
       ) : (
-        <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>No hay eventos próximos.</p>
+        <p className={`text-base sm:text-lg ${textColor}`}>No hay eventos próximos.</p>
       );
     }
 
@@ -568,22 +623,22 @@ const Dashboard = () => {
         dashboardData.maintenanceEvents.map((event, index) => (
           <div
             key={index}
-            className={`flex items-start mb-4 border-b border-[${COLOR_VERDE}] pb-4 last:border-b-0`}
+            className="flex items-start mb-4 border-b border-gray-200 pb-4 last:border-b-0"
           >
-            <span className={`text-[${COLOR_VIBRANT_BLUE}] mr-3 text-xl`}>•</span>
-            <div>
-              <p className={`font-semibold text-[${COLOR_DARK_GRAY}] text-lg`}>
+            <span className="text-gray-600 mr-3 text-xl">•</span>
+            <div className="w-full">
+              <p className={`font-semibold text-base sm:text-lg ${textColor}`}>
                 {event.date}: {event.title}
               </p>
-              <p className={`text-[${COLOR_DARK_GRAY}]`}>
+              <p className="text-gray-600 text-sm sm:text-base">
                 Proveedor: {event.providerName} ({event.providerType})
               </p>
-              <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>Costo: S/ {event.cost.toFixed(2)}</p>
+              <p className="text-gray-600 text-xs sm:text-sm">Costo: S/ {event.cost.toFixed(2)}</p>
             </div>
           </div>
         ))
       ) : (
-        <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>No hay mantenimientos programados.</p>
+        <p className={`text-base sm:text-lg ${textColor}`}>No hay mantenimientos programados.</p>
       );
     }
 
@@ -593,16 +648,16 @@ const Dashboard = () => {
         dashboardData.documents.map((doc, index) => (
           <div
             key={index}
-            className={`flex justify-between items-center mb-3 border-b border-[${COLOR_VERDE}] pb-3 last:border-b-0`}
+            className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center mb-3 border-b border-gray-200 pb-3 last:border-b-0"
           >
-            <div>
-              <span className={`text-[${COLOR_DARK_GRAY}] text-lg`}>{doc.name} ({doc.type})</span>
-              <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>Subido el: {doc.uploadDate}</p>
+            <div className="mb-2 sm:mb-0">
+              <span className={`text-base sm:text-lg ${textColor}`}>{doc.name} ({doc.type})</span>
+              <p className="text-gray-600 text-xs sm:text-sm">Subido el: {doc.uploadDate}</p>
             </div>
             <div className="flex gap-3">
               <button
                 onClick={() => previewDocument(doc.url)}
-                className={`text-[${COLOR_VIBRANT_BLUE}] hover:text-[${COLOR_LIGHT_BLUE}] flex items-center text-lg hover:underline`}
+                className="text-gray-600 hover:text-gray-500 flex items-center text-base sm:text-lg hover:underline"
               >
                 Ver
                 <FaEye className="ml-2" />
@@ -610,7 +665,7 @@ const Dashboard = () => {
               <a
                 href={doc.url}
                 download
-                className={`text-[${COLOR_VIBRANT_BLUE}] hover:text-[${COLOR_LIGHT_BLUE}] flex items-center text-lg hover:underline`}
+                className="text-gray-600 hover:text-gray-500 flex items-center text-base sm:text-lg hover:underline"
               >
                 Descargar
                 <FaFileDownload className="ml-2" />
@@ -619,12 +674,12 @@ const Dashboard = () => {
           </div>
         ))
       ) : (
-        <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>No hay documentos disponibles.</p>
+        <p className={`text-base sm:text-lg ${textColor}`}>No hay documentos disponibles.</p>
       );
     }
 
     // Secciones desconocidas o sin datos
-    return <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>No hay datos disponibles para esta sección.</p>;
+    return <p className={`text-base sm:text-lg ${textColor}`}>No hay datos disponibles para esta sección.</p>;
   };
 
   // Log de permisos para depuración
@@ -639,26 +694,26 @@ const Dashboard = () => {
   return (
     <div>
       <Element name="top" />
-      <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen py-6 px-4 sm:px-6 lg:px-8 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           {/* Encabezado con Título y Logo */}
           <div
-            className="bg-gradient-to-r from-[#4a5568] via-[#60a5fa] to-[#93c5fd] text-white py-4 px-6 rounded-2xl shadow-xl flex items-center justify-between mb-8 animate-slide-in-down"
+            className="bg-gradient-to-r from-[#4a5568] via-[#60a5fa] to-[#93c5fd] text-white py-4 px-6 rounded-2xl shadow-xl flex flex-col sm:flex-row items-center justify-between mb-8 animate-slide-in-down"
             style={{
               background: `linear-gradient(to right, ${COLOR_DARK_GRAY}, ${COLOR_VIBRANT_BLUE}, ${COLOR_LIGHT_BLUE})`,
             }}
           >
-            <h1 className="text-2xl font-bold">Panel Principal</h1>
+            <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-0">Panel Principal</h1>
             <div className="relative">
-              <div className="bg-white rounded-full h-24 w-24 flex items-center justify-center shadow-lg hover:scale-105 transition-transform duration-300">
-                <img src={LOGO_PATH} alt="Softhome Logo" className="h-20 w-20 rounded-full object-contain" />
+              <div className="bg-white rounded-full h-20 w-20 sm:h-24 sm:w-24 flex items-center justify-center shadow-lg hover:scale-105 transition-transform duration-300">
+                <img src={LOGO_PATH} alt="Softhome Logo" className="h-16 w-16 sm:h-20 sm:w-20 rounded-full object-contain" />
               </div>
             </div>
           </div>
 
           {/* Card de Bienvenida */}
           <div
-            className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 animate-bounce shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}
+            className={`bg-white border border-${COLOR_VERDE} p-4 sm:p-6 rounded-2xl shadow-xl mb-8 animate-bounce shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}
           >
             <div className="flex items-center">
               <svg
@@ -666,7 +721,7 @@ const Dashboard = () => {
                 fill="currentColor"
                 strokeWidth="0"
                 viewBox="0 0 448 512"
-                className={`text-[${COLOR_VIBRANT_BLUE}] text-3xl mr-4`}
+                className="text-gray-600 text-2xl sm:text-3xl mr-4"
                 height="1em"
                 width="1em"
                 xmlns="http://www.w3.org/2000/svg"
@@ -674,26 +729,26 @@ const Dashboard = () => {
                 <path d="M224 256c70.7 0 128-57.3 128-128S294.7 0 224 0 96 57.3 96 128s57.3 128 128 128zm89.6 32h-16.7c-22.2 10.2-46.9 16-72.9 16s-50.6-5.8-72.9-16h-16.7C60.2 288 0 348.2 0 422.4V464c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48v-41.6c0-74.2-60.2-134.4-134.4-134.4z"></path>
               </svg>
               <div>
-                <h2 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}]`}>
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
                   ¡Bienvenido, {userName}!
                 </h2>
-                <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>Accede a la información de tu edificio.</p>
+                <p className="text-sm text-gray-600">Accede a la información de tu edificio.</p>
               </div>
             </div>
           </div>
 
           {/* Mensaje si no hay permisos */}
           {isLoading ? (
-            <div className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 text-center`}>
+            <div className={`bg-white border border-${COLOR_VERDE} p-4 sm:p-6 rounded-2xl shadow-xl mb-8 text-center`}>
               <span
-                className={`inline-block w-6 h-6 border-4 border-t-[${COLOR_VIBRANT_BLUE}] border-gray-200 rounded-full animate-spin`}
+                className="inline-block w-6 h-6 border-4 border-t-gray-600 border-gray-200 rounded-full animate-spin"
               ></span>
-              <p className={`text-[${COLOR_DARK_GRAY}] text-lg mt-2`}>Cargando datos...</p>
+              <p className="text-gray-600 text-base sm:text-lg mt-2">Cargando datos...</p>
             </div>
           ) : Object.keys(dashboardData.permissions).length === 0 ? (
-            <div className={`bg-yellow-100 border border-yellow-400 p-6 rounded-2xl shadow-xl mb-8 text-center`}>
-              <FaExclamationCircle className={`text-yellow-600 text-3xl mx-auto mb-2`} />
-              <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>
+            <div className="bg-yellow-100 border border-yellow-400 p-4 sm:p-6 rounded-2xl shadow-xl mb-8 text-center">
+              <FaExclamationCircle className="text-yellow-600 text-2xl sm:text-3xl mx-auto mb-2" />
+              <p className="text-gray-600 text-base sm:text-lg">
                 No tienes permisos asignados para ver el contenido del dashboard. Contacta al administrador.
               </p>
             </div>
@@ -701,29 +756,39 @@ const Dashboard = () => {
 
           {/* Botones de Navegación */}
           {Object.keys(dashboardData.permissions).length > 0 && (
-            <div className="flex flex-wrap gap-4 mb-8 justify-center">
+            <div className="flex flex-wrap gap-3 sm:gap-4 mb-8 justify-center">
               {Object.entries(dashboardData.permissions)
                 .filter(([key, perm]) => perm.visible)
                 .sort((a, b) => a[1].order - b[1].order)
-                .map(([key, perm]) => (
-                  key === "Reportar Problema" ? (
+                .map(([key, perm]) => {
+                  const notificationCount = key !== "Reportar Problema" ? getNotificationCount(key) : 0;
+                  return key === "Reportar Problema" ? (
                     <button
                       key={key}
                       onClick={() => setShowModal(true)}
-                      className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+                      className="relative flex items-center bg-[#5995DB] text-white px-4 py-2 sm:px-6 sm:py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300 text-sm sm:text-base"
+                      aria-label={key}
                     >
                       {renderIcon(perm.icon)}
                       {key}
                     </button>
                   ) : (
                     <Link key={key} to={normalizeId(key)} smooth={true} duration={500}>
-                      <button className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                      <button
+                        className="relative flex items-center bg-[#5995DB] text-white px-4 py-2 sm:px-6 sm:py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300 text-sm sm:text-base"
+                        aria-label={`${key}${notificationCount > 0 ? `, ${notificationCount} elementos pendientes` : ""}`}
+                      >
                         {renderIcon(perm.icon)}
                         {key}
+                        {notificationCount > 0 && (
+                          <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-semibold rounded-full h-5 w-5 flex items-center justify-center">
+                            {notificationCount}
+                          </span>
+                        )}
                       </button>
                     </Link>
-                  )
-                ))}
+                  );
+                })}
             </div>
           )}
 
@@ -731,44 +796,47 @@ const Dashboard = () => {
           {Object.entries(dashboardData.permissions)
             .filter(([key, perm]) => perm.visible && key !== "Reportar Problema")
             .sort((a, b) => a[1].order - b[1].order)
-            .map(([key, perm]) => (
-              <Element key={key} name={normalizeId(key)}>
-                <div
-                  className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}
-                  aria-live={key.toLowerCase().includes("noticias") ? "polite" : undefined}
-                >
-                  <div className="flex items-center mb-4">
-                    {renderIcon(perm.icon)}
-                    <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}]`}>{key}</h3>
+            .map(([key, perm]) => {
+              const { borderColor } = getSectionStyles(key);
+              return (
+                <Element key={key} name={normalizeId(key)}>
+                  <div
+                    className={`bg-white border-l-4 ${borderColor} p-4 sm:p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 w-full`}
+                    aria-live={key.toLowerCase().includes("noticias") ? "polite" : undefined}
+                  >
+                    <div className="flex items-center mb-4">
+                      {renderIcon(perm.icon)}
+                      <h3 className="text-lg sm:text-xl font-semibold text-gray-900">{key}</h3>
+                    </div>
+                    {renderSectionContent(key)}
                   </div>
-                  {renderSectionContent(key)}
-                </div>
-              </Element>
-            ))}
+                </Element>
+              );
+            })}
 
           {/* Modal para Reportar Problema */}
           {dashboardData.permissions["Reportar Problema"]?.visible && showModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-              <div className="bg-white p-6 rounded-2xl w-full max-w-lg shadow-2xl animate-fade-in">
-                <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}] mb-4`}>Reportar Problema</h3>
+              <div className="bg-white p-4 sm:p-6 rounded-2xl w-[90vw] max-w-lg shadow-2xl animate-fade-in">
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">Reportar Problema</h3>
                 <textarea
                   name="description"
                   value={reportData.description}
                   onChange={handleReportChange}
                   placeholder="Describe el problema..."
                   rows={4}
-                  className={`w-full p-3 border border-[${COLOR_VERDE}] rounded-lg mb-4 resize-y focus:outline-none focus:ring-2 focus:ring-[${COLOR_VIBRANT_BLUE}] transition-all`}
+                  className="w-full p-3 border border-gray-300 rounded-lg mb-4 resize-y focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all text-sm sm:text-base"
                 />
                 <input
                   type="file"
                   accept="image/*"
                   onChange={handleImageChange}
                   ref={fileInputRef}
-                  className={`mb-4 w-full text-[${COLOR_DARK_GRAY}]`}
+                  className="mb-4 w-full text-gray-600 text-sm sm:text-base"
                 />
                 {imagePreview && (
                   <div className="mb-4">
-                    <img src={imagePreview} alt="Previsualización" className="w-full h-40 object-cover rounded-lg" />
+                    <img src={imagePreview} alt="Previsualización" className="w-full h-32 sm:h-40 object-cover rounded-lg" />
                   </div>
                 )}
                 <div className="flex justify-end gap-3">
@@ -779,13 +847,13 @@ const Dashboard = () => {
                       setImagePreview(null);
                       if (fileInputRef.current) fileInputRef.current.value = "";
                     }}
-                    className={`px-4 py-2 bg-gray-300 text-[${COLOR_DARK_GRAY}] rounded-lg hover:bg-gray-400 transition-colors`}
+                    className="px-3 py-2 bg-gray-300 text-gray-600 rounded-lg hover:bg-gray-400 transition-colors text-sm sm:text-base"
                   >
                     Cancelar
                   </button>
                   <button
                     onClick={submitReport}
-                    className={`px-4 py-2 bg-[${COLOR_VIBRANT_BLUE}] text-white rounded-lg hover:bg-[${COLOR_LIGHT_BLUE}] transition-colors`}
+                    className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors text-sm sm:text-base"
                   >
                     Enviar
                   </button>
@@ -797,15 +865,15 @@ const Dashboard = () => {
           {/* Modal para Previsualizar Documentos */}
           {showPreviewModal && previewUrl && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-              <div className="bg-white p-6 rounded-2xl w-full max-w-4xl shadow-2xl animate-fade-in">
-                <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}] mb-4`}>
+              <div className="bg-white p-4 sm:p-6 rounded-2xl w-[90vw] max-w-4xl shadow-2xl animate-fade-in">
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
                   Previsualización de Documento
                 </h3>
-                <iframe src={previewUrl} className="w-full h-[60vh] rounded-lg" title="Document Preview" />
+                <iframe src={previewUrl} className="w-full h-[50vh] sm:h-[60vh] rounded-lg" title="Document Preview" />
                 <div className="flex justify-end gap-3 mt-4">
                   <button
                     onClick={() => setShowPreviewModal(false)}
-                    className={`px-4 py-2 bg-gray-300 text-[${COLOR_DARK_GRAY}] rounded-lg hover:bg-gray-400 transition-colors`}
+                    className="px-3 py-2 bg-gray-300 text-gray-600 rounded-lg hover:bg-gray-400 transition-colors text-sm sm:text-base"
                   >
                     Cerrar
                   </button>
@@ -818,9 +886,9 @@ const Dashboard = () => {
           {showScrollTop && (
             <Link to="top" smooth={true} duration={500}>
               <button
-                className={`fixed bottom-6 right-6 bg-[${COLOR_VIBRANT_BLUE}] text-white p-3 rounded-full shadow-lg hover:bg-[${COLOR_LIGHT_BLUE}] transition-all animate-bounce`}
+                className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-gray-600 text-white p-3 rounded-full shadow-lg hover:bg-gray-500 transition-all animate-bounce"
               >
-                <FaArrowUp className="text-xl" />
+                <FaArrowUp className="text-lg sm:text-xl" />
               </button>
             </Link>
           )}
