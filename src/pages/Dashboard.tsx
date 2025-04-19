@@ -95,11 +95,25 @@ const Dashboard = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [userRoleIds, setUserRoleIds] = useState<number[]>([]);
 
+  // Mapa de iconos para las secciones
+  const iconMap: { [key: string]: React.ComponentType } = {
+    FaExclamationCircle,
+    FaInfoCircle,
+    FaBell,
+    FaCalendarAlt,
+    FaFileDownload,
+    FaBox,
+    FaMoneyBillWave,
+    FaBuilding,
+    FaFileAlt,
+    FaTools,
+  };
+
   // Obtener roles del usuario al cargar
   useEffect(() => {
     const fetchUserRoles = async () => {
       try {
-        const response = await fetch(`${API_URL}/get-roles`, {
+        const response = await fetch(`${API_URL}/user-roles`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -149,6 +163,15 @@ const Dashboard = () => {
         }
         if (updateData.documents) {
           newData.documents = updateData.documents
+            .filter(
+              (item: any) =>
+                !item.ID_TIPO_USUARIO || userRoleIds.includes(item.ID_TIPO_USUARIO)
+            )
+            .map(({ ID_TIPO_USUARIO, ...rest }: any) => rest)
+            .slice(0, 5);
+        }
+        if (updateData.maintenanceEvents) {
+          newData.maintenanceEvents = updateData.maintenanceEvents
             .filter(
               (item: any) =>
                 !item.ID_TIPO_USUARIO || userRoleIds.includes(item.ID_TIPO_USUARIO)
@@ -389,8 +412,229 @@ const Dashboard = () => {
     setShowPreviewModal(true);
   };
 
+  // Renderizar ícono dinámicamente
+  const renderIcon = (iconName: string | null) => {
+    if (!iconName || !iconMap[iconName]) return null;
+    const IconComponent = iconMap[iconName];
+    return <IconComponent className="mr-2" />;
+  };
+
+  // Normalizar NOMBRE_ELEMENTO para IDs de navegación
+  const normalizeId = (name: string) => {
+    return name
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "");
+  };
+
+  // Deducir qué datos renderizar según NOMBRE_ELEMENTO
+  const renderSectionContent = (key: string) => {
+    if (isLoading) {
+      return (
+        <span
+          className={`inline-block w-6 h-6 border-4 border-t-[${COLOR_VIBRANT_BLUE}] border-gray-200 rounded-full animate-spin`}
+        ></span>
+      );
+    }
+
+    const keyLower = key.toLowerCase();
+
+    // Deudores
+    if (keyLower.includes("deudores") || keyLower.includes("pagos")) {
+      return (
+        <div
+          className={`flex items-center ${
+            dashboardData.hasDebt ? "text-red-600" : "text-green-600"
+          } cursor-pointer`}
+          onClick={showDebtors}
+        >
+          <FaMoneyBillWave className="mr-3 text-3xl" />
+          <p className="font-semibold text-lg">
+            {dashboardData.hasDebt
+              ? `¡Atención! Tienes ${dashboardData.pendingPayments} pagos pendientes por un total de S/ ${dashboardData.totalDebt.toFixed(
+                  2
+                )}.`
+              : "¡Estás al día en tus pagos!"}
+          </p>
+        </div>
+      );
+    }
+
+    // Cuenta Mancomunada
+    if (keyLower.includes("cuenta") || keyLower.includes("mancomunada")) {
+      return dashboardData.accountInfo ? (
+        <div className="space-y-3">
+          <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>
+            <strong>Banco:</strong> {dashboardData.accountInfo.bank}
+          </p>
+          <p className={`text-[${COLOR_DARK_GRAY}] text-lg flex items-center`}>
+            <strong>Número de Cuenta:</strong> {dashboardData.accountInfo.accountNumber}
+            <button
+              onClick={() => copyToClipboard(dashboardData.accountInfo.accountNumber, "Número de Cuenta")}
+              className={`ml-3 text-[${COLOR_VIBRANT_BLUE}] hover:text-[${COLOR_LIGHT_BLUE}] transition-colors`}
+            >
+              <FaCopy />
+            </button>
+          </p>
+          <p className={`text-[${COLOR_DARK_GRAY}] text-lg flex items-center`}>
+            <strong>CCI:</strong> {dashboardData.accountInfo.cci}
+            <button
+              onClick={() => copyToClipboard(dashboardData.accountInfo.cci, "CCI")}
+              className={`ml-3 text-[${COLOR_VIBRANT_BLUE}] hover:text-[${COLOR_LIGHT_BLUE}] transition-colors`}
+            >
+              <FaCopy />
+            </button>
+          </p>
+          <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>
+            <strong>Titular:</strong> {dashboardData.accountInfo.holder}
+          </p>
+          <p className={`text-sm text-[${COLOR_DARK_GRAY}] mt-3`}>
+            Usa esta cuenta para tus pagos de expensas. Contacta al administrador para dudas.
+          </p>
+        </div>
+      ) : (
+        <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>No hay cuenta mancomunada disponible.</p>
+      );
+    }
+
+    // Encargos
+    if (keyLower.includes("encargos")) {
+      return dashboardData.encargos.length > 0 ? (
+        <div onClick={showEncargos} className="text-yellow-600 flex items-center cursor-pointer">
+          <FaExclamationCircle className="mr-3 text-3xl" />
+          <p className="font-semibold text-lg">
+            ¡Atención! Tienes {dashboardData.encargos.length} encargos pendientes en recepción.
+          </p>
+        </div>
+      ) : (
+        <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>No tienes encargos pendientes.</p>
+      );
+    }
+
+    // Noticias
+    if (keyLower.includes("noticias")) {
+      return dashboardData.news.length > 0 ? (
+        dashboardData.news.map((item, index) => (
+          <div
+            key={index}
+            className={`flex items-start mb-4 border-b border-[${COLOR_VERDE}] pb-4 last:border-b-0`}
+          >
+            <span className={`text-[${COLOR_VIBRANT_BLUE}] mr-3 text-xl`}>•</span>
+            <div>
+              <p className={`font-semibold text-[${COLOR_DARK_GRAY}] text-lg`}>{item.title}</p>
+              <p className={`text-[${COLOR_DARK_GRAY}]`}>{item.description}</p>
+              <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>{item.date}</p>
+            </div>
+          </div>
+        ))
+      ) : (
+        <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>No hay noticias disponibles.</p>
+      );
+    }
+
+    // Eventos
+    if (keyLower.includes("eventos")) {
+      return dashboardData.events.length > 0 ? (
+        dashboardData.events.map((event, index) => (
+          <div
+            key={index}
+            className={`flex items-start mb-4 border-b border-[${COLOR_VERDE}] pb-4 last:border-b-0`}
+          >
+            <span className={`text-[${COLOR_VIBRANT_BLUE}] mr-3 text-xl`}>•</span>
+            <div>
+              <p className={`font-semibold text-[${COLOR_DARK_GRAY}] text-lg`}>
+                {event.date} ({event.type}): {event.title}
+              </p>
+              <p className={`text-[${COLOR_DARK_GRAY}]`}>{event.description}</p>
+              {event.startTime && event.endTime && (
+                <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>
+                  Horario: {event.startTime} - {event.endTime}
+                </p>
+              )}
+              {event.location && (
+                <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>Ubicación: {event.location}</p>
+              )}
+            </div>
+          </div>
+        ))
+      ) : (
+        <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>No hay eventos próximos.</p>
+      );
+    }
+
+    // Mantenimientos Programados
+    if (keyLower.includes("mantenimientos") || keyLower.includes("mantenimiento")) {
+      return dashboardData.maintenanceEvents.length > 0 ? (
+        dashboardData.maintenanceEvents.map((event, index) => (
+          <div
+            key={index}
+            className={`flex items-start mb-4 border-b border-[${COLOR_VERDE}] pb-4 last:border-b-0`}
+          >
+            <span className={`text-[${COLOR_VIBRANT_BLUE}] mr-3 text-xl`}>•</span>
+            <div>
+              <p className={`font-semibold text-[${COLOR_DARK_GRAY}] text-lg`}>
+                {event.date}: {event.title}
+              </p>
+              <p className={`text-[${COLOR_DARK_GRAY}]`}>
+                Proveedor: {event.providerName} ({event.providerType})
+              </p>
+              <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>Costo: S/ {event.cost.toFixed(2)}</p>
+            </div>
+          </div>
+        ))
+      ) : (
+        <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>No hay mantenimientos programados.</p>
+      );
+    }
+
+    // Documentos
+    if (keyLower.includes("documentos")) {
+      return dashboardData.documents.length > 0 ? (
+        dashboardData.documents.map((doc, index) => (
+          <div
+            key={index}
+            className={`flex justify-between items-center mb-3 border-b border-[${COLOR_VERDE}] pb-3 last:border-b-0`}
+          >
+            <div>
+              <span className={`text-[${COLOR_DARK_GRAY}] text-lg`}>{doc.name} ({doc.type})</span>
+              <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>Subido el: {doc.uploadDate}</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => previewDocument(doc.url)}
+                className={`text-[${COLOR_VIBRANT_BLUE}] hover:text-[${COLOR_LIGHT_BLUE}] flex items-center text-lg hover:underline`}
+              >
+                Ver
+                <FaEye className="ml-2" />
+              </button>
+              <a
+                href={doc.url}
+                download
+                className={`text-[${COLOR_VIBRANT_BLUE}] hover:text-[${COLOR_LIGHT_BLUE}] flex items-center text-lg hover:underline`}
+              >
+                Descargar
+                <FaFileDownload className="ml-2" />
+              </a>
+            </div>
+          </div>
+        ))
+      ) : (
+        <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>No hay documentos disponibles.</p>
+      );
+    }
+
+    // Secciones desconocidas o sin datos
+    return <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>No hay datos disponibles para esta sección.</p>;
+  };
+
   // Log de permisos para depuración
   console.log("Permisos en dashboardData:", dashboardData.permissions);
+  console.log(
+    "Permisos filtrados para botones:",
+    Object.entries(dashboardData.permissions).filter(
+      ([key, perm]) => perm.visible && key !== "Reportar Problema"
+    )
+  );
 
   return (
     <div>
@@ -413,7 +657,9 @@ const Dashboard = () => {
           </div>
 
           {/* Card de Bienvenida */}
-          <div className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 animate-bounce shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}>
+          <div
+            className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 animate-bounce shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}
+          >
             <div className="flex items-center">
               <svg
                 stroke="currentColor"
@@ -428,7 +674,9 @@ const Dashboard = () => {
                 <path d="M224 256c70.7 0 128-57.3 128-128S294.7 0 224 0 96 57.3 96 128s57.3 128 128 128zm89.6 32h-16.7c-22.2 10.2-46.9 16-72.9 16s-50.6-5.8-72.9-16h-16.7C60.2 288 0 348.2 0 422.4V464c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48v-41.6c0-74.2-60.2-134.4-134.4-134.4z"></path>
               </svg>
               <div>
-                <h2 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}]`}>¡Bienvenido, {userName}!</h2>
+                <h2 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}]`}>
+                  ¡Bienvenido, {userName}!
+                </h2>
                 <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>Accede a la información de tu edificio.</p>
               </div>
             </div>
@@ -437,279 +685,72 @@ const Dashboard = () => {
           {/* Mensaje si no hay permisos */}
           {isLoading ? (
             <div className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 text-center`}>
-              <span className={`inline-block w-6 h-6 border-4 border-t-[${COLOR_VIBRANT_BLUE}] border-gray-200 rounded-full animate-spin`}></span>
+              <span
+                className={`inline-block w-6 h-6 border-4 border-t-[${COLOR_VIBRANT_BLUE}] border-gray-200 rounded-full animate-spin`}
+              ></span>
               <p className={`text-[${COLOR_DARK_GRAY}] text-lg mt-2`}>Cargando datos...</p>
             </div>
-          ) : Object.keys(dashboardData.permissions).length === 0 && (
+          ) : Object.keys(dashboardData.permissions).length === 0 ? (
             <div className={`bg-yellow-100 border border-yellow-400 p-6 rounded-2xl shadow-xl mb-8 text-center`}>
               <FaExclamationCircle className={`text-yellow-600 text-3xl mx-auto mb-2`} />
               <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>
                 No tienes permisos asignados para ver el contenido del dashboard. Contacta al administrador.
               </p>
             </div>
-          )}
+          ) : null}
 
           {/* Botones de Navegación */}
           {Object.keys(dashboardData.permissions).length > 0 && (
             <div className="flex flex-wrap gap-4 mb-8 justify-center">
               {Object.entries(dashboardData.permissions)
-                .filter(([_, perm]) => perm.visible)
+                .filter(([key, perm]) => perm.visible)
                 .sort((a, b) => a[1].order - b[1].order)
                 .map(([key, perm]) => (
-                  <Link key={key} to={key.toLowerCase()} smooth={true} duration={500}>
-                    <button className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                      {perm.icon === "FaExclamationCircle" && <FaExclamationCircle className="mr-2" />}
-                      {perm.icon === "FaInfoCircle" && <FaInfoCircle className="mr-2" />}
-                      {perm.icon === "FaBell" && <FaBell className="mr-2" />}
-                      {perm.icon === "FaCalendarAlt" && <FaCalendarAlt className="mr-2" />}
-                      {perm.icon === "FaFileDownload" && <FaFileDownload className="mr-2" />}
-                      {perm.icon === "FaBox" && <FaBox className="mr-2" />}
-                      {perm.icon === "FaTools" && <FaTools className="mr-2" />}
-                      {key.replace(/_/g, " ")}
+                  key === "Reportar Problema" ? (
+                    <button
+                      key={key}
+                      onClick={() => setShowModal(true)}
+                      className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+                    >
+                      {renderIcon(perm.icon)}
+                      {key}
                     </button>
-                  </Link>
+                  ) : (
+                    <Link key={key} to={normalizeId(key)} smooth={true} duration={500}>
+                      <button className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                        {renderIcon(perm.icon)}
+                        {key}
+                      </button>
+                    </Link>
+                  )
                 ))}
             </div>
           )}
 
-          {/* Alerta de Deudas Pendientes */}
-          {dashboardData.permissions.DEUDORES?.visible && (
-            <Element name="debtors">
-              <div className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}>
-                <div className={`flex items-center ${dashboardData.hasDebt ? "text-red-600" : "text-green-600"} cursor-pointer`} onClick={showDebtors}>
-                  <FaMoneyBillWave className="mr-3 text-3xl" />
-                  <p className="font-semibold text-lg">
-                    {isLoading ? (
-                      <span className={`inline-block w-6 h-6 border-4 border-t-[${COLOR_VIBRANT_BLUE}] border-gray-200 rounded-full animate-spin`}></span>
-                    ) : dashboardData.hasDebt ? (
-                      `¡Atención! Tienes ${dashboardData.pendingPayments} pagos pendientes por un total de S/ ${dashboardData.totalDebt.toFixed(2)}.`
-                    ) : (
-                      "¡Estás al día en tus pagos!"
-                    )}
-                  </p>
-                </div>
-              </div>
-            </Element>
-          )}
-
-          {/* Card de Encargos Pendientes */}
-          {dashboardData.permissions.ENCARGOS?.visible && (
-            <Element name="encargos">
-              <div className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}>
-                <div className="flex items-center mb-4">
-                  <FaBox className={`text-[${COLOR_VIBRANT_BLUE}] text-3xl mr-3`} />
-                  <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}]`}>Encargos Pendientes</h3>
-                </div>
-                {isLoading ? (
-                  <span className={`inline-block w-6 h-6 border-4 border-t-[${COLOR_VIBRANT_BLUE}] border-gray-200 rounded-full animate-spin`}></span>
-                ) : dashboardData.encargos.length > 0 ? (
-                  <div onClick={showEncargos} className="text-yellow-600 flex items-center cursor-pointer">
-                    <FaExclamationCircle className="mr-3 text-3xl" />
-                    <p className="font-semibold text-lg">
-                      ¡Atención! Tienes {dashboardData.encargos.length} encargos pendientes en recepción.
-                    </p>
+          {/* Secciones Dinámicas */}
+          {Object.entries(dashboardData.permissions)
+            .filter(([key, perm]) => perm.visible && key !== "Reportar Problema")
+            .sort((a, b) => a[1].order - b[1].order)
+            .map(([key, perm]) => (
+              <Element key={key} name={normalizeId(key)}>
+                <div
+                  className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}
+                  aria-live={key.toLowerCase().includes("noticias") ? "polite" : undefined}
+                >
+                  <div className="flex items-center mb-4">
+                    {renderIcon(perm.icon)}
+                    <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}]`}>{key}</h3>
                   </div>
-                ) : (
-                  <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>No tienes encargos pendientes.</p>
-                )}
-              </div>
-            </Element>
-          )}
-
-          {/* Card de Cuenta Mancomunada */}
-          {dashboardData.permissions.CUENTA_MANCOMUNADA?.visible && (
-            <Element name="account">
-              <div className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}>
-                <div className="flex items-center mb-4">
-                  <FaBuilding className={`text-[${COLOR_VIBRANT_BLUE}] text-3xl mr-3`} />
-                  <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}]`}>Cuenta Mancomunada</h3>
+                  {renderSectionContent(key)}
                 </div>
-                {isLoading ? (
-                  <span className={`inline-block w-6 h-6 border-4 border-t-[${COLOR_VIBRANT_BLUE}] border-gray-200 rounded-full animate-spin`}></span>
-                ) : dashboardData.accountInfo ? (
-                  <div className="space-y-3">
-                    <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>
-                      <strong>Banco:</strong> {dashboardData.accountInfo.bank}
-                    </p>
-                    <p className={`text-[${COLOR_DARK_GRAY}] text-lg flex items-center`}>
-                      <strong>Número de Cuenta:</strong> {dashboardData.accountInfo.accountNumber}
-                      <button
-                        onClick={() => copyToClipboard(dashboardData.accountInfo.accountNumber, "Número de Cuenta")}
-                        className={`ml-3 text-[${COLOR_VIBRANT_BLUE}] hover:text-[${COLOR_LIGHT_BLUE}] transition-colors`}
-                      >
-                        <FaCopy />
-                      </button>
-                    </p>
-                    <p className={`text-[${COLOR_DARK_GRAY}] text-lg flex items-center`}>
-                      <strong>CCI:</strong> {dashboardData.accountInfo.cci}
-                      <button
-                        onClick={() => copyToClipboard(dashboardData.accountInfo.cci, "CCI")}
-                        className={`ml-3 text-[${COLOR_VIBRANT_BLUE}] hover:text-[${COLOR_LIGHT_BLUE}] transition-colors`}
-                      >
-                        <FaCopy />
-                      </button>
-                    </p>
-                    <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>
-                      <strong>Titular:</strong> {dashboardData.accountInfo.holder}
-                    </p>
-                    <p className={`text-sm text-[${COLOR_DARK_GRAY}] mt-3`}>
-                      Usa esta cuenta para tus pagos de expensas. Contacta al administrador para dudas.
-                    </p>
-                  </div>
-                ) : (
-                  <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>No hay cuenta mancomunada disponible.</p>
-                )}
-              </div>
-            </Element>
-          )}
-
-          {/* Card de Noticias */}
-          {dashboardData.permissions.NOTICIAS?.visible && (
-            <Element name="news">
-              <div
-                className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}
-                aria-live="polite"
-              >
-                <div className="flex items-center mb-4">
-                  <FaBell className={`text-[${COLOR_VIBRANT_BLUE}] text-3xl mr-3`} />
-                  <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}]`}>Noticias del Edificio</h3>
-                </div>
-                {isLoading ? (
-                  <span className={`inline-block w-6 h-6 border-4 border-t-[${COLOR_VIBRANT_BLUE}] border-gray-200 rounded-full animate-spin`}></span>
-                ) : dashboardData.news.length > 0 ? (
-                  dashboardData.news.map((item, index) => (
-                    <div key={index} className={`flex items-start mb-4 border-b border-[${COLOR_VERDE}] pb-4 last:border-b-0`}>
-                      <span className={`text-[${COLOR_VIBRANT_BLUE}] mr-3 text-xl`}>•</span>
-                      <div>
-                        <p className={`font-semibold text-[${COLOR_DARK_GRAY}] text-lg`}>{item.title}</p>
-                        <p className={`text-[${COLOR_DARK_GRAY}]`}>{item.description}</p>
-                        <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>{item.date}</p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>No hay noticias disponibles.</p>
-                )}
-              </div>
-            </Element>
-          )}
-
-          {/* Card de Eventos */}
-          {dashboardData.permissions.EVENTOS?.visible && (
-            <Element name="events">
-              <div className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}>
-                <div className="flex items-center mb-4">
-                  <FaCalendarAlt className={`text-[${COLOR_VIBRANT_BLUE}] text-3xl mr-3`} />
-                  <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}]`}>Eventos Próximos</h3>
-                </div>
-                {isLoading ? (
-                  <span className={`inline-block w-6 h-6 border-4 border-t-[${COLOR_VIBRANT_BLUE}] border-gray-200 rounded-full animate-spin`}></span>
-                ) : dashboardData.events.length > 0 ? (
-                  dashboardData.events.map((event, index) => (
-                    <div key={index} className={`flex items-start mb-4 border-b border-[${COLOR_VERDE}] pb-4 last:border-b-0`}>
-                      <span className={`text-[${COLOR_VIBRANT_BLUE}] mr-3 text-xl`}>•</span>
-                      <div>
-                        <p className={`font-semibold text-[${COLOR_DARK_GRAY}] text-lg`}>
-                          {event.date} ({event.type}): {event.title}
-                        </p>
-                        <p className={`text-[${COLOR_DARK_GRAY}]`}>{event.description}</p>
-                        {event.startTime && event.endTime && (
-                          <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>Horario: {event.startTime} - {event.endTime}</p>
-                        )}
-                        {event.location && (
-                          <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>Ubicación: {event.location}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>No hay eventos próximos.</p>
-                )}
-              </div>
-            </Element>
-          )}
-
-          {/* Card de Mantenimiento */}
-          {dashboardData.permissions.EVENTOS?.visible && (
-            <Element name="maintenance">
-              <div className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}>
-                <div className="flex items-center mb-4">
-                  <FaTools className={`text-[${COLOR_VIBRANT_BLUE}] text-3xl mr-3`} />
-                  <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}]`}>Mantenimientos Programados</h3>
-                </div>
-                {isLoading ? (
-                  <span className={`inline-block w-6 h-6 border-4 border-t-[${COLOR_VIBRANT_BLUE}] border-gray-200 rounded-full animate-spin`}></span>
-                ) : dashboardData.maintenanceEvents.length > 0 ? (
-                  dashboardData.maintenanceEvents.map((event, index) => (
-                    <div key={index} className={`flex items-start mb-4 border-b border-[${COLOR_VERDE}] pb-4 last:border-b-0`}>
-                      <span className={`text-[${COLOR_VIBRANT_BLUE}] mr-3 text-xl`}>•</span>
-                      <div>
-                        <p className={`font-semibold text-[${COLOR_DARK_GRAY}] text-lg`}>
-                          {event.date}: {event.title}
-                        </p>
-                        <p className={`text-[${COLOR_DARK_GRAY}]`}>Proveedor: {event.providerName} ({event.providerType})</p>
-                        <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>Costo: S/ {event.cost.toFixed(2)}</p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>No hay mantenimientos programados.</p>
-                )}
-              </div>
-            </Element>
-          )}
-
-          {/* Card de Documentos */}
-          {dashboardData.permissions.DOCUMENTOS?.visible && (
-            <Element name="documents">
-              <div className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}>
-                <div className="flex items-center mb-4">
-                  <FaFileAlt className={`text-[${COLOR_VIBRANT_BLUE}] text-3xl mr-3`} />
-                  <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}]`}>Documentos del Edificio</h3>
-                </div>
-                {isLoading ? (
-                  <span className={`inline-block w-6 h-6 border-4 border-t-[${COLOR_VIBRANT_BLUE}] border-gray-200 rounded-full animate-spin`}></span>
-                ) : dashboardData.documents.length > 0 ? (
-                  dashboardData.documents.map((doc, index) => (
-                    <div
-                      key={index}
-                      className={`flex justify-between items-center mb-3 border-b border-[${COLOR_VERDE}] pb-3 last:border-b-0`}
-                    >
-                      <div>
-                        <span className={`text-[${COLOR_DARK_GRAY}] text-lg`}>{doc.name} ({doc.type})</span>
-                        <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>Subido el: {doc.uploadDate}</p>
-                      </div>
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => previewDocument(doc.url)}
-                          className={`text-[${COLOR_VIBRANT_BLUE}] hover:text-[${COLOR_LIGHT_BLUE}] flex items-center text-lg hover:underline`}
-                        >
-                          Ver
-                          <FaEye className="ml-2" />
-                        </button>
-                        <a
-                          href={doc.url}
-                          download
-                          className={`text-[${COLOR_VIBRANT_BLUE}] hover:text-[${COLOR_LIGHT_BLUE}] flex items-center text-lg hover:underline`}
-                        >
-                          Descargar
-                          <FaFileDownload className="ml-2" />
-                        </a>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>No hay documentos disponibles.</p>
-                )}
-              </div>
-            </Element>
-          )}
+              </Element>
+            ))}
 
           {/* Modal para Reportar Problema */}
-          {dashboardData.permissions.BOTON_REPORTAR_PROBLEMA?.visible && showModal && (
+          {dashboardData.permissions["Reportar Problema"]?.visible && showModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
               <div className="bg-white p-6 rounded-2xl w-full max-w-lg shadow-2xl animate-fade-in">
-                <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}] mb-4`}>Reportar un Problema</h3>
+                <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}] mb-4`}>Reportar Problema</h3>
                 <textarea
                   name="description"
                   value={reportData.description}
@@ -721,20 +762,16 @@ const Dashboard = () => {
                 <input
                   type="file"
                   accept="image/*"
-                  ref={fileInputRef}
                   onChange={handleImageChange}
-                  className={`w-full mb-4 text-[${COLOR_DARK_GRAY}]`}
+                  ref={fileInputRef}
+                  className={`mb-4 w-full text-[${COLOR_DARK_GRAY}]`}
                 />
                 {imagePreview && (
-                  <img src={imagePreview} alt="Vista previa" className="max-w-full max-h-48 rounded-lg mb-4 shadow-sm" />
+                  <div className="mb-4">
+                    <img src={imagePreview} alt="Previsualización" className="w-full h-40 object-cover rounded-lg" />
+                  </div>
                 )}
                 <div className="flex justify-end gap-3">
-                  <button
-                    onClick={submitReport}
-                    className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-2 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
-                  >
-                    Enviar
-                  </button>
                   <button
                     onClick={() => {
                       setShowModal(false);
@@ -742,9 +779,15 @@ const Dashboard = () => {
                       setImagePreview(null);
                       if (fileInputRef.current) fileInputRef.current.value = "";
                     }}
-                    className="bg-gray-600 text-white px-6 py-2 rounded-2xl shadow-md hover:bg-gray-700 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+                    className={`px-4 py-2 bg-gray-300 text-[${COLOR_DARK_GRAY}] rounded-lg hover:bg-gray-400 transition-colors`}
                   >
                     Cancelar
+                  </button>
+                  <button
+                    onClick={submitReport}
+                    className={`px-4 py-2 bg-[${COLOR_VIBRANT_BLUE}] text-white rounded-lg hover:bg-[${COLOR_LIGHT_BLUE}] transition-colors`}
+                  >
+                    Enviar
                   </button>
                 </div>
               </div>
@@ -752,25 +795,17 @@ const Dashboard = () => {
           )}
 
           {/* Modal para Previsualizar Documentos */}
-          {dashboardData.permissions.DOCUMENTOS?.visible && showPreviewModal && (
+          {showPreviewModal && previewUrl && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
               <div className="bg-white p-6 rounded-2xl w-full max-w-4xl shadow-2xl animate-fade-in">
-                <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}] mb-4`}>Previsualizar Documento</h3>
-                <div className="w-full h-[60vh] mb-4">
-                  {previewUrl ? (
-                    <iframe
-                      src={previewUrl}
-                      className={`w-full h-full rounded-lg border border-[${COLOR_VERDE}]`}
-                      title="Vista previa del documento"
-                    />
-                  ) : (
-                    <p className={`text-[${COLOR_DARK_GRAY}]`}>No se puede previsualizar el documento.</p>
-                  )}
-                </div>
-                <div className="flex justify-end">
+                <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}] mb-4`}>
+                  Previsualización de Documento
+                </h3>
+                <iframe src={previewUrl} className="w-full h-[60vh] rounded-lg" title="Document Preview" />
+                <div className="flex justify-end gap-3 mt-4">
                   <button
                     onClick={() => setShowPreviewModal(false)}
-                    className="bg-gray-600 text-white px-6 py-2 rounded-2xl shadow-md hover:bg-gray-700 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+                    className={`px-4 py-2 bg-gray-300 text-[${COLOR_DARK_GRAY}] rounded-lg hover:bg-gray-400 transition-colors`}
                   >
                     Cerrar
                   </button>
@@ -779,12 +814,11 @@ const Dashboard = () => {
             </div>
           )}
 
-          {/* Botón para subir al inicio */}
+          {/* Botón de Subir */}
           {showScrollTop && (
-            <Link to="top" smooth={true} duration={500} offset={-100}>
+            <Link to="top" smooth={true} duration={500}>
               <button
-                className="fixed bottom-6 right-6 bg-transparent border-2 border-[#60a5fa] text-[#60a5fa] p-3 rounded-full shadow-md hover:border-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300 z-50"
-                title="Subir al inicio"
+                className={`fixed bottom-6 right-6 bg-[${COLOR_VIBRANT_BLUE}] text-white p-3 rounded-full shadow-lg hover:bg-[${COLOR_LIGHT_BLUE}] transition-all animate-bounce`}
               >
                 <FaArrowUp className="text-xl" />
               </button>
