@@ -93,6 +93,27 @@ const Dashboard = () => {
   const token = localStorage.getItem("token");
   const userName = localStorage.getItem("userName") || "Usuario";
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [userRoleIds, setUserRoleIds] = useState<number[]>([]);
+
+  // Obtener roles del usuario al cargar
+  useEffect(() => {
+    const fetchUserRoles = async () => {
+      try {
+        const response = await fetch(`${API_URL}/get-roles`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (response.ok) {
+          const roles = await response.json();
+          setUserRoleIds(roles.map((role: any) => role.ID_TIPO_USUARIO));
+        }
+      } catch (error) {
+        console.error("Error al obtener roles:", error);
+      }
+    };
+    if (token) fetchUserRoles();
+  }, [token]);
 
   // Inicializar WebSocket
   useEffect(() => {
@@ -106,10 +127,37 @@ const Dashboard = () => {
 
     socket.on("dashboardUpdate", (updateData) => {
       console.log("Actualización recibida:", updateData);
-      setDashboardData((prev) => ({
-        ...prev,
-        ...updateData,
-      }));
+      setDashboardData((prev) => {
+        const newData = { ...prev };
+        if (updateData.news) {
+          newData.news = updateData.news
+            .filter(
+              (item: any) =>
+                !item.ID_TIPO_USUARIO || userRoleIds.includes(item.ID_TIPO_USUARIO)
+            )
+            .map(({ ID_TIPO_USUARIO, ...rest }: any) => rest)
+            .slice(0, 5);
+        }
+        if (updateData.events) {
+          newData.events = updateData.events
+            .filter(
+              (item: any) =>
+                !item.ID_TIPO_USUARIO || userRoleIds.includes(item.ID_TIPO_USUARIO)
+            )
+            .map(({ ID_TIPO_USUARIO, ...rest }: any) => rest)
+            .slice(0, 5);
+        }
+        if (updateData.documents) {
+          newData.documents = updateData.documents
+            .filter(
+              (item: any) =>
+                !item.ID_TIPO_USUARIO || userRoleIds.includes(item.ID_TIPO_USUARIO)
+            )
+            .map(({ ID_TIPO_USUARIO, ...rest }: any) => rest)
+            .slice(0, 5);
+        }
+        return newData;
+      });
       Swal.fire({
         icon: "info",
         title: "¡Nuevos datos disponibles!",
@@ -126,7 +174,7 @@ const Dashboard = () => {
     return () => {
       socket.disconnect();
     };
-  }, [token]);
+  }, [token, userRoleIds]);
 
   // Fetch de datos del dashboard
   useEffect(() => {
