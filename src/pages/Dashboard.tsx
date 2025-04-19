@@ -1,12 +1,29 @@
+// src/pages/Dashboard.tsx
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { FaBell, FaExclamationCircle, FaInfoCircle, FaCopy, FaFileDownload, FaEye, FaCalendarAlt, FaBuilding, FaFileAlt, FaArrowUp, FaBox, FaMoneyBillWave } from "react-icons/fa";
+import {
+  FaBell,
+  FaExclamationCircle,
+  FaInfoCircle,
+  FaCopy,
+  FaFileDownload,
+  FaEye,
+  FaCalendarAlt,
+  FaBuilding,
+  FaFileAlt,
+  FaArrowUp,
+  FaBox,
+  FaMoneyBillWave,
+  FaTools,
+} from "react-icons/fa";
 import Swal from "sweetalert2";
 import { Link, Element } from "react-scroll";
+import io from "socket.io-client";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const LOGO_PATH = "/LogoSoftHome/Logo_SoftHome_1.png";
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:4000";
 
 const COLOR_DARK_GRAY = "#4a5568";
 const COLOR_LIGHT_BLUE = "#93c5fd";
@@ -24,11 +41,30 @@ interface DashboardData {
     holder: string;
   } | null;
   news: { title: string; description: string; date: string }[];
-  events: { date: string; title: string }[];
-  documents: { name: string; type: string; url: string }[];
+  events: {
+    date: string;
+    title: string;
+    type: string;
+    startTime: string | null;
+    endTime: string | null;
+    location: string | null;
+    description: string;
+  }[];
+  maintenanceEvents: {
+    title: string;
+    date: string;
+    providerName: string;
+    providerType: string;
+    cost: number;
+  }[];
+  documents: { name: string; type: string; url: string; uploadDate: string }[];
   encargos: { id_encargo: number; descripcion: string; fechaRecepcion: string }[];
   permissions: {
-    [key: string]: boolean;
+    [key: string]: {
+      visible: boolean;
+      order: number;
+      icon: string | null;
+    };
   };
 }
 
@@ -42,6 +78,7 @@ const Dashboard = () => {
     accountInfo: null,
     news: [],
     events: [],
+    maintenanceEvents: [],
     documents: [],
     encargos: [],
     permissions: {},
@@ -56,6 +93,40 @@ const Dashboard = () => {
   const token = localStorage.getItem("token");
   const userName = localStorage.getItem("userName") || "Usuario";
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Inicializar WebSocket
+  useEffect(() => {
+    const socket = io(SOCKET_URL, {
+      auth: { token: `Bearer ${token}` },
+    });
+
+    socket.on("connect", () => {
+      console.log("Conectado al servidor WebSocket");
+    });
+
+    socket.on("dashboardUpdate", (updateData) => {
+      console.log("Actualización recibida:", updateData);
+      setDashboardData((prev) => ({
+        ...prev,
+        ...updateData,
+      }));
+      Swal.fire({
+        icon: "info",
+        title: "¡Nuevos datos disponibles!",
+        text: "El dashboard se ha actualizado con nueva información.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    });
+
+    socket.on("disconnect", () => {
+      console.log("Desconectado del servidor WebSocket");
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [token]);
 
   // Fetch de datos del dashboard
   useEffect(() => {
@@ -92,7 +163,6 @@ const Dashboard = () => {
         console.log("Datos recibidos:", JSON.stringify(data, null, 2));
         setDashboardData(data);
 
-        // Verificar si los permisos están vacíos
         if (!data.permissions || Object.keys(data.permissions).length === 0) {
           console.warn("No se recibieron permisos en la respuesta de la API");
         }
@@ -334,72 +404,28 @@ const Dashboard = () => {
           {/* Botones de Navegación */}
           {Object.keys(dashboardData.permissions).length > 0 && (
             <div className="flex flex-wrap gap-4 mb-8 justify-center">
-              {dashboardData.permissions.DEUDORES && (
-                <Link to="debtors" smooth={true} duration={500}>
-                  <button className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                    <FaExclamationCircle className="mr-2" />
-                    Deudores
-                  </button>
-                </Link>
-              )}
-              {dashboardData.permissions.CUENTA_MANCOMUNADA && (
-                <Link to="account" smooth={true} duration={500}>
-                  <button className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                    <FaInfoCircle className="mr-2" />
-                    Cuenta Mancomunada
-                  </button>
-                </Link>
-              )}
-              {dashboardData.permissions.NOTICIAS && (
-                <Link to="news" smooth={true} duration={500}>
-                  <button className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                    <FaBell className="mr-2" />
-                    Noticias
-                  </button>
-                </Link>
-              )}
-              {dashboardData.permissions.EVENTOS && (
-                <Link to="events" smooth={true} duration={500}>
-                  <button className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                    <FaCalendarAlt className="mr-2" />
-                    Eventos
-                  </button>
-                </Link>
-              )}
-              {dashboardData.permissions.DOCUMENTOS && (
-                <Link to="documents" smooth={true} duration={500}>
-                  <button className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                    <FaFileDownload className="mr-2" />
-                    Documentos
-                  </button>
-                </Link>
-              )}
-              {dashboardData.permissions.ENCARGOS && (
-                <Link to="encargos" smooth={true} duration={500}>
-                  <button className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                    <FaBox className="mr-2" />
-                    Encargos
-                  </button>
-                </Link>
-              )}
-            </div>
-          )}
-
-          {/* Botones de Acción */}
-          {dashboardData.permissions.BOTON_REPORTAR_PROBLEMA && (
-            <div className="flex flex-wrap gap-4 mb-8 justify-center">
-              <button
-                onClick={() => setShowModal(true)}
-                className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
-              >
-                <FaExclamationCircle className="mr-2" />
-                Reportar Problema
-              </button>
+              {Object.entries(dashboardData.permissions)
+                .filter(([_, perm]) => perm.visible)
+                .sort((a, b) => a[1].order - b[1].order)
+                .map(([key, perm]) => (
+                  <Link key={key} to={key.toLowerCase()} smooth={true} duration={500}>
+                    <button className="flex items-center bg-[#5995DB] bg-opacity-100 text-white px-6 py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+                      {perm.icon === "FaExclamationCircle" && <FaExclamationCircle className="mr-2" />}
+                      {perm.icon === "FaInfoCircle" && <FaInfoCircle className="mr-2" />}
+                      {perm.icon === "FaBell" && <FaBell className="mr-2" />}
+                      {perm.icon === "FaCalendarAlt" && <FaCalendarAlt className="mr-2" />}
+                      {perm.icon === "FaFileDownload" && <FaFileDownload className="mr-2" />}
+                      {perm.icon === "FaBox" && <FaBox className="mr-2" />}
+                      {perm.icon === "FaTools" && <FaTools className="mr-2" />}
+                      {key.replace(/_/g, " ")}
+                    </button>
+                  </Link>
+                ))}
             </div>
           )}
 
           {/* Alerta de Deudas Pendientes */}
-          {dashboardData.permissions.DEUDORES && (
+          {dashboardData.permissions.DEUDORES?.visible && (
             <Element name="debtors">
               <div className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}>
                 <div className={`flex items-center ${dashboardData.hasDebt ? "text-red-600" : "text-green-600"} cursor-pointer`} onClick={showDebtors}>
@@ -419,7 +445,7 @@ const Dashboard = () => {
           )}
 
           {/* Card de Encargos Pendientes */}
-          {dashboardData.permissions.ENCARGOS && (
+          {dashboardData.permissions.ENCARGOS?.visible && (
             <Element name="encargos">
               <div className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}>
                 <div className="flex items-center mb-4">
@@ -443,7 +469,7 @@ const Dashboard = () => {
           )}
 
           {/* Card de Cuenta Mancomunada */}
-          {dashboardData.permissions.CUENTA_MANCOMUNADA && (
+          {dashboardData.permissions.CUENTA_MANCOMUNADA?.visible && (
             <Element name="account">
               <div className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}>
                 <div className="flex items-center mb-4">
@@ -490,7 +516,7 @@ const Dashboard = () => {
           )}
 
           {/* Card de Noticias */}
-          {dashboardData.permissions.NOTICIAS && (
+          {dashboardData.permissions.NOTICIAS?.visible && (
             <Element name="news">
               <div
                 className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}
@@ -503,7 +529,7 @@ const Dashboard = () => {
                 {isLoading ? (
                   <span className={`inline-block w-6 h-6 border-4 border-t-[${COLOR_VIBRANT_BLUE}] border-gray-200 rounded-full animate-spin`}></span>
                 ) : dashboardData.news.length > 0 ? (
-                  dashboardData.news.slice(0, 3).map((item, index) => (
+                  dashboardData.news.map((item, index) => (
                     <div key={index} className={`flex items-start mb-4 border-b border-[${COLOR_VERDE}] pb-4 last:border-b-0`}>
                       <span className={`text-[${COLOR_VIBRANT_BLUE}] mr-3 text-xl`}>•</span>
                       <div>
@@ -521,7 +547,7 @@ const Dashboard = () => {
           )}
 
           {/* Card de Eventos */}
-          {dashboardData.permissions.EVENTOS && (
+          {dashboardData.permissions.EVENTOS?.visible && (
             <Element name="events">
               <div className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}>
                 <div className="flex items-center mb-4">
@@ -532,8 +558,20 @@ const Dashboard = () => {
                   <span className={`inline-block w-6 h-6 border-4 border-t-[${COLOR_VIBRANT_BLUE}] border-gray-200 rounded-full animate-spin`}></span>
                 ) : dashboardData.events.length > 0 ? (
                   dashboardData.events.map((event, index) => (
-                    <div key={index} className={`text-[${COLOR_DARK_GRAY}] text-lg mb-3`}>
-                      <span className="font-medium">{event.date}:</span> {event.title}
+                    <div key={index} className={`flex items-start mb-4 border-b border-[${COLOR_VERDE}] pb-4 last:border-b-0`}>
+                      <span className={`text-[${COLOR_VIBRANT_BLUE}] mr-3 text-xl`}>•</span>
+                      <div>
+                        <p className={`font-semibold text-[${COLOR_DARK_GRAY}] text-lg`}>
+                          {event.date} ({event.type}): {event.title}
+                        </p>
+                        <p className={`text-[${COLOR_DARK_GRAY}]`}>{event.description}</p>
+                        {event.startTime && event.endTime && (
+                          <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>Horario: {event.startTime} - {event.endTime}</p>
+                        )}
+                        {event.location && (
+                          <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>Ubicación: {event.location}</p>
+                        )}
+                      </div>
                     </div>
                   ))
                 ) : (
@@ -543,8 +581,38 @@ const Dashboard = () => {
             </Element>
           )}
 
+          {/* Card de Mantenimiento */}
+          {dashboardData.permissions.EVENTOS?.visible && (
+            <Element name="maintenance">
+              <div className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}>
+                <div className="flex items-center mb-4">
+                  <FaTools className={`text-[${COLOR_VIBRANT_BLUE}] text-3xl mr-3`} />
+                  <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}]`}>Mantenimientos Programados</h3>
+                </div>
+                {isLoading ? (
+                  <span className={`inline-block w-6 h-6 border-4 border-t-[${COLOR_VIBRANT_BLUE}] border-gray-200 rounded-full animate-spin`}></span>
+                ) : dashboardData.maintenanceEvents.length > 0 ? (
+                  dashboardData.maintenanceEvents.map((event, index) => (
+                    <div key={index} className={`flex items-start mb-4 border-b border-[${COLOR_VERDE}] pb-4 last:border-b-0`}>
+                      <span className={`text-[${COLOR_VIBRANT_BLUE}] mr-3 text-xl`}>•</span>
+                      <div>
+                        <p className={`font-semibold text-[${COLOR_DARK_GRAY}] text-lg`}>
+                          {event.date}: {event.title}
+                        </p>
+                        <p className={`text-[${COLOR_DARK_GRAY}]`}>Proveedor: {event.providerName} ({event.providerType})</p>
+                        <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>Costo: S/ {event.cost.toFixed(2)}</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className={`text-[${COLOR_DARK_GRAY}] text-lg`}>No hay mantenimientos programados.</p>
+                )}
+              </div>
+            </Element>
+          )}
+
           {/* Card de Documentos */}
-          {dashboardData.permissions.DOCUMENTOS && (
+          {dashboardData.permissions.DOCUMENTOS?.visible && (
             <Element name="documents">
               <div className={`bg-white border border-[${COLOR_VERDE}] p-6 rounded-2xl shadow-xl mb-8 transition-all hover:shadow-2xl hover:-translate-y-1 shadow-[0_4px_6px_rgba(108,174,182,0.2)]`}>
                 <div className="flex items-center mb-4">
@@ -559,7 +627,10 @@ const Dashboard = () => {
                       key={index}
                       className={`flex justify-between items-center mb-3 border-b border-[${COLOR_VERDE}] pb-3 last:border-b-0`}
                     >
-                      <span className={`text-[${COLOR_DARK_GRAY}] text-lg`}>{doc.name} ({doc.type})</span>
+                      <div>
+                        <span className={`text-[${COLOR_DARK_GRAY}] text-lg`}>{doc.name} ({doc.type})</span>
+                        <p className={`text-sm text-[${COLOR_DARK_GRAY}]`}>Subido el: {doc.uploadDate}</p>
+                      </div>
                       <div className="flex gap-3">
                         <button
                           onClick={() => previewDocument(doc.url)}
@@ -587,7 +658,7 @@ const Dashboard = () => {
           )}
 
           {/* Modal para Reportar Problema */}
-          {dashboardData.permissions.BOTON_REPORTAR_PROBLEMA && showModal && (
+          {dashboardData.permissions.BOTON_REPORTAR_PROBLEMA?.visible && showModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
               <div className="bg-white p-6 rounded-2xl w-full max-w-lg shadow-2xl animate-fade-in">
                 <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}] mb-4`}>Reportar un Problema</h3>
@@ -633,7 +704,7 @@ const Dashboard = () => {
           )}
 
           {/* Modal para Previsualizar Documentos */}
-          {dashboardData.permissions.DOCUMENTOS && showPreviewModal && (
+          {dashboardData.permissions.DOCUMENTOS?.visible && showPreviewModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
               <div className="bg-white p-6 rounded-2xl w-full max-w-4xl shadow-2xl animate-fade-in">
                 <h3 className={`text-xl font-semibold text-[${COLOR_DARK_GRAY}] mb-4`}>Previsualizar Documento</h3>
