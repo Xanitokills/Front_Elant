@@ -58,7 +58,7 @@ interface DashboardData {
     cost: number;
   }[];
   documents: { name: string; type: string; url: string; uploadDate: string }[];
-  encargos: { id_encargo: number; descripcion: string; fechaRecepcion: string }[];
+  encargos: { ID_ENCARGO: number; descripcion: string; fechaRecepcion: string }[];
   permissions: {
     [key: string]: {
       visible: boolean;
@@ -67,6 +67,8 @@ interface DashboardData {
     };
   };
 }
+
+const ITEMS_PER_PAGE = 10; // Número de elementos por página
 
 const Dashboard = () => {
   const { isAuthenticated } = useAuth();
@@ -94,6 +96,13 @@ const Dashboard = () => {
   const userName = localStorage.getItem("userName") || "Usuario";
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [userRoleIds, setUserRoleIds] = useState<number[]>([]);
+  const [pagination, setPagination] = useState({
+    news: { currentPage: 1, itemsPerPage: ITEMS_PER_PAGE },
+    events: { currentPage: 1, itemsPerPage: ITEMS_PER_PAGE },
+    documents: { currentPage: 1, itemsPerPage: ITEMS_PER_PAGE },
+    encargos: { currentPage: 1, itemsPerPage: ITEMS_PER_PAGE },
+    maintenanceEvents: { currentPage: 1, itemsPerPage: ITEMS_PER_PAGE },
+  });
 
   // Mapa de iconos para las secciones
   const iconMap: { [key: string]: React.ComponentType } = {
@@ -121,6 +130,8 @@ const Dashboard = () => {
         if (response.ok) {
           const roles = await response.json();
           setUserRoleIds(roles.map((role: any) => role.ID_TIPO_USUARIO));
+        } else {
+          console.error("Error al obtener roles:", response.statusText);
         }
       } catch (error) {
         console.error("Error al obtener roles:", error);
@@ -131,6 +142,8 @@ const Dashboard = () => {
 
   // Inicializar WebSocket
   useEffect(() => {
+    if (!token) return;
+
     const socket = io(SOCKET_URL, {
       auth: { token: `Bearer ${token}` },
     });
@@ -149,8 +162,7 @@ const Dashboard = () => {
               (item: any) =>
                 !item.ID_TIPO_USUARIO || userRoleIds.includes(item.ID_TIPO_USUARIO)
             )
-            .map(({ ID_TIPO_USUARIO, ...rest }: any) => rest)
-            .slice(0, 5);
+            .map(({ ID_TIPO_USUARIO, ...rest }: any) => rest);
         }
         if (updateData.events) {
           newData.events = updateData.events
@@ -158,8 +170,7 @@ const Dashboard = () => {
               (item: any) =>
                 !item.ID_TIPO_USUARIO || userRoleIds.includes(item.ID_TIPO_USUARIO)
             )
-            .map(({ ID_TIPO_USUARIO, ...rest }: any) => rest)
-            .slice(0, 5);
+            .map(({ ID_TIPO_USUARIO, ...rest }: any) => rest);
         }
         if (updateData.documents) {
           newData.documents = updateData.documents
@@ -167,8 +178,7 @@ const Dashboard = () => {
               (item: any) =>
                 !item.ID_TIPO_USUARIO || userRoleIds.includes(item.ID_TIPO_USUARIO)
             )
-            .map(({ ID_TIPO_USUARIO, ...rest }: any) => rest)
-            .slice(0, 5);
+            .map(({ ID_TIPO_USUARIO, ...rest }: any) => rest);
         }
         if (updateData.maintenanceEvents) {
           newData.maintenanceEvents = updateData.maintenanceEvents
@@ -176,11 +186,17 @@ const Dashboard = () => {
               (item: any) =>
                 !item.ID_TIPO_USUARIO || userRoleIds.includes(item.ID_TIPO_USUARIO)
             )
-            .map(({ ID_TIPO_USUARIO, ...rest }: any) => rest)
-            .slice(0, 5);
+            .map(({ ID_TIPO_USUARIO, ...rest }: any) => rest);
         }
         return newData;
       });
+      setPagination((prev) => ({
+        ...prev,
+        news: { ...prev.news, currentPage: 1 },
+        events: { ...prev.events, currentPage: 1 },
+        documents: { ...prev.documents, currentPage: 1 },
+        maintenanceEvents: { ...prev.maintenanceEvents, currentPage: 1 },
+      }));
       Swal.fire({
         icon: "info",
         title: "¡Nuevos datos disponibles!",
@@ -232,7 +248,20 @@ const Dashboard = () => {
 
         const data = await response.json();
         console.log("Datos recibidos:", JSON.stringify(data, null, 2));
-        setDashboardData(data);
+
+        // Validar datos recibidos
+        setDashboardData({
+          pendingPayments: data.pendingPayments || 0,
+          totalDebt: data.totalDebt || 0,
+          hasDebt: data.hasDebt || false,
+          accountInfo: data.accountInfo || null,
+          news: data.news || [],
+          events: data.events || [],
+          maintenanceEvents: data.maintenanceEvents || [],
+          documents: data.documents || [],
+          encargos: data.encargos || [],
+          permissions: data.permissions || {},
+        });
 
         if (!data.permissions || Object.keys(data.permissions).length === 0) {
           console.warn("No se recibieron permisos en la respuesta de la API");
@@ -322,6 +351,10 @@ const Dashboard = () => {
     }
 
     const encargosList = dashboardData.encargos
+      .slice(
+        (pagination.encargos.currentPage - 1) * pagination.encargos.itemsPerPage,
+        pagination.encargos.currentPage * pagination.encargos.itemsPerPage
+      )
       .map((encargo) => `<li><strong>${encargo.fechaRecepcion}</strong>: ${encargo.descripcion}</li>`)
       .join("");
     await Swal.fire({
@@ -412,6 +445,49 @@ const Dashboard = () => {
     setShowPreviewModal(true);
   };
 
+  // Manejar cambio de página
+  const handlePageChange = (section: keyof typeof pagination, page: number) => {
+    setPagination((prev) => ({
+      ...prev,
+      [section]: { ...prev[section], currentPage: page },
+    }));
+  };
+
+  // Obtener datos paginados
+  const getPaginatedData = (data: any[], section: keyof typeof pagination) => {
+    const startIndex = (pagination[section].currentPage - 1) * pagination[section].itemsPerPage;
+    const endIndex = startIndex + pagination[section].itemsPerPage;
+    return data.slice(startIndex, endIndex);
+  };
+
+  // Renderizar controles de paginación
+  const renderPagination = (section: keyof typeof pagination, totalItems: number) => {
+    const totalPages = Math.ceil(totalItems / pagination[section].itemsPerPage);
+    if (totalPages <= 1) return null;
+
+    return (
+      <div className="flex justify-center gap-2 mt-4">
+        <button
+          onClick={() => handlePageChange(section, pagination[section].currentPage - 1)}
+          disabled={pagination[section].currentPage === 1}
+          className="px-3 py-1 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 disabled:opacity-50"
+        >
+          Anterior
+        </button>
+        <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-lg">
+          Página {pagination[section].currentPage} de {totalPages}
+        </span>
+        <button
+          onClick={() => handlePageChange(section, pagination[section].currentPage + 1)}
+          disabled={pagination[section].currentPage === totalPages}
+          className="px-3 py-1 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 disabled:opacity-50"
+        >
+          Siguiente
+        </button>
+      </div>
+    );
+  };
+
   // Renderizar ícono dinámicamente
   const renderIcon = (iconName: string | null) => {
     if (!iconName || !iconMap[iconName]) return null;
@@ -452,7 +528,10 @@ const Dashboard = () => {
       return { textColor: "text-gray-800", borderColor: "border-gray-700" };
     }
     if (keyLower.includes("encargos")) {
-      return { textColor: dashboardData.encargos.length > 0 ? "text-yellow-600" : "text-gray-800", borderColor: "border-yellow-600" };
+      return {
+        textColor: dashboardData.encargos.length > 0 ? "text-yellow-600" : "text-gray-800",
+        borderColor: "border-yellow-600",
+      };
     }
     return { textColor: "text-gray-800", borderColor: "border-gray-700" };
   };
@@ -485,9 +564,9 @@ const Dashboard = () => {
   const renderSectionContent = (key: string) => {
     if (isLoading) {
       return (
-        <span
-          className={`inline-block w-6 h-6 border-4 border-t-gray-600 border-gray-200 rounded-full animate-spin`}
-        ></span>
+        <div className="flex justify-center">
+          <span className="inline-block w-6 h-6 border-4 border-t-gray-600 border-gray-200 rounded-full animate-spin"></span>
+        </div>
       );
     }
 
@@ -503,7 +582,11 @@ const Dashboard = () => {
           onClick={showDebtors}
         >
           <FaMoneyBillWave className="mr-3 text-2xl sm:text-3xl" />
-          <p className={`font-semibold text-base sm:text-lg ${dashboardData.hasDebt ? "text-red-600" : "text-gray-800"}`}>
+          <p
+            className={`font-semibold text-base sm:text-lg ${
+              dashboardData.hasDebt ? "text-red-600" : "text-gray-800"
+            }`}
+          >
             {dashboardData.hasDebt
               ? `¡Atención! Tienes ${dashboardData.pendingPayments} pagos pendientes por un total de S/ ${dashboardData.totalDebt.toFixed(
                   2
@@ -524,7 +607,9 @@ const Dashboard = () => {
           <p className={`text-base sm:text-lg ${textColor} flex items-center flex-wrap`}>
             <strong>Número de Cuenta:</strong> {dashboardData.accountInfo.accountNumber}
             <button
-              onClick={() => copyToClipboard(dashboardData.accountInfo.accountNumber, "Número de Cuenta")}
+              onClick={() =>
+                copyToClipboard(dashboardData.accountInfo.accountNumber, "Número de Cuenta")
+              }
               className="ml-3 text-gray-600 hover:text-gray-500 transition-colors"
             >
               <FaCopy className="text-lg" />
@@ -547,19 +632,42 @@ const Dashboard = () => {
           </p>
         </div>
       ) : (
-        <p className={`text-base sm:text-lg ${textColor}`}>No hay cuenta mancomunada disponible.</p>
+        <p className={`text-base sm:text-lg ${textColor}`}>
+          No hay cuenta mancomunada disponible.
+        </p>
       );
     }
 
     // Encargos
     if (keyLower.includes("encargos")) {
       const contentColor = dashboardData.encargos.length > 0 ? "text-yellow-600" : "text-gray-600";
+      const paginatedEncargos = getPaginatedData(dashboardData.encargos, "encargos");
       return dashboardData.encargos.length > 0 ? (
-        <div onClick={showEncargos} className={`${contentColor} flex items-center cursor-pointer`}>
-          <FaExclamationCircle className="mr-3 text-2xl sm:text-3xl" />
-          <p className={`font-semibold text-base sm:text-lg ${textColor}`}>
-            ¡Atención! Tienes {dashboardData.encargos.length} encargos pendientes en recepción.
-          </p>
+        <div>
+          <div
+            onClick={showEncargos}
+            className={`${contentColor} flex items-center cursor-pointer mb-4`}
+          >
+            <FaExclamationCircle className="mr-3 text-2xl sm:text-3xl" />
+            <p className={`font-semibold text-base sm:text-lg ${textColor}`}>
+              ¡Atención! Tienes {dashboardData.encargos.length} encargos pendientes en recepción.
+            </p>
+          </div>
+          {paginatedEncargos.map((encargo, index) => (
+            <div
+              key={index}
+              className="flex items-start mb-4 border-b border-gray-200 pb-4 last:border-b-0"
+            >
+              <span className="text-gray-600 mr-3 text-xl">•</span>
+              <div className="w-full">
+                <p className={`font-semibold text-base sm:text-lg ${textColor}`}>
+                  {encargo.descripcion}
+                </p>
+                <p className="text-gray-600 text-xs sm:text-sm">{encargo.fechaRecepcion}</p>
+              </div>
+            </div>
+          ))}
+          {renderPagination("encargos", dashboardData.encargos.length)}
         </div>
       ) : (
         <p className={`text-base sm:text-lg ${textColor}`}>No tienes encargos pendientes.</p>
@@ -568,20 +676,26 @@ const Dashboard = () => {
 
     // Noticias
     if (keyLower.includes("noticias")) {
+      const paginatedNews = getPaginatedData(dashboardData.news, "news");
       return dashboardData.news.length > 0 ? (
-        dashboardData.news.map((item, index) => (
-          <div
-            key={index}
-            className="flex items-start mb-4 border-b border-gray-200 pb-4 last:border-b-0"
-          >
-            <span className="text-gray-600 mr-3 text-xl">•</span>
-            <div className="w-full">
-              <p className={`font-semibold text-base sm:text-lg ${textColor}`}>{item.title}</p>
-              <p className="text-gray-600 text-sm sm:text-base overflow-wrap break-word">{item.description}</p>
-              <p className="text-gray-600 text-xs sm:text-sm">{item.date}</p>
+        <div>
+          {paginatedNews.map((item, index) => (
+            <div
+              key={index}
+              className="flex items-start mb-4 border-b border-gray-200 pb-4 last:border-b-0"
+            >
+              <span className="text-gray-600 mr-3 text-xl">•</span>
+              <div className="w-full">
+                <p className={`font-semibold text-base sm:text-lg ${textColor}`}>{item.title}</p>
+                <p className="text-gray-600 text-sm sm:text-base overflow-wrap break-word">
+                  {item.description}
+                </p>
+                <p className="text-gray-600 text-xs sm:text-sm">{item.date}</p>
+              </div>
             </div>
-          </div>
-        ))
+          ))}
+          {renderPagination("news", dashboardData.news.length)}
+        </div>
       ) : (
         <p className={`text-base sm:text-lg ${textColor}`}>No hay noticias disponibles.</p>
       );
@@ -589,29 +703,35 @@ const Dashboard = () => {
 
     // Eventos
     if (keyLower.includes("eventos")) {
+      const paginatedEvents = getPaginatedData(dashboardData.events, "events");
       return dashboardData.events.length > 0 ? (
-        dashboardData.events.map((event, index) => (
-          <div
-            key={index}
-            className="flex items-start mb-4 border-b border-gray-200 pb-4 last:border-b-0"
-          >
-            <span className="text-gray-600 mr-3 text-xl">•</span>
-            <div className="w-full">
-              <p className={`font-semibold text-base sm:text-lg ${textColor}`}>
-                {event.date} ({event.type}): {event.title}
-              </p>
-              <p className="text-gray-600 text-sm sm:text-base overflow-wrap break-word">{item.description}</p>
-              {event.startTime && event.endTime && (
-                <p className="text-gray-600 text-xs sm:text-sm">
-                  Horario: {event.startTime} - {event.endTime}
+        <div>
+          {paginatedEvents.map((event, index) => (
+            <div
+              key={index}
+              className="flex items-start mb-4 border-b border-gray-200 pb-4 last:border-b-0"
+            >
+              <span className="text-gray-600 mr-3 text-xl">•</span>
+              <div className="w-full">
+                <p className={`font-semibold text-base sm:text-lg ${textColor}`}>
+                  {event.date} ({event.type}): {event.title}
                 </p>
-              )}
-              {event.location && (
-                <p className="text-gray-600 text-xs sm:text-sm">Ubicación: {event.location}</p>
-              )}
+                <p className="text-gray-600 text-sm sm:text-base overflow-wrap break-word">
+                  {event.description}
+                </p>
+                {event.startTime && event.endTime && (
+                  <p className="text-gray-600 text-xs sm:text-sm">
+                    Horario: {event.startTime} - {event.endTime}
+                  </p>
+                )}
+                {event.location && (
+                  <p className="text-gray-600 text-xs sm:text-sm">Ubicación: {event.location}</p>
+                )}
+              </div>
             </div>
-          </div>
-        ))
+          ))}
+          {renderPagination("events", dashboardData.events.length)}
+        </div>
       ) : (
         <p className={`text-base sm:text-lg ${textColor}`}>No hay eventos próximos.</p>
       );
@@ -619,24 +739,30 @@ const Dashboard = () => {
 
     // Mantenimientos Programados
     if (keyLower.includes("mantenimientos") || keyLower.includes("mantenimiento")) {
+      const paginatedMaintenance = getPaginatedData(dashboardData.maintenanceEvents, "maintenanceEvents");
       return dashboardData.maintenanceEvents.length > 0 ? (
-        dashboardData.maintenanceEvents.map((event, index) => (
-          <div
-            key={index}
-            className="flex items-start mb-4 border-b border-gray-200 pb-4 last:border-b-0"
-          >
-            <span className="text-gray-600 mr-3 text-xl">•</span>
-            <div className="w-full">
-              <p className={`font-semibold text-base sm:text-lg ${textColor}`}>
-                {event.date}: {event.title}
-              </p>
-              <p className="text-gray-600 text-sm sm:text-base">
-                Proveedor: {event.providerName} ({event.providerType})
-              </p>
-              <p className="text-gray-600 text-xs sm:text-sm">Costo: S/ {event.cost.toFixed(2)}</p>
+        <div>
+          {paginatedMaintenance.map((event, index) => (
+            <div
+              key={index}
+              className="flex items-start mb-4 border-b border-gray-200 pb-4 last:border-b-0"
+            >
+              <span className="text-gray-600 mr-3 text-xl">•</span>
+              <div className="w-full">
+                <p className={`font-semibold text-base sm:text-lg ${textColor}`}>
+                  {event.date}: {event.title}
+                </p>
+                <p className="text-gray-600 text-sm sm:text-base">
+                  Proveedor: {event.providerName} ({event.providerType})
+                </p>
+                <p className="text-gray-600 text-xs sm:text-sm">
+                  Costo: S/ {event.cost.toFixed(2)}
+                </p>
+              </div>
             </div>
-          </div>
-        ))
+          ))}
+          {renderPagination("maintenanceEvents", dashboardData.maintenanceEvents.length)}
+        </div>
       ) : (
         <p className={`text-base sm:text-lg ${textColor}`}>No hay mantenimientos programados.</p>
       );
@@ -644,42 +770,52 @@ const Dashboard = () => {
 
     // Documentos
     if (keyLower.includes("documentos")) {
+      const paginatedDocuments = getPaginatedData(dashboardData.documents, "documents");
       return dashboardData.documents.length > 0 ? (
-        dashboardData.documents.map((doc, index) => (
-          <div
-            key={index}
-            className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center mb-3 border-b border-gray-200 pb-3 last:border-b-0"
-          >
-            <div className="mb-2 sm:mb-0">
-              <span className={`text-base sm:text-lg ${textColor}`}>{doc.name} ({doc.type})</span>
-              <p className="text-gray-600 text-xs sm:text-sm">Subido el: {doc.uploadDate}</p>
+        <div>
+          {paginatedDocuments.map((doc, index) => (
+            <div
+              key={index}
+              className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center mb-3 border-b border-gray-200 pb-3 last:border-b-0"
+            >
+              <div className="mb-2 sm:mb-0">
+                <span className={`text-base sm:text-lg ${textColor}`}>
+                  {doc.name} ({doc.type})
+                </span>
+                <p className="text-gray-600 text-xs sm:text-sm">Subido el: {doc.uploadDate}</p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => previewDocument(doc.url)}
+                  className="text-gray-600 hover:text-gray-500 flex items-center text-base sm:text-lg hover:underline"
+                >
+                  Ver
+                  <FaEye className="ml-2" />
+                </button>
+                <a
+                  href={doc.url}
+                  download
+                  className="text-gray-600 hover:text-gray-500 flex items-center text-base sm:text-lg hover:underline"
+                >
+                  Descargar
+                  <FaFileDownload className="ml-2" />
+                </a>
+              </div>
             </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => previewDocument(doc.url)}
-                className="text-gray-600 hover:text-gray-500 flex items-center text-base sm:text-lg hover:underline"
-              >
-                Ver
-                <FaEye className="ml-2" />
-              </button>
-              <a
-                href={doc.url}
-                download
-                className="text-gray-600 hover:text-gray-500 flex items-center text-base sm:text-lg hover:underline"
-              >
-                Descargar
-                <FaFileDownload className="ml-2" />
-              </a>
-            </div>
-          </div>
-        ))
+          ))}
+          {renderPagination("documents", dashboardData.documents.length)}
+        </div>
       ) : (
         <p className={`text-base sm:text-lg ${textColor}`}>No hay documentos disponibles.</p>
       );
     }
 
     // Secciones desconocidas o sin datos
-    return <p className={`text-base sm:text-lg ${textColor}`}>No hay datos disponibles para esta sección.</p>;
+    return (
+      <p className={`text-base sm:text-lg ${textColor}`}>
+        No hay datos disponibles para esta sección.
+      </p>
+    );
   };
 
   // Log de permisos para depuración
@@ -706,7 +842,11 @@ const Dashboard = () => {
             <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-0">Panel Principal</h1>
             <div className="relative">
               <div className="bg-white rounded-full h-20 w-20 sm:h-24 sm:w-24 flex items-center justify-center shadow-lg hover:scale-105 transition-transform duration-300">
-                <img src={LOGO_PATH} alt="Softhome Logo" className="h-16 w-16 sm:h-20 sm:w-20 rounded-full object-contain" />
+                <img
+                  src={LOGO_PATH}
+                  alt="Softhome Logo"
+                  className="h-16 w-16 sm:h-20 sm:w-20 rounded-full object-contain"
+                />
               </div>
             </div>
           </div>
@@ -739,17 +879,18 @@ const Dashboard = () => {
 
           {/* Mensaje si no hay permisos */}
           {isLoading ? (
-            <div className={`bg-white border border-${COLOR_VERDE} p-4 sm:p-6 rounded-2xl shadow-xl mb-8 text-center`}>
-              <span
-                className="inline-block w-6 h-6 border-4 border-t-gray-600 border-gray-200 rounded-full animate-spin"
-              ></span>
+            <div
+              className={`bg-white border border-${COLOR_VERDE} p-4 sm:p-6 rounded-2xl shadow-xl mb-8 text-center`}
+            >
+              <span className="inline-block w-6 h-6 border-4 border-t-gray-600 border-gray-200 rounded-full animate-spin"></span>
               <p className="text-gray-600 text-base sm:text-lg mt-2">Cargando datos...</p>
             </div>
           ) : Object.keys(dashboardData.permissions).length === 0 ? (
             <div className="bg-yellow-100 border border-yellow-400 p-4 sm:p-6 rounded-2xl shadow-xl mb-8 text-center">
               <FaExclamationCircle className="text-yellow-600 text-2xl sm:text-3xl mx-auto mb-2" />
               <p className="text-gray-600 text-base sm:text-lg">
-                No tienes permisos asignados para ver el contenido del dashboard. Contacta al administrador.
+                No tienes permisos asignados para ver el contenido del dashboard. Contacta al
+                administrador.
               </p>
             </div>
           ) : null}
@@ -776,7 +917,9 @@ const Dashboard = () => {
                     <Link key={key} to={normalizeId(key)} smooth={true} duration={500}>
                       <button
                         className="relative flex items-center bg-[#5995DB] text-white px-4 py-2 sm:px-6 sm:py-3 rounded-2xl shadow-md hover:bg-[#93c5fd] hover:shadow-lg hover:-translate-y-1 transition-all duration-300 text-sm sm:text-base"
-                        aria-label={`${key}${notificationCount > 0 ? `, ${notificationCount} elementos pendientes` : ""}`}
+                        aria-label={`${key}${
+                          notificationCount > 0 ? `, ${notificationCount} elementos pendientes` : ""
+                        }`}
                       >
                         {renderIcon(perm.icon)}
                         {key}
@@ -818,7 +961,9 @@ const Dashboard = () => {
           {dashboardData.permissions["Reportar Problema"]?.visible && showModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
               <div className="bg-white p-4 sm:p-6 rounded-2xl w-[90vw] max-w-lg shadow-2xl animate-fade-in">
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">Reportar Problema</h3>
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
+                  Reportar Problema
+                </h3>
                 <textarea
                   name="description"
                   value={reportData.description}
@@ -836,7 +981,11 @@ const Dashboard = () => {
                 />
                 {imagePreview && (
                   <div className="mb-4">
-                    <img src={imagePreview} alt="Previsualización" className="w-full h-32 sm:h-40 object-cover rounded-lg" />
+                    <img
+                      src={imagePreview}
+                      alt="Previsualización"
+                      className="w-full h-32 sm:h-40 object-cover rounded-lg"
+                    />
                   </div>
                 )}
                 <div className="flex justify-end gap-3">
@@ -869,11 +1018,15 @@ const Dashboard = () => {
                 <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
                   Previsualización de Documento
                 </h3>
-                <iframe src={previewUrl} className="w-full h-[50vh] sm:h-[60vh] rounded-lg" title="Document Preview" />
+                <iframe
+                  src={previewUrl}
+                  className="w-full h-[50vh] sm:h-[60vh] rounded-lg"
+                  title="Document Preview"
+                />
                 <div className="flex justify-end gap-3 mt-4">
                   <button
                     onClick={() => setShowPreviewModal(false)}
-                    className="px-3 py-2 bg-gray-300 text-gray-600 rounded-lg hover:bg-gray-400 transition-colors text-sm sm:text-base"
+                    className="px-3 py-1 bg-gray-300 text-gray-600 rounded-lg hover:bg-gray-400 transition-colors text-sm sm:text-base"
                   >
                     Cerrar
                   </button>
@@ -885,9 +1038,7 @@ const Dashboard = () => {
           {/* Botón de Subir */}
           {showScrollTop && (
             <Link to="top" smooth={true} duration={500}>
-              <button
-                className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-gray-600 text-white p-3 rounded-full shadow-lg hover:bg-gray-500 transition-all animate-bounce"
-              >
+              <button className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-gray-600 text-white p-3 rounded-full shadow-lg hover:bg-gray-500 transition-all animate-bounce">
                 <FaArrowUp className="text-lg sm:text-xl" />
               </button>
             </Link>
