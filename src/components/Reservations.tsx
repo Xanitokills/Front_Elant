@@ -36,7 +36,7 @@ interface Reservation {
 }
 
 interface ReservationData {
-  area: string;
+  area: number; // Changed from string to number to store area.id
   date: string;
   startTime: string;
   endTime: string;
@@ -67,7 +67,7 @@ const Reservations = () => {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [filter, setFilter] = useState<FilterData>({ campo: "areaName", valor: "" });
   const [newReservation, setNewReservation] = useState<ReservationData>({
-    area: "",
+    area: 0, // Default to 0 (no area selected)
     date: new Date().toISOString().slice(0, 10),
     startTime: "",
     endTime: "",
@@ -104,24 +104,20 @@ const Reservations = () => {
     "Piscina de Fiestas": "https://grupolar.pe/wp-content/uploads/2024/05/area-comun-piscina-1-proyecto-elant.jpg",
   };
 
-  // Nota: El backend usa ID_SUBMENU=8 para "Reservas". Si implementas "Crear Reservas" (ej. ID_SUBMENU=9),
-  // actualiza userPermissions en el endpoint de autenticación.
   const hasCreateReservationPermission = userPermissions.includes("Crear Reservas") || userPermissions.includes("Reservas");
 
   const fetchAreas = async () => {
     try {
       setIsLoadingAreas(true);
-      // Ajustado para mapear la respuesta del backend ({ name: string }[])
-      const res = await axios.get<{ name: string }[]>(`${API_URL}/reservations/areas`, {
+      const res = await axios.get<Area[]>(`${API_URL}/reservations/areas`, {
         cancelToken: cancelTokenSource.current.token,
       });
-      // Convertir a formato Area esperado por el frontend
       const formattedAreas: Area[] = res.data.map((area, index) => ({
-        id: index + 1, // Generar ID temporal (el backend no proporciona ID)
-        name: area.name,
-        description: "", // No proporcionado por el backend
-        capacity: 0, // No proporcionado por el backend
-        status: 1, // Asumir disponible
+        id: area.id || index + 1,
+        name: String(area.name),
+        description: area.description || "",
+        capacity: area.capacity || 0,
+        status: area.status || 1,
         imageName: "",
         imagePath: areaImages[area.name] || "",
       }));
@@ -137,32 +133,50 @@ const Reservations = () => {
   };
 
   const fetchUserReservations = async () => {
-    if (!userId) return;
+    if (!userId) {
+      console.log("No userId disponible para fetchUserReservations");
+      return;
+    }
+
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get<Reservation[]>(`${API_URL}/reservations/user/${userId}`, {
+      const res = await axios.get<any[]>(`${API_URL}/reservations/user/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
         cancelToken: cancelTokenSource.current.token,
       });
-      const validReservations = res.data.filter(
-        (reservation): reservation is Reservation =>
-          reservation != null &&
-          typeof reservation === "object" &&
-          typeof reservation.id === "number" &&
-          typeof reservation.areaId === "string" &&
-          typeof reservation.areaName === "string" &&
-          typeof reservation.date === "string" &&
-          typeof reservation.startTime === "string" &&
-          typeof reservation.endTime === "string" &&
-          typeof reservation.status === "number" &&
-          typeof reservation.departmentNumber === "number"
-      );
+
+      console.log("Reservas recibidas del backend:", res.data);
+
+      // Convertir y validar las reservas recibidas
+      const validReservations: Reservation[] = res.data
+        .filter((reservation) => reservation != null && typeof reservation === "object")
+        .map((reservation) => ({
+          id: typeof reservation.id === "number" ? reservation.id : 0,
+          areaId: String(reservation.areaId || reservation.areaName || ""),
+          areaName: String(reservation.areaName || ""),
+          date: typeof reservation.date === "string" ? reservation.date.split("T")[0] : "",
+          startTime: typeof reservation.startTime === "string" ? (reservation.startTime.includes("T") ? reservation.startTime.split("T")[1]?.slice(0, 5) : reservation.startTime.slice(0, 5)) || reservation.startTime : "",
+          endTime: typeof reservation.endTime === "string" ? (reservation.endTime.includes("T") ? reservation.endTime.split("T")[1]?.slice(0, 5) : reservation.endTime.slice(0, 5)) || reservation.endTime : "",
+          status: typeof reservation.status === "boolean" ? (reservation.status ? 1 : 0) : typeof reservation.status === "number" ? reservation.status : 0,
+          departmentNumber: typeof reservation.departmentNumber === "number" ? reservation.departmentNumber : 0,
+        }))
+        .filter((reservation) => reservation.id !== 0 && reservation.areaId && reservation.areaName && reservation.date && reservation.startTime && reservation.endTime);
+
       if (validReservations.length === 0 && res.data.length > 0) {
+        console.log("No se encontraron reservas válidas después de la validación");
         setErrorMessage("No se encontraron reservas válidas.");
+      } else if (validReservations.length === 0) {
+        console.log("No se encontraron reservas para el usuario");
+        setErrorMessage("No se encontraron reservas.");
+      } else {
+        console.log("Reservas válidas después de la validación:", validReservations);
+        setErrorMessage("");
       }
+
       setReservations(validReservations);
     } catch (err) {
       if (axios.isCancel(err)) return;
+      console.error("Error al obtener reservas:", err);
       setReservations([]);
       setErrorMessage("Error al cargar las reservas.");
     }
@@ -200,17 +214,17 @@ const Reservations = () => {
 
   const fetchAreaDetails = async (areaId: string) => {
     try {
-      const token = localStorage.getItem("token");
-      // Nota: El backend no soporta /reservations/areas/:areaId, usar datos locales
-      const area = areas.find((a) => a.name === areaId);
+      const area = areas.find((a) => a.id === parseInt(areaId));
       if (area) {
         setSelectedArea(area);
-        setAreaDocuments([]); // No hay documentos en el backend
+        setAreaDocuments([]);
       } else {
         throw new Error("Área no encontrada");
       }
     } catch (err) {
       Swal.fire("Error", "No se pudieron cargar los detalles del área", "error");
+      setSelectedArea(null);
+      setAreaDocuments([]);
     }
   };
 
@@ -218,8 +232,6 @@ const Reservations = () => {
     if (!newArea.name || !newArea.status || !newArea.image) {
       return Swal.fire("Advertencia", "Por favor, completa los campos requeridos para el área", "warning");
     }
-
-    // Nota: El backend no soporta la creación de áreas. Este código se mantiene para el diseño original.
     Swal.fire("Advertencia", "La creación de áreas no está soportada por el backend", "warning");
   };
 
@@ -249,18 +261,14 @@ const Reservations = () => {
     if (!editArea || !editArea.name || !editArea.status) {
       return Swal.fire("Advertencia", "Por favor, completa todos los campos requeridos", "warning");
     }
-
-    // Nota: El backend no soporta la edición de áreas.
     Swal.fire("Advertencia", "La edición de áreas no está soportada por el backend", "warning");
   };
 
   const handleDeleteArea = async (areaId: number) => {
-    // Nota: El backend no soporta la eliminación de áreas.
     Swal.fire("Advertencia", "La eliminación de áreas no está soportada por el backend", "warning");
   };
 
   const handleToggleAreaStatus = async (areaId: number, currentStatus: number) => {
-    // Nota: El backend no soporta el cambio de estado de áreas.
     Swal.fire("Advertencia", "El cambio de estado de áreas no está soportado por el backend", "warning");
   };
 
@@ -290,7 +298,7 @@ const Reservations = () => {
 
   useEffect(() => {
     if (newReservation.area) {
-      fetchAreaDetails(newReservation.area);
+      fetchAreaDetails(newReservation.area.toString());
     } else {
       setSelectedArea(null);
       setAreaDocuments([]);
@@ -354,37 +362,53 @@ const Reservations = () => {
       Swal.fire("Advertencia", "Por favor, completa todos los campos correctamente", "warning");
       return;
     }
-    if (!isAuthenticated || !userId) {
-      Swal.fire("Advertencia", "Debes estar autenticado para crear una reserva", "warning");
+    if (!isAuthenticated || !userId || typeof userId !== "number") {
+      Swal.fire("Advertencia", "Debes estar autenticado con un ID de usuario válido para crear una reserva", "warning");
       return;
     }
+
+    const formatTimeForBackend = (time: string): string => {
+      if (!time) return "";
+      return time.length === 5 ? `${time}:00` : time;
+    };
+
     const payload = {
       userId,
-      areaId: newReservation.area, // Enviar como string, ya que TIPO_AREA es string
+      areaId: newReservation.area, // Now a number (area.id)
       date: newReservation.date,
-      startTime: newReservation.startTime,
-      endTime: newReservation.endTime,
+      startTime: formatTimeForBackend(newReservation.startTime),
+      endTime: formatTimeForBackend(newReservation.endTime),
       departmentNumber: deptNum,
     };
+
+    console.log("Enviando payload al backend:", payload);
+
     try {
       const token = localStorage.getItem("token");
-      await axios.post(`${API_URL}/reservations`, payload, {
+      if (!token) {
+        Swal.fire("Error", "No se encontró un token de autenticación", "error");
+        return;
+      }
+
+      const response = await axios.post(`${API_URL}/reservations`, payload, {
         headers: { Authorization: `Bearer ${token}` },
         cancelToken: cancelTokenSource.current.token,
       });
+
       Swal.fire("¡Registrado!", "Reserva creada con éxito", "success");
       setNewReservation({
-        area: "",
+        area: 0,
         date: new Date().toISOString().slice(0, 10),
         startTime: "",
         endTime: "",
         departmentNumber: 0,
       });
-      setActiveTab("myReservations"); // Cambiar a "Mis Reservas" tras crear
+      setActiveTab("myReservations");
       fetchUserReservations();
       fetchOccupiedSlots();
     } catch (err: any) {
       if (axios.isCancel(err)) return;
+      console.error("Error al crear reserva:", err.response?.data || err.message);
       Swal.fire("Error", err.response?.data?.message || "No se pudo crear la reserva", "error");
     }
   };
@@ -418,20 +442,12 @@ const Reservations = () => {
 
   const formatDate = (date?: string): string => {
     if (!date || typeof date !== "string") return "N/A";
-    return date.split("T")[0] || "N/A";
+    return date;
   };
 
   const formatTime = (time?: string): string => {
     if (!time || typeof time !== "string") return "N/A";
-    if (time.includes("T")) {
-      const date = new Date(time);
-      const isoString = date.toISOString();
-      const timePart = isoString.split("T")[1];
-      if (!timePart) return "N/A";
-      const timeWithoutMs = timePart.split(".")[0];
-      return timeWithoutMs || "N/A";
-    }
-    return time;
+    return time.slice(0, 5);
   };
 
   const formatTimeForInput = (time: string): string => {
@@ -466,21 +482,20 @@ const Reservations = () => {
   };
 
   const handleViewDocument = (documentId: number) => {
-    // Nota: El backend no soporta documentos.
     Swal.fire("Advertencia", "La visualización de documentos no está soportada por el backend", "warning");
   };
 
   const handleTabChange = (tab: "myReservations" | "createReservation" | "manageAreas") => {
     setActiveTab(tab);
-    setErrorMessage(""); // Limpiar mensajes de error al cambiar pestaña
+    setErrorMessage("");
     if (tab !== "createReservation") {
       setNewReservation({
-        area: "",
+        area: 0,
         date: new Date().toISOString().slice(0, 10),
         startTime: "",
         endTime: "",
         departmentNumber: 0,
-      }); // Resetear formulario al salir de "Crear Reserva"
+      });
     }
   };
 
@@ -632,9 +647,9 @@ const Reservations = () => {
                 <div
                   key={area.id}
                   className={`bg-white rounded-lg shadow-md overflow-hidden cursor-pointer ${
-                    newReservation.area === area.name ? "ring-2 ring-blue-500" : ""
+                    newReservation.area === area.id ? "ring-2 ring-blue-500" : ""
                   }`}
-                  onClick={() => setNewReservation({ ...newReservation, area: area.name })}
+                  onClick={() => setNewReservation({ ...newReservation, area: area.id })}
                 >
                   <img src={area.imagePath || areaImages[area.name]} alt={area.name} className="w-full h-40 object-cover" />
                   <div className="p-4">
@@ -647,7 +662,7 @@ const Reservations = () => {
               ))}
             </div>
           )}
-          {newReservation.area && (
+          {newReservation.area !== 0 && (
             <div className="bg-white p-6 rounded-lg shadow-md mb-6">
               {selectedArea && (
                 <div className="mb-6">
@@ -667,16 +682,16 @@ const Reservations = () => {
                           <strong>Nombre:</strong> {selectedArea.name}
                         </p>
                         <p>
-                          <strong>Descripción:</strong> {selectedArea.description || "N/A"}
+                          <strong>Descripción:</strong> {selectedArea.description || "No disponible"}
                         </p>
                         <p>
-                          <strong>Capacidad:</strong> {selectedArea.capacity || "N/A"}
+                          <strong>Capacidad:</strong> {selectedArea.capacity || "No disponible"}
                         </p>
                         <p>
                           <strong>Estado:</strong> {selectedArea.status === 1 ? "Disponible" : "No Disponible"}
                         </p>
                         <p>
-                          <strong>Nombre de la Imagen:</strong> {selectedArea.imageName || "N/A"}
+                          <strong>Nombre de la Imagen:</strong> {selectedArea.imageName || "No disponible"}
                         </p>
                       </div>
                     </div>
@@ -976,7 +991,7 @@ const Reservations = () => {
                 {areas.map((area) => (
                   <div key={area.id} className="bg-gray-50 rounded-lg shadow-md overflow-hidden">
                     <img
-                      src={area.imagePath || areaImages[area.name] || "https://via.placeholder.com/300x200?text=Default+Area"}
+                      src={area.imagePath || areaImages[area.name]}
                       alt={area.name}
                       className="w-full h-40 object-cover"
                       onError={(e) => {
