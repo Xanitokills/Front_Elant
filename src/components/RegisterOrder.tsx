@@ -110,6 +110,7 @@ interface UserOption {
 interface DepartmentOption {
   value: number; // NRO_DPTO
   label: string; // NRO_DPTO
+  users?: { ID_USUARIO: number; NOMBRES: string; APELLIDOS: string; DNI: string; NRO_DPTO: number }[];
 }
 
 interface Encargo {
@@ -119,8 +120,11 @@ interface Encargo {
   FECHA_RECEPCION: string | Date;
   FECHA_ENTREGA: string | Date | null;
   ID_USUARIO_RECEPCION: number;
+  RECEPCIONISTA: string;
   ID_USUARIO_ENTREGA: number | null;
+  ENTREGADO_A: string | null;
   ESTADO: number;
+  USUARIOS_ASOCIADOS: string;
 }
 
 const formatDate = (dateInput: string | Date | null): string => {
@@ -146,7 +150,7 @@ const RegisterOrder = () => {
   const { isAuthenticated, userId } = useAuth();
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
-  const [activeTab, setActiveTab] = useState<"create" | "history">("create");
+  const [activeTab, setActiveTab] = useState<"create" | "history">("history"); // Cambiado a "history" por defecto
   const [searchCriteria, setSearchCriteria] = useState<"name" | "dni" | "department">("name");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
@@ -159,7 +163,7 @@ const RegisterOrder = () => {
     nroDpto: "",
     descripcion: "",
     fechaRecepcion: "",
-    estado: "1",
+    estado: "", // Sin filtro de estado por defecto
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -191,6 +195,7 @@ const RegisterOrder = () => {
       });
       if (!response.ok) throw new Error("Error al obtener los encargos");
       const data = await response.json();
+      console.log("Encargos recibidos:", data);
       setEncargos(
         data.map((encargo: Encargo) => ({
           ...encargo,
@@ -199,10 +204,12 @@ const RegisterOrder = () => {
           FECHA_ENTREGA: encargo.FECHA_ENTREGA,
         })).sort(
           (a: Encargo, b: Encargo) =>
+            b.ESTADO - a.ESTADO ||
             new Date(b.FECHA_RECEPCION).getTime() - new Date(a.FECHA_RECEPCION).getTime()
         )
       );
     } catch (err) {
+      console.error("Error en fetchEncargos:", err);
       Swal.fire({
         icon: "error",
         title: "Error",
@@ -245,11 +252,13 @@ const RegisterOrder = () => {
         );
         if (!response.ok) throw new Error("Error al buscar usuarios");
         const data = await response.json();
+        console.log("Resultados de búsqueda:", data); // Log para depuración
         if (criteria === "department") {
           setDepartmentOptions(
             data.map((dept: any) => ({
               value: dept.NRO_DPTO,
               label: dept.NRO_DPTO.toString(),
+              users: dept.USUARIOS ? JSON.parse(dept.USUARIOS) : [],
             }))
           );
         } else {
@@ -263,6 +272,7 @@ const RegisterOrder = () => {
           );
         }
       } catch (error) {
+        console.error("Error en fetchUsers:", error);
         Swal.fire({
           icon: "error",
           title: "Error",
@@ -296,8 +306,8 @@ const RegisterOrder = () => {
     setDepartmentOptions([]);
   };
 
-  // Registrar encargo
-  const handleRegister = async () => {
+  // Mostrar modal de confirmación
+  const showConfirmationModal = async () => {
     if (!description.trim()) {
       setError("Por favor, describe el encargo.");
       Swal.fire({
@@ -307,7 +317,7 @@ const RegisterOrder = () => {
         timer: 2000,
         showConfirmButton: false,
       });
-      return;
+      return false;
     }
     if (!selectedUser && !selectedDepartment) {
       setError("Selecciona un usuario o departamento.");
@@ -318,8 +328,58 @@ const RegisterOrder = () => {
         timer: 2000,
         showConfirmButton: false,
       });
-      return;
+      return false;
     }
+
+    let modalContent = "";
+    if (selectedUser) {
+      modalContent = `
+        <div style="text-align: left;">
+          <p><strong>Usuario:</strong> ${selectedUser.label}</p>
+          <p><strong>DNI:</strong> ${selectedUser.dni}</p>
+          <p><strong>Departamento:</strong> ${selectedUser.department}</p>
+          <p><strong>Descripción del encargo:</strong> ${description}</p>
+        </div>
+      `;
+    } else if (selectedDepartment) {
+      const users = selectedDepartment.users || [];
+      modalContent = `
+        <div style="text-align: left;">
+          <p><strong>Departamento:</strong> ${selectedDepartment.label}</p>
+          <p><strong>Descripción del encargo:</strong> ${description}</p>
+          <p><strong>Usuarios asociados:</strong></p>
+          <ul style="list-style-type: disc; margin-left: 20px;">
+            ${users.length > 0
+              ? users
+                  .map(
+                    (user) =>
+                      `<li>${user.NOMBRES} ${user.APELLIDOS} (DNI: ${user.DNI})</li>`
+                  )
+                  .join("")
+              : "<li>No hay usuarios asociados</li>"}
+          </ul>
+        </div>
+      `;
+    }
+
+    const result = await Swal.fire({
+      title: "Confirmar Registro",
+      html: modalContent,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Registrar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#2563eb",
+      cancelButtonColor: "#d33",
+    });
+
+    return result.isConfirmed;
+  };
+
+  // Registrar encargo
+  const handleRegister = async () => {
+    const confirmed = await showConfirmationModal();
+    if (!confirmed) return;
 
     setIsLoading(true);
     try {
@@ -339,7 +399,10 @@ const RegisterOrder = () => {
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) throw new Error("Error al registrar el encargo");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al registrar el encargo");
+      }
 
       Swal.fire({
         icon: "success",
@@ -355,14 +418,16 @@ const RegisterOrder = () => {
       setSelectedUser(null);
       setSelectedDepartment(null);
       setUserOptions([]);
+      setDepartmentOptions([]);
       setError("");
       setActiveTab("history");
     } catch (error) {
-      setError("No se pudo registrar el encargo.");
+      console.error("Error en handleRegister:", error);
+      setError(error.message || "No se pudo registrar el encargo.");
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "No se pudo registrar el encargo.",
+        text: error.message || "No se pudo registrar el encargo.",
         timer: 2000,
         showConfirmButton: false,
       });
@@ -373,18 +438,52 @@ const RegisterOrder = () => {
 
   // Marcar como entregado
   const handleMarkDelivered = async (idEncargo: number) => {
-    const result = await Swal.fire({
-      icon: "warning",
-      title: "¿Estás seguro?",
-      text: "¿Deseas marcar este encargo como entregado?",
+    // Mostrar modal para seleccionar usuario que retira
+    const usersResponse = await fetch(
+      `${API_URL}/orders/search?criteria=department&query=${encargos.find(e => e.ID_ENCARGO === idEncargo)?.NRO_DPTO}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    if (!usersResponse.ok) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo obtener la lista de usuarios",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    const deptData = await usersResponse.json();
+    const users = deptData[0]?.USUARIOS ? JSON.parse(deptData[0].USUARIOS) : [];
+
+    const userOptions = users.map((user: any) => ({
+      value: user.ID_USUARIO,
+      label: `${user.NOMBRES} ${user.APELLIDOS} (DNI: ${user.DNI})`,
+    }));
+
+    const { value: selectedUserId } = await Swal.fire({
+      title: "Seleccionar usuario que retira",
+      input: "select",
+      inputOptions: userOptions.reduce((acc: any, user: any) => {
+        acc[user.value] = user.label;
+        return acc;
+      }, {}),
+      inputPlaceholder: "Selecciona un usuario",
       showCancelButton: true,
-      confirmButtonText: "Sí, marcar",
-      cancelButtonText: "No",
+      confirmButtonText: "Confirmar",
+      cancelButtonText: "Cancelar",
       confirmButtonColor: "#2563eb",
       cancelButtonColor: "#d33",
+      inputValidator: (value) => {
+        if (!value) {
+          return "Debes seleccionar un usuario";
+        }
+      },
     });
 
-    if (!result.isConfirmed) return;
+    if (!selectedUserId) return;
 
     setIsLoading(true);
     try {
@@ -394,7 +493,7 @@ const RegisterOrder = () => {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ userId: parseInt(userId || "0") }),
+        body: JSON.stringify({ userId: parseInt(selectedUserId) }),
       });
 
       if (!response.ok) throw new Error("Error al marcar como entregado");
@@ -409,6 +508,7 @@ const RegisterOrder = () => {
 
       await fetchEncargos();
     } catch (error) {
+      console.error("Error en handleMarkDelivered:", error);
       Swal.fire({
         icon: "error",
         title: "Error",
@@ -436,14 +536,14 @@ const RegisterOrder = () => {
   // Exportar a CSV
   const exportToCSV = () => {
     const headers =
-      "ID Encargo,Número Dpto,Descripción,Fecha Recepción,Fecha Entrega,Recepcionista,Entregado A,Estado\n";
+      "ID Encargo,Número Dpto,Descripción,Fecha Recepción,Fecha Entrega,Recepcionista,Entregado A,Usuarios Asociados,Estado\n";
     const rows = filteredEncargos
       .map((encargo) => {
         return `${encargo.ID_ENCARGO},${encargo.NRO_DPTO},${encargo.DESCRIPCION},${formatDate(
           encargo.FECHA_RECEPCION
-        )},${formatDate(encargo.FECHA_ENTREGA)},${encargo.ID_USUARIO_RECEPCION},${
-          encargo.ID_USUARIO_ENTREGA || "-"
-        },${encargo.ESTADO === 1 ? "Pendiente" : "Entregado"}`;
+        )},${formatDate(encargo.FECHA_ENTREGA)},${encargo.RECEPCIONISTA},${
+          encargo.ENTREGADO_A || "-"
+        },${encargo.USUARIOS_ASOCIADOS || "-"},${encargo.ESTADO === 1 ? "Pendiente" : "Entregado"}`;
       })
       .join("\n");
     const csv = headers + rows;
@@ -669,39 +769,22 @@ const RegisterOrder = () => {
               <table className="min-w-full bg-white border border-gray-200">
                 <thead>
                   <tr className="bg-gray-50 text-gray-700">
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      ID Encargo
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Número Dpto
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Descripción
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Fecha Recepción
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Fecha Entrega
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Recepcionista
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Entregado A
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Estado
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Acciones
-                    </th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">ID Encargo</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Número Dpto</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Descripción</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Fecha Recepción</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Fecha Entrega</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Recepcionista</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Entregado A</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Usuarios Asociados</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Estado</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredEncargos.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-4 text-center text-gray-500">
+                      <td colSpan={10} className="py-4 text-center text-gray-500">
                         No hay encargos para mostrar.
                       </td>
                     </tr>
@@ -717,8 +800,9 @@ const RegisterOrder = () => {
                         <td className="py-3 px-4">{encargo.DESCRIPCION}</td>
                         <td className="py-3 px-4">{formatDate(encargo.FECHA_RECEPCION)}</td>
                         <td className="py-3 px-4">{formatDate(encargo.FECHA_ENTREGA)}</td>
-                        <td className="py-3 px-4">{encargo.ID_USUARIO_RECEPCION}</td>
-                        <td className="py-3 px-4">{encargo.ID_USUARIO_ENTREGA || "-"}</td>
+                        <td className="py-3 px-4">{encargo.RECEPCIONISTA}</td>
+                        <td className="py-3 px-4">{encargo.ENTREGADO_A || "-"}</td>
+                        <td className="py-3 px-4">{encargo.USUARIOS_ASOCIADOS || "-"}</td>
                         <td className="py-3 px-4">
                           <span
                             className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
