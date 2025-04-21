@@ -19,6 +19,7 @@ import LoginConfig from "./components/LoginConfig";
 import Reservations from "./components/Reservations";
 import MenuSubmenuGestion from "./components/MenuSubmenuGestion";
 import VisitasProgramadas from "./components/VisitasProgramadas";
+import RegisterOrder from "./components/RegisterOrder";
 import Unauthorized from "./pages/Unauthorized";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -162,6 +163,12 @@ const App = () => {
             element={<ProtectedRoute requiredPermission="Cambio Contraseña" />}
           >
             <Route path="/ChangePass" element={<ChangePassword />} />
+          </Route>
+
+          <Route
+            element={<ProtectedRoute requiredPermission="Registrar Encargo" />}
+          >
+            <Route path="/RegisterOrder" element={<RegisterOrder />} />
           </Route>
 
           {/* Settings page with section param */}
