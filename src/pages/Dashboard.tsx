@@ -251,16 +251,16 @@ const Dashboard = () => {
 
         // Validar datos recibidos
         setDashboardData({
-          pendingPayments: data.pendingPayments || 0,
-          totalDebt: data.totalDebt || 0,
-          hasDebt: data.hasDebt || false,
-          accountInfo: data.accountInfo || null,
-          news: data.news || [],
-          events: data.events || [],
-          maintenanceEvents: data.maintenanceEvents || [],
-          documents: data.documents || [],
-          encargos: data.encargos || [],
-          permissions: data.permissions || {},
+          pendingPayments: data.pendingPayments ?? 0,
+          totalDebt: data.totalDebt ?? 0,
+          hasDebt: data.hasDebt ?? false,
+          accountInfo: data.accountInfo ?? null,
+          news: Array.isArray(data.news) ? data.news : [],
+          events: Array.isArray(data.events) ? data.events : [],
+          maintenanceEvents: Array.isArray(data.maintenanceEvents) ? data.maintenanceEvents : [],
+          documents: Array.isArray(data.documents) ? data.documents : [],
+          encargos: Array.isArray(data.encargos) ? data.encargos : [],
+          permissions: data.permissions && typeof data.permissions === 'object' ? data.permissions : {},
         });
 
         if (!data.permissions || Object.keys(data.permissions).length === 0) {
@@ -319,7 +319,7 @@ const Dashboard = () => {
     }
   };
 
-  // Mostrar detalles de deudores
+  // Mostrar detalles de deudas
   const showDebtors = async () => {
     if (dashboardData.hasDebt) {
       await Swal.fire({
@@ -331,7 +331,7 @@ const Dashboard = () => {
     } else {
       await Swal.fire({
         icon: "success",
-        title: "Sin Deudas",
+        title: "Sin deudass",
         text: "¡Estás al día en tus pagos!",
         confirmButtonText: "Entendido",
       });
@@ -506,7 +506,7 @@ const Dashboard = () => {
   // Obtener clases de estilo para cada sección
   const getSectionStyles = (key: string) => {
     const keyLower = key.toLowerCase();
-    if (keyLower.includes("deudores") || keyLower.includes("pagos")) {
+    if (keyLower.includes("deudas") || keyLower.includes("pagos")) {
       return {
         textColor: dashboardData.hasDebt ? "text-red-600" : "text-gray-800",
         borderColor: dashboardData.hasDebt ? "border-red-600" : "border-green-600",
@@ -539,7 +539,7 @@ const Dashboard = () => {
   // Obtener conteo de notificaciones para cada sección
   const getNotificationCount = (key: string): number => {
     const keyLower = key.toLowerCase();
-    if (keyLower.includes("deudores") || keyLower.includes("pagos")) {
+    if (keyLower.includes("deudas") || keyLower.includes("pagos")) {
       return dashboardData.hasDebt ? dashboardData.pendingPayments : 0;
     }
     if (keyLower.includes("encargos")) {
@@ -573,8 +573,8 @@ const Dashboard = () => {
     const { textColor } = getSectionStyles(key);
     const keyLower = key.toLowerCase();
 
-    // Deudores
-    if (keyLower.includes("deudores") || keyLower.includes("pagos")) {
+    // deudas
+    if (keyLower.includes("deudas") || keyLower.includes("pagos")) {
       const contentColor = dashboardData.hasDebt ? "text-red-600" : "text-gray-600";
       return (
         <div
