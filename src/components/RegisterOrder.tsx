@@ -4,8 +4,13 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import Select from "react-select";
 import { debounce } from "lodash";
-import { FaBox, FaSave, FaFileExport, FaCheck } from "react-icons/fa";
+import { FaBox, FaSave, FaFileExport, FaCheck, FaSearch } from "react-icons/fa";
 import styled, { keyframes } from "styled-components";
+
+// Asegúrate de que styled-components está instalado:
+// npm install styled-components @types/styled-components
+// También instala el plugin para Vite:
+// npm install vite-plugin-styled-components --save-dev
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -91,6 +96,13 @@ const Button = styled.button`
   }
 `;
 
+const UsersList = styled.ul`
+  list-style-type: disc;
+  margin-left: 1.5rem;
+  margin-top: 1rem;
+  color: #4b5563;
+`;
+
 const TableRow = styled.tr<{ $estado: number; $delay: number }>`
   animation: ${fadeIn} 0.5s ease-out forwards;
   animation-delay: ${(props) => props.$delay}s;
@@ -150,7 +162,7 @@ const RegisterOrder = () => {
   const { isAuthenticated, userId } = useAuth();
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
-  const [activeTab, setActiveTab] = useState<"create" | "history">("history"); // Cambiado a "history" por defecto
+  const [activeTab, setActiveTab] = useState<"create" | "history">("history");
   const [searchCriteria, setSearchCriteria] = useState<"name" | "dni" | "department">("name");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
@@ -163,19 +175,17 @@ const RegisterOrder = () => {
     nroDpto: "",
     descripcion: "",
     fechaRecepcion: "",
-    estado: "", // Sin filtro de estado por defecto
+    estado: "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Verificar autenticación
   useEffect(() => {
     if (!isAuthenticated || !token) {
       navigate("/login");
     }
   }, [isAuthenticated, token, navigate]);
 
-  // Cargar encargos
   const fetchEncargos = async () => {
     if (!token) {
       Swal.fire({
@@ -190,7 +200,7 @@ const RegisterOrder = () => {
     }
 
     try {
-      const response = await fetch(`${API_URL}/orders`, {
+      const response = await fetch(`${API_URL}/orders/list`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error("Error al obtener los encargos");
@@ -226,77 +236,87 @@ const RegisterOrder = () => {
     return () => clearInterval(interval);
   }, [token, navigate]);
 
-  // Función de búsqueda con debounce
-  const fetchUsers = useCallback(
-    debounce(async (query: string, criteria: string) => {
-      if (!token) {
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: "No se encontró el token de autenticación",
-          timer: 2000,
-          showConfirmButton: false,
-        });
-        navigate("/login");
-        return;
-      }
-
-      if (!query && criteria !== "department") return;
-      setIsLoading(true);
-      try {
-        const response = await fetch(
-          `${API_URL}/orders/search?criteria=${criteria}&query=${encodeURIComponent(query)}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        if (!response.ok) throw new Error("Error al buscar usuarios");
-        const data = await response.json();
-        console.log("Resultados de búsqueda:", data); // Log para depuración
-        if (criteria === "department") {
-          setDepartmentOptions(
-            data.map((dept: any) => ({
-              value: dept.NRO_DPTO,
-              label: dept.NRO_DPTO.toString(),
-              users: dept.USUARIOS ? JSON.parse(dept.USUARIOS) : [],
-            }))
-          );
-        } else {
-          setUserOptions(
-            data.map((user: any) => ({
-              value: user.ID_USUARIO,
-              label: `${user.NOMBRES} ${user.APELLIDOS}`,
-              dni: user.DNI,
-              department: user.NRO_DPTO,
-            }))
-          );
-        }
-      } catch (error) {
-        console.error("Error en fetchUsers:", error);
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: "No se pudo realizar la búsqueda.",
-          timer: 2000,
-          showConfirmButton: false,
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    }, 300),
-    [token, navigate]
-  );
-
-  // Ejecutar búsqueda
-  useEffect(() => {
-    if (searchCriteria === "department") {
-      fetchUsers("", "department");
-    } else {
-      fetchUsers(searchQuery, searchCriteria);
+  const fetchUsers = async (query: string, criteria: string) => {
+    if (!token) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se encontró el token de autenticación",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      navigate("/login");
+      return;
     }
-  }, [searchQuery, searchCriteria, fetchUsers]);
 
-  // Manejar cambio de criterio
+    setIsLoading(true);
+    try {
+      console.log("Enviando solicitud a:", `${API_URL}/orders?criteria=${criteria}&query=${encodeURIComponent(query)}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const response = await fetch(
+        `${API_URL}/orders?criteria=${criteria}&query=${encodeURIComponent(query)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        }
+      );
+      clearTimeout(timeoutId);
+
+      if (!response.ok) throw new Error("Error al buscar usuarios");
+      const data = await response.json();
+      console.log("Resultados de búsqueda:", data);
+      if (criteria === "department") {
+        setDepartmentOptions(
+          data.map((dept: any) => ({
+            value: dept.NRO_DPTO,
+            label: dept.NRO_DPTO.toString(),
+            users: dept.USUARIOS,
+          }))
+        );
+      } else {
+        setUserOptions(
+          data.map((user: any) => ({
+            value: user.ID_USUARIO,
+            label: `${user.NOMBRES} ${user.APELLIDOS}`,
+            dni: user.DNI,
+            department: user.NRO_DPTO,
+          }))
+        );
+      }
+    } catch (error) {
+      console.error("Error en fetchUsers:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: error.name === "AbortError" ? "Tiempo de espera agotado. Verifica que el servidor esté corriendo." : "No se pudo realizar la búsqueda.",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSearch = () => {
+    if (searchCriteria === "name") {
+      fetchUsers(searchQuery, searchCriteria);
+    } else if (searchCriteria === "dni" && searchQuery.trim().length >= 3) {
+      fetchUsers(searchQuery, searchCriteria);
+    } else if (searchCriteria === "department" && searchQuery.trim()) {
+      fetchUsers(searchQuery, searchCriteria);
+    } else {
+      Swal.fire({
+        icon: "warning",
+        title: "Entrada inválida",
+        text: searchCriteria === "dni" ? "El DNI debe tener al menos 3 caracteres." : "Ingresa un número de departamento válido.",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  };
+
   const handleCriteriaChange = (criteria: "name" | "dni" | "department") => {
     setSearchCriteria(criteria);
     setSearchQuery("");
@@ -306,7 +326,6 @@ const RegisterOrder = () => {
     setDepartmentOptions([]);
   };
 
-  // Mostrar modal de confirmación
   const showConfirmationModal = async () => {
     if (!description.trim()) {
       setError("Por favor, describe el encargo.");
@@ -376,7 +395,6 @@ const RegisterOrder = () => {
     return result.isConfirmed;
   };
 
-  // Registrar encargo
   const handleRegister = async () => {
     const confirmed = await showConfirmationModal();
     if (!confirmed) return;
@@ -436,11 +454,9 @@ const RegisterOrder = () => {
     }
   };
 
-  // Marcar como entregado
   const handleMarkDelivered = async (idEncargo: number) => {
-    // Mostrar modal para seleccionar usuario que retira
     const usersResponse = await fetch(
-      `${API_URL}/orders/search?criteria=department&query=${encargos.find(e => e.ID_ENCARGO === idEncargo)?.NRO_DPTO}`,
+      `${API_URL}/orders?criteria=department&query=${encargos.find(e => e.ID_ENCARGO === idEncargo)?.NRO_DPTO}`,
       {
         headers: { Authorization: `Bearer ${token}` },
       }
@@ -456,7 +472,7 @@ const RegisterOrder = () => {
       return;
     }
     const deptData = await usersResponse.json();
-    const users = deptData[0]?.USUARIOS ? JSON.parse(deptData[0].USUARIOS) : [];
+    const users = deptData[0]?.USUARIOS || [];
 
     const userOptions = users.map((user: any) => ({
       value: user.ID_USUARIO,
@@ -521,7 +537,6 @@ const RegisterOrder = () => {
     }
   };
 
-  // Filtrar encargos
   const filteredEncargos = encargos.filter((encargo) => {
     const fechaRecepcion = formatDate(encargo.FECHA_RECEPCION);
     return (
@@ -533,7 +548,6 @@ const RegisterOrder = () => {
     );
   });
 
-  // Exportar a CSV
   const exportToCSV = () => {
     const headers =
       "ID Encargo,Número Dpto,Descripción,Fecha Recepción,Fecha Entrega,Recepcionista,Entregado A,Usuarios Asociados,Estado\n";
@@ -627,44 +641,115 @@ const RegisterOrder = () => {
                   </Button>
                 </div>
               </div>
-              {searchCriteria === "department" ? (
+              {searchCriteria === "name" ? (
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-600 mb-2">
-                    Seleccionar Departamento
+                    Nombres y Apellidos
                   </label>
                   <Select
-                    options={departmentOptions}
-                    value={selectedDepartment}
-                    onChange={(option) => setSelectedDepartment(option)}
-                    placeholder="Selecciona un departamento..."
+                    options={userOptions}
+                    value={selectedUser}
+                    onChange={(option) => setSelectedUser(option)}
+                    onInputChange={(input) => {
+                      setSearchQuery(input);
+                      fetchUsers(input, "name");
+                    }}
+                    placeholder="Escribe para buscar..."
                     isLoading={isLoading}
                     className="text-sm"
                     isClearable
                   />
                 </div>
-              ) : (
+              ) : searchCriteria === "dni" ? (
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-600 mb-2">
-                    {searchCriteria === "name" ? "Nombres y Apellidos" : "DNI"}
+                    DNI
                   </label>
-                  {searchCriteria === "name" ? (
-                    <Select
-                      options={userOptions}
-                      value={selectedUser}
-                      onChange={(option) => setSelectedUser(option)}
-                      onInputChange={(input) => setSearchQuery(input)}
-                      placeholder="Escribe para buscar..."
-                      isLoading={isLoading}
-                      className="text-sm"
-                      isClearable
-                    />
-                  ) : (
+                  <div className="flex gap-2">
                     <Input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Ingresa el DNI..."
                     />
+                    <Button
+                      className="bg-blue-600 text-white hover:bg-blue-700"
+                      onClick={handleSearch}
+                      disabled={isLoading}
+                    >
+                      <FaSearch className="mr-2" />
+                      Buscar
+                    </Button>
+                  </div>
+                  {userOptions.length > 0 && (
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-600 mb-2">
+                        Seleccionar Usuario
+                      </label>
+                      <Select
+                        options={userOptions}
+                        value={selectedUser}
+                        onChange={(option) => setSelectedUser(option)}
+                        placeholder="Selecciona un usuario..."
+                        className="text-sm"
+                        isClearable
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-600 mb-2">
+                    Número de Departamento
+                  </label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === "" || /^[0-9]*$/.test(value))
+                          setSearchQuery(value);
+                      }}
+                      placeholder="Ingresa el número de departamento..."
+                    />
+                    <Button
+                      className="bg-blue-600 text-white hover:bg-blue-700"
+                      onClick={handleSearch}
+                      disabled={isLoading}
+                    >
+                      <FaSearch className="mr-2" />
+                      Buscar
+                    </Button>
+                  </div>
+                  {departmentOptions.length > 0 && (
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-600 mb-2">
+                        Seleccionar Departamento
+                      </label>
+                      <Select
+                        options={departmentOptions}
+                        value={selectedDepartment}
+                        onChange={(option) => setSelectedDepartment(option)}
+                        placeholder="Selecciona un departamento..."
+                        className="text-sm"
+                        isClearable
+                      />
+                      {selectedDepartment && selectedDepartment.users && (
+                        <div className="mt-4">
+                          <label className="block text-sm font-medium text-gray-600 mb-2">
+                            Usuarios Asociados
+                          </label>
+                          <UsersList>
+                            {selectedDepartment.users.map((user) => (
+                              <li key={user.ID_USUARIO}>
+                                {user.NOMBRES} {user.APELLIDOS} (DNI: {user.DNI})
+                              </li>
+                            ))}
+                          </UsersList>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
