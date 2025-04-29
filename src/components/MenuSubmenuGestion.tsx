@@ -39,7 +39,7 @@ const fadeIn = keyframes`
 
 // Styled Components
 const Container = styled.div`
-  padding: 1.5rem;
+  padding: 1rem;
   background-color: #f3f4f6;
   min-height: 100vh;
 
@@ -49,18 +49,23 @@ const Container = styled.div`
 `;
 
 const Title = styled.h1`
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: bold;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   animation: ${slideInDown} 0.5s ease-out;
+
+  @media (min-width: 768px) {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
 `;
 
 const Card = styled.div`
   background-color: white;
-  padding: 1.5rem;
+  padding: 1rem;
   border-radius: 0.5rem;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   transition: box-shadow 0.2s ease;
   animation: ${fadeIn} 0.5s ease-out;
 
@@ -69,7 +74,8 @@ const Card = styled.div`
   }
 
   @media (min-width: 768px) {
-    padding: 2rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
   }
 `;
 
@@ -707,7 +713,7 @@ const MenuSubmenuGestion = () => {
         Swal.fire({
           icon: "error",
           title: "Error",
-          text: "No se pudo eliminar la asignación del menú",
+          text: "No se pudo elemental la asignación del menú",
           timer: 2000,
           showConfirmButton: false,
         });
@@ -858,12 +864,12 @@ const MenuSubmenuGestion = () => {
 
       {/* Tabs */}
       <Card>
-        <div className="flex space-x-4 border-b mb-6">
+        <div className="flex flex-col sm:flex-row sm:space-x-4 border-b mb-6">
           {["create", "manage", "assign"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`py-2 px-4 font-semibold text-sm md:text-base ${
+              className={`py-2 px-3 font-semibold text-xs sm:text-sm md:text-base text-center ${
                 activeTab === tab
                   ? "border-b-2 border-blue-600 text-blue-600"
                   : "text-gray-600 hover:text-blue-600"
@@ -880,17 +886,17 @@ const MenuSubmenuGestion = () => {
 
         {/* Create Tab */}
         {activeTab === "create" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-4">
             {/* Create Menu */}
             <Card>
-              <h3 className="font-bold text-lg mb-4">Crear Menú</h3>
+              <h3 className="font-bold text-base sm:text-lg mb-4">Crear Menú</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
                     Nombre del Menú *
                   </label>
                   <input
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Nombre del menú"
                     value={newMenu.nombre}
                     onChange={(e) =>
@@ -900,7 +906,7 @@ const MenuSubmenuGestion = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
                     Ícono *
                   </label>
                   <Select
@@ -929,6 +935,7 @@ const MenuSubmenuGestion = () => {
                         padding: "0.25rem",
                         "&:hover": { borderColor: "#3b82f6" },
                         boxShadow: "none",
+                        fontSize: "0.875rem",
                       }),
                       menu: (base) => ({
                         ...base,
@@ -939,6 +946,7 @@ const MenuSubmenuGestion = () => {
                         ...base,
                         backgroundColor: "transparent",
                         "&:hover": { backgroundColor: "#eff6ff" },
+                        fontSize: "0.875rem",
                       }),
                     }}
                     onInputChange={(input) => {
@@ -951,7 +959,7 @@ const MenuSubmenuGestion = () => {
                     }}
                   />
                   {newMenu.icono && (
-                    <div className="mt-2 text-gray-600 text-sm flex items-center space-x-2">
+                    <div className="mt-2 text-gray-600 text-xs sm:text-sm flex items-center space-x-2">
                       <span>Vista previa:</span>
                       <span>
                         {iconOptions.find((item) => item.name === newMenu.icono)
@@ -961,11 +969,11 @@ const MenuSubmenuGestion = () => {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
                     URL (Opcional)
                   </label>
                   <input
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="URL (opcional)"
                     value={newMenu.url}
                     onChange={(e) =>
@@ -975,7 +983,7 @@ const MenuSubmenuGestion = () => {
                   />
                 </div>
                 <button
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 w-full flex items-center justify-center"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 w-full flex items-center justify-center text-sm sm:text-base"
                   onClick={handleCreateMenu}
                 >
                   <FaCheckCircle className="mr-2" />
@@ -986,14 +994,14 @@ const MenuSubmenuGestion = () => {
 
             {/* Create Submenu */}
             <Card>
-              <h3 className="font-bold text-lg mb-4">Crear Submenú</h3>
+              <h3 className="font-bold text-base sm:text-lg mb-4">Crear Submenú</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
                     Menú Padre *
                   </label>
                   <select
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={newSubmenu.idMenu}
                     onChange={(e) =>
                       setNewSubmenu({ ...newSubmenu, idMenu: e.target.value })
@@ -1008,11 +1016,11 @@ const MenuSubmenuGestion = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
                     Nombre del Submenú *
                   </label>
                   <input
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Nombre del submenú"
                     value={newSubmenu.nombre}
                     onChange={(e) =>
@@ -1022,7 +1030,7 @@ const MenuSubmenuGestion = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
                     Ícono *
                   </label>
                   <Select
@@ -1036,7 +1044,7 @@ const MenuSubmenuGestion = () => {
                         icono: option ? option.value : "",
                       })
                     }
-                    placeholder="Selecciona o escribe un ícono"
+                    placeholder="Selecca o escribe un ícono"
                     isClearable
                     isSearchable
                     components={{
@@ -1051,6 +1059,7 @@ const MenuSubmenuGestion = () => {
                         padding: "0.25rem",
                         "&:hover": { borderColor: "#3b82f6" },
                         boxShadow: "none",
+                        fontSize: "0.875rem",
                       }),
                       menu: (base) => ({
                         ...base,
@@ -1061,6 +1070,7 @@ const MenuSubmenuGestion = () => {
                         ...base,
                         backgroundColor: "transparent",
                         "&:hover": { backgroundColor: "#eff6ff" },
+                        fontSize: "0.875rem",
                       }),
                     }}
                     onInputChange={(input) => {
@@ -1073,22 +1083,22 @@ const MenuSubmenuGestion = () => {
                     }}
                   />
                   {newSubmenu.icono && (
-                    <div className="mt-2 text-gray-600 text-sm flex items-center space-x-2">
+                    <div className="mt-2 text-gray-600 text-xs sm:text-sm flex items-center space-x-2">
                       <span>Vista previa:</span>
                       <span>
                         {iconOptions.find(
-                          (item) => item.name === newSubmenu.icono
+                          (item) => item.name儿童 === newSubmenu.icono
                         )?.icon || newSubmenu.icono}
                       </span>
                     </div>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
                     URL *
                   </label>
                   <input
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="URL del submenú"
                     value={newSubmenu.url}
                     onChange={(e) =>
@@ -1098,7 +1108,7 @@ const MenuSubmenuGestion = () => {
                   />
                 </div>
                 <button
-                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200 w-full flex items-center justify-center"
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200 w-full flex items-center justify-center text-sm sm:text-base"
                   onClick={handleCreateSubmenu}
                 >
                   <FaCheckCircle className="mr-2" />
@@ -1111,23 +1121,23 @@ const MenuSubmenuGestion = () => {
 
         {/* Manage Tab */}
         {activeTab === "manage" && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <Card>
-              <h3 className="font-bold text-lg mb-4">Menús Disponibles</h3>
-              <ul className="space-y-4">
+              <h3 className="font-bold text-base sm:text-lg mb-4">Menús Disponibles</h3>
+              <ul className="space-y-3">
                 {uniqueMenus.length === 0 ? (
-                  <li className="p-4 bg-white shadow rounded text-gray-600">
+                  <li className="p-3 bg-white shadow rounded text-gray-600 text-sm">
                     No hay menús disponibles.
                   </li>
                 ) : (
                   uniqueMenus.map((menu) => (
                     <li
                       key={menu.ID_MENU}
-                      className="flex justify-between items-center p-4 bg-white shadow rounded hover:bg-gray-50 transition-colors duration-200"
+                      className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-white shadow rounded hover:bg-gray-50 transition-colors duration-200"
                     >
-                      <div className="flex items-center">
+                      <div className="flex items-center mb-2 sm:mb-0">
                         <span className="mr-2">{menu.MENU_ICONO}</span>
-                        <span className="font-medium">{menu.MENU_NOMBRE}</span>
+                        <span className="font-medium text-sm sm:text-base">{menu.MENU_NOMBRE}</span>
                       </div>
                       <button
                         className="text-yellow-600 hover:text-yellow-800 transition-colors duration-200"
@@ -1150,11 +1160,11 @@ const MenuSubmenuGestion = () => {
             </Card>
 
             <Card>
-              <h3 className="font-bold text-lg mb-4">
+              <h3 className="font-bold text-base sm:text-lg mb-4">
                 Seleccionar Menú para Submenús
               </h3>
               <select
-                className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={selectedMenu}
                 onChange={(e) => setSelectedMenu(e.target.value)}
               >
@@ -1167,33 +1177,35 @@ const MenuSubmenuGestion = () => {
               </select>
 
               {!selectedMenu && (
-                <p className="text-red-600 mt-2">
+                <p className="text-red-600 mt-2 text-xs sm:text-sm">
                   Por favor, selecciona un menú para gestionar sus submenús.
                 </p>
               )}
 
               {selectedMenu && (
-                <ul className="space-y-4 mt-4">
+                <ul className="space-y-3 mt-4">
                   {filteredSubmenus.length === 0 ? (
-                    <li className="p-4 bg-white shadow rounded text-gray-600">
+                    <li className="p-3 bg-white shadow rounded text-gray-600 text-sm">
                       No hay submenús para este menú.
                     </li>
                   ) : (
                     filteredSubmenus.map((item, idx) => (
                       <li
                         key={item.ID_SUBMENU}
-                        className="flex justify-between items-center p-4 bg-white shadow rounded hover:bg-gray-50 transition-colors duration-200"
+                        className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-white shadow rounded hover:bg-gray-50 transition-colors duration-200"
                       >
-                        <div className="flex items-center">
-                          <span className="mr-2">{item.SUBMENU_ICONO}</span>
-                          <span className="font-medium">
-                            {idx + 1}. {item.SUBMENU_NOMBRE}
-                          </span>
-                          <span className="text-gray-500 text-sm ml-2">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center mb-2 sm:mb-0">
+                          <div className="flex items-center">
+                            <span className="mr-2">{item.SUBMENU_ICONO}</span>
+                            <span className="font-medium text-sm sm:text-base">
+                              {idx + 1}. {item.SUBMENU_NOMBRE}
+                            </span>
+                          </div>
+                          <span className="text-gray-500 text-xs sm:text-sm sm:ml-2">
                             ({item.SUBMENU_URL})
                           </span>
                         </div>
-                        <div className="flex space-x-3">
+                        <div className="flex space-x-2">
                           <button
                             className={`text-blue-600 hover:text-blue-800 transition-colors duration-200 ${
                               idx === 0 ? "opacity-50 cursor-not-allowed" : ""
@@ -1217,7 +1229,7 @@ const MenuSubmenuGestion = () => {
                             <FaArrowDown />
                           </button>
                           <button
-                            className="text-yellow-600 hover:text-yellow-800 transition-colors duration-200"
+                            className="text-yellow-600 hover:text-yellow-800 transitioned-colors duration-200"
                             onClick={() =>
                               setEditSubmenuModal({
                                 id: item.ID_SUBMENU!,
@@ -1255,11 +1267,11 @@ const MenuSubmenuGestion = () => {
         {/* Assign Roles Tab */}
         {activeTab === "assign" && (
           <Card>
-            <h3 className="font-bold text-lg mb-4">
+            <h3 className="font-bold text-base sm:text-lg mb-4">
               Asignar Menús y Submenús por Tipo de Usuario
             </h3>
             <select
-              className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-6"
+              className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
               value={selectedTipoUsuario}
               onChange={(e) => setSelectedTipoUsuario(e.target.value)}
             >
@@ -1272,7 +1284,7 @@ const MenuSubmenuGestion = () => {
             </select>
 
             {!selectedTipoUsuario && (
-              <p className="text-red-600 mb-4">
+              <p className="text-red-600 mb-4 text-xs sm:text-sm">
                 Por favor, selecciona un tipo de usuario para asignar menús y
                 submenús.
               </p>
@@ -1281,33 +1293,35 @@ const MenuSubmenuGestion = () => {
             {selectedTipoUsuario && (
               <div className="space-y-6">
                 <div>
-                  <h4 className="font-bold text-md mb-4">Menús Disponibles</h4>
-                  <ul className="space-y-4">
+                  <h4 className="font-bold text-sm sm:text-md mb-4">Menús Disponibles</h4>
+                  <ul className="space-y-3">
                     {uniqueMenus.length === 0 ? (
-                      <li className="p-4 bg-white shadow rounded text-gray-600">
+                      <li className="p-3 bg-white shadow rounded text-gray-600 text-sm">
                         No hay menús disponibles.
                       </li>
                     ) : (
                       uniqueMenus.map((menu) => (
                         <li
                           key={menu.ID_MENU}
-                          className="flex justify-between items-center p-4 bg-white shadow rounded hover:bg-gray-50 transition-colors duration-200"
+                          className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-white shadow rounded hover:bg-gray-50 transition-colors duration-200"
                         >
-                          <div className="flex items-center">
-                            <span className="mr-2">{menu.MENU_ICONO}</span>
-                            <span className="font-medium">
-                              {menu.MENU_NOMBRE}
-                            </span>
-                            <span className="ml-2 text-sm text-gray-500">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center mb-2 sm:mb-0">
+                            <div className="flex items-center">
+                              <span className="mr-2">{menu.MENU_ICONO}</span>
+                              <span className="font-medium text-sm sm:text-base">
+                                {menu.MENU_NOMBRE}
+                              </span>
+                            </div>
+                            <span className="text-gray-500 text-xs sm:text-sm sm:ml-2">
                               {assignments.menus.includes(menu.ID_MENU)
                                 ? "(Asignado)"
                                 : "(No asignado)"}
                             </span>
                           </div>
-                          <div className="flex space-x-3">
+                          <div className="flex space-x-2">
                             {assignments.menus.includes(menu.ID_MENU) ? (
                               <button
-                                className="bg-red-600 text-white px-4 py-1 rounded-lg hover:bg-red-700 transition-colors duration-200"
+                                className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition-colors duration-200 text-sm"
                                 onClick={() =>
                                   handleRemoveMenuFromRole(
                                     parseInt(selectedTipoUsuario),
@@ -1320,7 +1334,7 @@ const MenuSubmenuGestion = () => {
                               </button>
                             ) : (
                               <button
-                                className="bg-green-600 text-white px-4 py-1 rounded-lg hover:bg-green-700 transition-colors duration-200"
+                                className="bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors duration-200 text-sm"
                                 onClick={() =>
                                   handleAssignMenuToRole(
                                     parseInt(selectedTipoUsuario),
@@ -1340,9 +1354,9 @@ const MenuSubmenuGestion = () => {
                 </div>
 
                 <div>
-                  <h4 className="font-bold text-md mb-4">Submenús Disponibles</h4>
+                  <h4 className="font-bold text-sm sm:text-md mb-4">Submenús Disponibles</h4>
                   <select
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+                    className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
                     value={selectedMenu}
                     onChange={(e) => setSelectedMenu(e.target.value)}
                   >
@@ -1355,32 +1369,34 @@ const MenuSubmenuGestion = () => {
                   </select>
 
                   {selectedMenu && (
-                    <ul className="space-y-4">
+                    <ul className="space-y-3">
                       {filteredSubmenus.length === 0 ? (
-                        <li className="p-4 bg-white shadow rounded text-gray-600">
+                        <li className="p-3 bg-white shadow rounded text-gray-600 text-sm">
                           No hay submenús para este menú.
                         </li>
                       ) : (
                         filteredSubmenus.map((item) => (
                           <li
                             key={item.ID_SUBMENU}
-                            className="flex justify-between items-center p-4 bg-white shadow rounded hover:bg-gray-50 transition-colors duration-200"
+                            className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-white shadow rounded hover:bg-gray-50 transition-colors duration-200"
                           >
-                            <div className="flex items-center">
-                              <span className="mr-2">{item.SUBMENU_ICONO}</span>
-                              <span className="font-medium">
-                                {item.SUBMENU_NOMBRE}
-                              </span>
-                              <span className="ml-2 text-sm text-gray-500">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center mb-2 sm:mb-0">
+                              <div className="flex items-center">
+                                <span className="mr-2">{item.SUBMENU_ICONO}</span>
+                                <span className="font-medium text-sm sm:text-base">
+                                  {item.SUBMENU_NOMBRE}
+                                </span>
+                              </div>
+                              <span className="text-gray-500 text-xs sm:text-sm sm:ml-2">
                                 {assignments.submenus.includes(item.ID_SUBMENU!)
                                   ? "(Asignado)"
                                   : "(No asignado)"}
                               </span>
                             </div>
-                            <div className="flex space-x-3">
+                            <div className="flex space-x-2">
                               {assignments.submenus.includes(item.ID_SUBMENU!) ? (
                                 <button
-                                  className="bg-red-600 text-white px-4 py-1 rounded-lg hover:bg-red-700 transition-colors duration-200"
+                                  className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition-colors duration-200 text-sm"
                                   onClick={() =>
                                     handleRemoveSubmenuFromRole(
                                       parseInt(selectedTipoUsuario),
@@ -1393,7 +1409,7 @@ const MenuSubmenuGestion = () => {
                                 </button>
                               ) : (
                                 <button
-                                  className="bg-green-600 text-white px-4 py-1 rounded-lg hover:bg-green-700 transition-colors duration-200"
+                                  className="bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors duration-200 text-sm"
                                   onClick={() =>
                                     handleAssignSubmenuToRole(
                                       parseInt(selectedTipoUsuario),
@@ -1419,16 +1435,16 @@ const MenuSubmenuGestion = () => {
 
         {/* Edit Menu Modal */}
         {editMenuModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <Card className="w-full max-w-md">
-              <h3 className="font-bold text-lg mb-4">Editar Menú</h3>
+              <h3 className="font-bold text-base sm:text-lg mb-4">Editar Menú</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
                     Nombre del Menú *
                   </label>
                   <input
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={editMenuModal.nombre}
                     onChange={(e) =>
                       setEditMenuModal({
@@ -1440,7 +1456,7 @@ const MenuSubmenuGestion = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
                     Ícono *
                   </label>
                   <Select
@@ -1469,6 +1485,7 @@ const MenuSubmenuGestion = () => {
                         padding: "0.25rem",
                         "&:hover": { borderColor: "#3b82f6" },
                         boxShadow: "none",
+                        fontSize: "0.875rem",
                       }),
                       menu: (base) => ({
                         ...base,
@@ -1479,6 +1496,7 @@ const MenuSubmenuGestion = () => {
                         ...base,
                         backgroundColor: "transparent",
                         "&:hover": { backgroundColor: "#eff6ff" },
+                        fontSize: "0.875rem",
                       }),
                     }}
                     onInputChange={(input) => {
@@ -1491,7 +1509,7 @@ const MenuSubmenuGestion = () => {
                     }}
                   />
                   {editMenuModal.icono && (
-                    <div className="mt-2 text-gray-600 text-sm flex items-center space-x-2">
+                    <div className="mt-2 text-gray-600 text-xs sm:text-sm flex items-center space-x-2">
                       <span>Vista previa:</span>
                       <span>
                         {iconOptions.find(
@@ -1502,11 +1520,11 @@ const MenuSubmenuGestion = () => {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
                     URL (Opcional)
                   </label>
                   <input
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={editMenuModal.url || ""}
                     onChange={(e) =>
                       setEditMenuModal({
@@ -1517,15 +1535,15 @@ const MenuSubmenuGestion = () => {
                     maxLength={100}
                   />
                 </div>
-                <div className="flex space-x-4">
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
                   <button
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex-1"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex-1 text-sm sm:text-base"
                     onClick={handleUpdateMenu}
                   >
                     Guardar
                   </button>
                   <button
-                    className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-200 flex-1"
+                    className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-200 flex-1 text-sm sm:text-base"
                     onClick={() => setEditMenuModal(null)}
                   >
                     Cancelar
@@ -1538,16 +1556,16 @@ const MenuSubmenuGestion = () => {
 
         {/* Edit Submenu Modal */}
         {editSubmenuModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <Card className="w-full max-w-md">
-              <h3 className="font-bold text-lg mb-4">Editar Submenú</h3>
+              <h3 className="font-bold text-base sm:text-lg mb-4">Editar Submenú</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
                     Nombre del Submenú *
                   </label>
                   <input
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={editSubmenuModal.nombre}
                     onChange={(e) =>
                       setEditSubmenuModal({
@@ -1559,7 +1577,7 @@ const MenuSubmenuGestion = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
                     Ícono *
                   </label>
                   <Select
@@ -1588,6 +1606,7 @@ const MenuSubmenuGestion = () => {
                         padding: "0.25rem",
                         "&:hover": { borderColor: "#3b82f6" },
                         boxShadow: "none",
+                        fontSize: "0.875rem",
                       }),
                       menu: (base) => ({
                         ...base,
@@ -1598,6 +1617,7 @@ const MenuSubmenuGestion = () => {
                         ...base,
                         backgroundColor: "transparent",
                         "&:hover": { backgroundColor: "#eff6ff" },
+                        fontSize: "0.875rem",
                       }),
                     }}
                     onInputChange={(input) => {
@@ -1613,7 +1633,7 @@ const MenuSubmenuGestion = () => {
                     }}
                   />
                   {editSubmenuModal.icono && (
-                    <div className="mt-2 text-gray-600 text-sm flex items-center space-x-2">
+                    <div className="mt-2 text-gray-600 text-xs sm:text-sm flex items-center space-x-2">
                       <span>Vista previa:</span>
                       <span>
                         {iconOptions.find(
@@ -1624,11 +1644,11 @@ const MenuSubmenuGestion = () => {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-600 mb-1">
                     URL *
                   </label>
                   <input
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={editSubmenuModal.url}
                     onChange={(e) =>
                       setEditSubmenuModal({
@@ -1639,15 +1659,15 @@ const MenuSubmenuGestion = () => {
                     maxLength={100}
                   />
                 </div>
-                <div className="flex space-x-4">
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
                   <button
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex-1"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex-1 text-sm sm:text-base"
                     onClick={handleUpdateSubmenu}
                   >
                     Guardar
                   </button>
                   <button
-                    className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-200 flex-1"
+                    className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-200 flex-1 text-sm sm:text-base"
                     onClick={() => setEditSubmenuModal(null)}
                   >
                     Cancelar
