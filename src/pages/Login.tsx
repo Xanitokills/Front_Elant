@@ -7,7 +7,7 @@ import logoSoftHome from "../../public/LogoSoftHome/Logo_SoftHome_1.png";
 import ImagenLoginDefault from "../images/fachada_canada.jpg";
 
 const Login = () => {
-  const [email, setEmail] = useState("");
+  const [dni, setDni] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -28,12 +28,25 @@ const Login = () => {
     }
   }, []);
 
+  // Validar formato de DNI
+  const validateDNI = (dni: string) => {
+    const dniRegex = /^[a-zA-Z0-9]{1,12}$/;
+    return dniRegex.test(dni);
+  };
+
   // Manejo de login
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
+
+    // Validar DNI
+    if (!validateDNI(dni)) {
+      setError("El DNI debe tener hasta 12 caracteres alfanuméricos");
+      return;
+    }
+
     try {
-      await login(email, password);
+      await login(dni, password);
     } catch (err) {
       setError("Credenciales inválidas");
     }
@@ -90,13 +103,13 @@ const Login = () => {
           {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-700">Correo Electrónico</label>
+              <label className="block text-sm text-gray-700">DNI</label>
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                value={dni}
+                onChange={(e) => setDni(e.target.value)}
                 className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50"
-                placeholder="correo@ejemplo.com"
+                placeholder="12345678"
                 required
               />
             </div>
