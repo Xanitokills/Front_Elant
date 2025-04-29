@@ -88,7 +88,7 @@ interface MenuWithSubmenu {
 }
 
 interface TipoUsuario {
-  ID_TIPO_USUARIO: number;
+  ID_ROL: number;
   DETALLE_USUARIO: string;
   ESTADO: boolean;
 }
@@ -158,10 +158,10 @@ const MenuSubmenuGestion = () => {
       const res = await fetch(`${API_URL}/tiposUsuario`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error(`Error al obtener tipos de usuario: ${res.statusText}`);
       const data = await res.json();
       setTiposUsuario(data.filter((tipo: TipoUsuario) => tipo.ESTADO === true));
-    } catch {
+    } catch (error) {
       Swal.fire({
         icon: "error",
         title: "Error",
@@ -780,14 +780,17 @@ const MenuSubmenuGestion = () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ idTipoUsuario, idSubmenu }),
+          body: JSON.stringify({
+            idTipoUsuario,
+            idSubmenu,
+          }),
         });
-        if (!res.ok) throw new Error();
+        if (!res.ok) throw new Error("Error al eliminar asignación de submenú");
         const data = await res.json();
         Swal.fire({
           icon: "success",
           title: "Éxito",
-          text: `Acceso al submenú "${submenuNombre}" desasignado correctamente`,
+          text: `Acceso al submenú "${submenuNombre}" eliminado correctamente`,
           timer: 2000,
           showConfirmButton: false,
         });
@@ -795,11 +798,11 @@ const MenuSubmenuGestion = () => {
         if (data.refreshSidebar) {
           await refreshSidebar();
         }
-      } catch {
+      } catch (error) {
         Swal.fire({
           icon: "error",
           title: "Error",
-          text: "No se pudo desasignar el submenú",
+          text: "No se pudo eliminar la asignación del submenú",
           timer: 2000,
           showConfirmButton: false,
         });
@@ -1262,7 +1265,7 @@ const MenuSubmenuGestion = () => {
             >
               <option value="">Selecciona un tipo de usuario</option>
               {tiposUsuario.map((tipo) => (
-                <option key={tipo.ID_TIPO_USUARIO} value={tipo.ID_TIPO_USUARIO}>
+                <option key={tipo.ID_ROL} value={tipo.ID_ROL}>
                   {tipo.DETALLE_USUARIO}
                 </option>
               ))}
@@ -1413,254 +1416,248 @@ const MenuSubmenuGestion = () => {
             )}
           </Card>
         )}
-      </Card>
 
-      {/* Edit Menu Modal */}
-      {editMenuModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-md">
-            <h3 className="font-bold text-lg mb-4">Editar Menú</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Nombre del Menú *
-                </label>
-                <input
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nombre del menú"
-                  value={editMenuModal.nombre}
-                  onChange={(e) =>
-                    setEditMenuModal({
-                      ...editMenuModal,
-                      nombre: e.target.value,
-                    })
-                  }
-                  maxLength={50}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Ícono *
-                </label>
-                <Select
-                  options={selectIconOptions}
-                  value={selectIconOptions.find(
-                    (opt) => opt.value === editMenuModal.icono
-                  )}
-                  onChange={(option: SingleValue<IconOption>) =>
-                    setEditMenuModal({
-                      ...editMenuModal,
-                      icono: option ? option.value : "",
-                    })
-                  }
-                  placeholder="Selecciona o escribe un ícono"
-                  isClearable
-                  isSearchable
-                  components={{
-                    Option: CustomOption,
-                    SingleValue: CustomSingleValue,
-                  }}
-                  styles={{
-                    control: (base) => ({
-                      ...base,
-                      borderColor: "#d1d5db",
-                      borderRadius: "0.5rem",
-                      padding: "0.25rem",
-                      "&:hover": { borderColor: "#3b82f6" },
-                      boxShadow: "none",
-                    }),
-                    menu: (base) => ({
-                      ...base,
-                      borderRadius: "0.5rem",
-                      marginTop: "0.25rem",
-                    }),
-                    option: (base) => ({
-                      ...base,
-                      backgroundColor: "transparent",
-                      "&:hover": { backgroundColor: "#eff6ff" },
-                    }),
-                  }}
-                  onInputChange={(input) => {
-                    if (
-                      input &&
-                      !selectIconOptions.some((opt) => opt.value === input)
-                    ) {
-                      setEditMenuModal({ ...editMenuModal, icono: input });
+        {/* Edit Menu Modal */}
+        {editMenuModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <Card className="w-full max-w-md">
+              <h3 className="font-bold text-lg mb-4">Editar Menú</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    Nombre del Menú *
+                  </label>
+                  <input
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={editMenuModal.nombre}
+                    onChange={(e) =>
+                      setEditMenuModal({
+                        ...editMenuModal,
+                        nombre: e.target.value,
+                      })
                     }
-                  }}
-                />
-                {editMenuModal.icono && (
-                  <div className="mt-2 text-gray-600 text-sm flex items-center space-x-2">
-                    <span>Vista previa:</span>
-                    <span>
-                      {iconOptions.find(
-                        (item) => item.name === editMenuModal.icono
-                      )?.icon || editMenuModal.icono}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">
-                  URL (Opcional)
-                </label>
-                <input
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="URL (opcional)"
-                  value={editMenuModal.url || ""}
-                  onChange={(e) =>
-                    setEditMenuModal({
-                      ...editMenuModal,
-                      url: e.target.value,
-                    })
-                  }
-                  maxLength={100}
-                />
-              </div>
-              <div className="flex space-x-3">
-                <button
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex-1 flex items-center justify-center"
-                  onClick={handleUpdateMenu}
-                >
-                  <FaCheckCircle className="mr-2" />
-                  Guardar
-                </button>
-                <button
-                  className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-200 flex-1"
-                  onClick={() => setEditMenuModal(null)}
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Edit Submenu Modal */}
-      {editSubmenuModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-md">
-            <h3 className="font-bold text-lg mb-4">Editar Submenú</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Nombre del Submenú *
-                </label>
-                <input
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nombre del submenú"
-                  value={editSubmenuModal.nombre}
-                  onChange={(e) =>
-                    setEditSubmenuModal({
-                      ...editSubmenuModal,
-                      nombre: e.target.value,
-                    })
-                  }
-                  maxLength={50}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Ícono *
-                </label>
-                <Select
-                  options={selectIconOptions}
-                  value={selectIconOptions.find(
-                    (opt) => opt.value === editSubmenuModal.icono
+                    maxLength={50}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    Ícono *
+                  </label>
+                  <Select
+                    options={selectIconOptions}
+                    value={selectIconOptions.find(
+                      (opt) => opt.value === editMenuModal.icono
+                    )}
+                    onChange={(option: SingleValue<IconOption>) =>
+                      setEditMenuModal({
+                        ...editMenuModal,
+                        icono: option ? option.value : "",
+                      })
+                    }
+                    placeholder="Selecciona o escribe un ícono"
+                    isClearable
+                    isSearchable
+                    components={{
+                      Option: CustomOption,
+                      SingleValue: CustomSingleValue,
+                    }}
+                    styles={{
+                      control: (base) => ({
+                        ...base,
+                        borderColor: "#d1d5db",
+                        borderRadius: "0.5rem",
+                        padding: "0.25rem",
+                        "&:hover": { borderColor: "#3b82f6" },
+                        boxShadow: "none",
+                      }),
+                      menu: (base) => ({
+                        ...base,
+                        borderRadius: "0.5rem",
+                        marginTop: "0.25rem",
+                      }),
+                      option: (base) => ({
+                        ...base,
+                        backgroundColor: "transparent",
+                        "&:hover": { backgroundColor: "#eff6ff" },
+                      }),
+                    }}
+                    onInputChange={(input) => {
+                      if (
+                        input &&
+                        !selectIconOptions.some((opt) => opt.value === input)
+                      ) {
+                        setEditMenuModal({ ...editMenuModal, icono: input });
+                      }
+                    }}
+                  />
+                  {editMenuModal.icono && (
+                    <div className="mt-2 text-gray-600 text-sm flex items-center space-x-2">
+                      <span>Vista previa:</span>
+                      <span>
+                        {iconOptions.find(
+                          (item) => item.name === editMenuModal.icono
+                        )?.icon || editMenuModal.icono}
+                      </span>
+                    </div>
                   )}
-                  onChange={(option: SingleValue<IconOption>) =>
-                    setEditSubmenuModal({
-                      ...editSubmenuModal,
-                      icono: option ? option.value : "",
-                    })
-                  }
-                  placeholder="Selecciona o escribe un ícono"
-                  isClearable
-                  isSearchable
-                  components={{
-                    Option: CustomOption,
-                    SingleValue: CustomSingleValue,
-                  }}
-                  styles={{
-                    control: (base) => ({
-                      ...base,
-                      borderColor: "#d1d5db",
-                      borderRadius: "0.5rem",
-                      padding: "0.25rem",
-                      "&:hover": { borderColor: "#3b82f6" },
-                      boxShadow: "none",
-                    }),
-                    menu: (base) => ({
-                      ...base,
-                      borderRadius: "0.5rem",
-                      marginTop: "0.25rem",
-                    }),
-                    option: (base) => ({
-                      ...base,
-                      backgroundColor: "transparent",
-                      "&:hover": { backgroundColor: "#eff6ff" },
-                    }),
-                  }}
-                  onInputChange={(input) => {
-                    if (
-                      input &&
-                      !selectIconOptions.some((opt) => opt.value === input)
-                    ) {
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    URL (Opcional)
+                  </label>
+                  <input
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={editMenuModal.url || ""}
+                    onChange={(e) =>
+                      setEditMenuModal({
+                        ...editMenuModal,
+                        url: e.target.value,
+                      })
+                    }
+                    maxLength={100}
+                  />
+                </div>
+                <div className="flex space-x-4">
+                  <button
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex-1"
+                    onClick={handleUpdateMenu}
+                  >
+                    Guardar
+                  </button>
+                  <button
+                    className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-200 flex-1"
+                    onClick={() => setEditMenuModal(null)}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* Edit Submenu Modal */}
+        {editSubmenuModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <Card className="w-full max-w-md">
+              <h3 className="font-bold text-lg mb-4">Editar Submenú</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    Nombre del Submenú *
+                  </label>
+                  <input
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={editSubmenuModal.nombre}
+                    onChange={(e) =>
                       setEditSubmenuModal({
                         ...editSubmenuModal,
-                        icono: input,
-                      });
+                        nombre: e.target.value,
+                      })
                     }
-                  }}
-                />
-                {editSubmenuModal.icono && (
-                  <div className="mt-2 text-gray-600 text-sm flex items-center space-x-2">
-                    <span>Vista previa:</span>
-                    <span>
-                      {iconOptions.find(
-                        (item) => item.name === editSubmenuModal.icono
-                      )?.icon || editSubmenuModal.icono}
-                    </span>
-                  </div>
-                )}
+                    maxLength={50}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    Ícono *
+                  </label>
+                  <Select
+                    options={selectIconOptions}
+                    value={selectIconOptions.find(
+                      (opt) => opt.value === editSubmenuModal.icono
+                    )}
+                    onChange={(option: SingleValue<IconOption>) =>
+                      setEditSubmenuModal({
+                        ...editSubmenuModal,
+                        icono: option ? option.value : "",
+                      })
+                    }
+                    placeholder="Selecciona o escribe un ícono"
+                    isClearable
+                    isSearchable
+                    components={{
+                      Option: CustomOption,
+                      SingleValue: CustomSingleValue,
+                    }}
+                    styles={{
+                      control: (base) => ({
+                        ...base,
+                        borderColor: "#d1d5db",
+                        borderRadius: "0.5rem",
+                        padding: "0.25rem",
+                        "&:hover": { borderColor: "#3b82f6" },
+                        boxShadow: "none",
+                      }),
+                      menu: (base) => ({
+                        ...base,
+                        borderRadius: "0.5rem",
+                        marginTop: "0.25rem",
+                      }),
+                      option: (base) => ({
+                        ...base,
+                        backgroundColor: "transparent",
+                        "&:hover": { backgroundColor: "#eff6ff" },
+                      }),
+                    }}
+                    onInputChange={(input) => {
+                      if (
+                        input &&
+                        !selectIconOptions.some((opt) => opt.value === input)
+                      ) {
+                        setEditSubmenuModal({
+                          ...editSubmenuModal,
+                          icono: input,
+                        });
+                      }
+                    }}
+                  />
+                  {editSubmenuModal.icono && (
+                    <div className="mt-2 text-gray-600 text-sm flex items-center space-x-2">
+                      <span>Vista previa:</span>
+                      <span>
+                        {iconOptions.find(
+                          (item) => item.name === editSubmenuModal.icono
+                        )?.icon || editSubmenuModal.icono}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    URL *
+                  </label>
+                  <input
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={editSubmenuModal.url}
+                    onChange={(e) =>
+                      setEditSubmenuModal({
+                        ...editSubmenuModal,
+                        url: e.target.value,
+                      })
+                    }
+                    maxLength={100}
+                  />
+                </div>
+                <div className="flex space-x-4">
+                  <button
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex-1"
+                    onClick={handleUpdateSubmenu}
+                  >
+                    Guardar
+                  </button>
+                  <button
+                    className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-200 flex-1"
+                    onClick={() => setEditSubmenuModal(null)}
+                  >
+                    Cancelar
+                  </button>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">
-                  URL *
-                </label>
-                <input
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="URL del submenú"
-                  value={editSubmenuModal.url}
-                  onChange={(e) =>
-                    setEditSubmenuModal({
-                      ...editSubmenuModal,
-                      url: e.target.value,
-                    })
-                  }
-                  maxLength={100}
-                />
-              </div>
-              <div className="flex space-x-3">
-                <button
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex-1 flex items-center justify-center"
-                  onClick={handleUpdateSubmenu}
-                >
-                  <FaCheckCircle className="mr-2" />
-                  Guardar
-                </button>
-                <button
-                  className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors duration-200 flex-1"
-                  onClick={() => setEditSubmenuModal(null)}
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
+            </Card>
+          </div>
+        )}
+      </Card>
     </Container>
   );
 };
