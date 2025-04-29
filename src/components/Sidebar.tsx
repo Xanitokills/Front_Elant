@@ -1,15 +1,10 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import * as FaIcons from "react-icons/fa";
-import {
-  FaChevronDown,
-  FaSearch,
-  FaSignOutAlt
-} from "react-icons/fa";
+import { FaChevronDown, FaSearch, FaSignOutAlt } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 import styled from "styled-components";
 
-// Estilos con styled-components (sin cambios)
 const SidebarContainer = styled.div.withConfig({
   shouldForwardProp: (prop) => prop !== "sidebarOpen",
 })<{ sidebarOpen: boolean }>`
@@ -200,17 +195,17 @@ const LogoutButton = styled.button`
   }
 `;
 
-// Función para obtener el componente de ícono correspondiente
 const getIconComponent = (iconName: string) => {
   const Icon = FaIcons[iconName as keyof typeof FaIcons];
   return Icon ? <Icon /> : null;
 };
 
 interface SidebarStructure {
-  title: string;
-  icon: JSX.Element | null;
-  path?: string; // Agregado para manejar la URL del menú
-  items: { label: string; path: string; icon: JSX.Element | null }[];
+  id: number;
+  nombre: string;
+  icono: string;
+  url?: string;
+  submenus: { id: number; nombre: string; url: string; icono: string }[];
 }
 
 const Sidebar = ({
@@ -220,19 +215,18 @@ const Sidebar = ({
   closeSidebar: () => void;
   sidebarOpen: boolean;
 }) => {
-  const { logout, userName, role, isAuthenticated, isLoading, sidebarData } =
-    useAuth();
+  const { logout, userName, role, isAuthenticated, isLoading, sidebarData } = useAuth();
   const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [sidebarStructure, setSidebarStructure] = useState<SidebarStructure[]>([]);
 
-  const toggleSection = (title: string) => {
+  const toggleSection = (id: number) => {
     setOpenSections((prev) => {
       const newState: { [key: string]: boolean } = {};
       Object.keys(prev).forEach((key) => {
         newState[key] = false;
       });
-      newState[title] = !prev[title];
+      newState[id] = !prev[id];
       return newState;
     });
   };
@@ -241,22 +235,21 @@ const Sidebar = ({
     setSearchTerm(e.target.value.toLowerCase());
   };
 
-  // Procesar los datos del menú desde AuthContext
   useEffect(() => {
     if (sidebarData && sidebarData.length > 0) {
       const structure = sidebarData.map((menu: any) => ({
-        title: menu.MENU_NOMBRE,
-        icon: getIconComponent(menu.MENU_ICONO),
-        path: menu.MENU_URL, // Incluir la URL del menú
-        items: menu.SUBMENUS
-          ? menu.SUBMENUS.sort(
-              (a: any, b: any) => a.SUBMENU_ORDEN - b.SUBMENU_ORDEN
-            ).map((sub: any) => ({
-              label: sub.SUBMENU_NOMBRE,
-              path: sub.SUBMENU_URL,
-              icon: getIconComponent(sub.SUBMENU_ICONO),
+        id: menu.id,
+        nombre: menu.nombre,
+        icono: menu.icono,
+        url: menu.url,
+        submenus: menu.submenus
+          ? menu.submenus.sort((a: any, b: any) => a.orden - b.orden).map((sub: any) => ({
+              id: sub.id,
+              nombre: sub.nombre,
+              url: sub.url,
+              icono: sub.icono,
             }))
-          : [], // Array vacío si no hay submenús
+          : [],
       }));
       setSidebarStructure(structure);
     } else {
@@ -304,60 +297,46 @@ const Sidebar = ({
         ) : (
           <MenuList>
             {sidebarStructure.map((section) => {
-              const filteredItems = section.items.filter((item) =>
-                item.label.toLowerCase().includes(searchTerm)
+              const filteredSubmenus = section.submenus.filter((submenu) =>
+                submenu.nombre.toLowerCase().includes(searchTerm)
               );
 
-              // Si el menú no tiene submenús y tiene una URL, renderizar como NavLink directo
-              if (section.items.length === 0 && section.path) {
+              if (section.submenus.length === 0 && section.url) {
                 return (
-                  <MenuItem key={section.title}>
-                    <SubmenuItem
-                      to={section.path}
-                      onClick={closeSidebar}
-                      className="font-bold"
-                    >
-                      {section.icon}
-                      {section.title}
+                  <MenuItem key={section.id}>
+                    <SubmenuItem to={section.url} onClick={closeSidebar} className="font-bold">
+                      {getIconComponent(section.icono)}
+                      {section.nombre}
                     </SubmenuItem>
                   </MenuItem>
                 );
               }
 
-              // Si tiene submenús, renderizar como sección desplegable
-              if (filteredItems.length === 0) return null;
+              if (filteredSubmenus.length === 0) return null;
 
               return (
-                <MenuItem key={section.title}>
+                <MenuItem key={section.id}>
                   <MenuButtonWrapper>
                     <MenuButton
-                      isOpen={openSections[section.title]}
-                      onClick={() => toggleSection(section.title)}
+                      isOpen={openSections[section.id]}
+                      onClick={() => toggleSection(section.id)}
                     >
                       <span className="flex items-center gap-2">
-                        {section.icon}
-                        {section.title}
+                        {getIconComponent(section.icono)}
+                        {section.nombre}
                       </span>
                       <FaChevronDown
                         className={`transform transition-transform duration-300 ${
-                          openSections[section.title]
-                            ? "rotate-180"
-                            : "rotate-0"
+                          openSections[section.id] ? "rotate-180" : "rotate-0"
                         }`}
                       />
                     </MenuButton>
                   </MenuButtonWrapper>
-                  <SubmenuList
-                    className={openSections[section.title] ? "open" : ""}
-                  >
-                    {filteredItems.map((item) => (
-                      <SubmenuItem
-                        key={item.path}
-                        to={item.path}
-                        onClick={closeSidebar}
-                      >
-                        {item.icon}
-                        {item.label}
+                  <SubmenuList className={openSections[section.id] ? "open" : ""}>
+                    {filteredSubmenus.map((submenu) => (
+                      <SubmenuItem key={submenu.id} to={submenu.url} onClick={closeSidebar}>
+                        {getIconComponent(submenu.icono)}
+                        {submenu.nombre}
                       </SubmenuItem>
                     ))}
                   </SubmenuList>

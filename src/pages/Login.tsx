@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaEye, FaEyeSlash, FaSpinner } from "react-icons/fa";
 import axios from "axios";
 import logoSoftHome from "../../public/LogoSoftHome/Logo_SoftHome_1.png";
 import ImagenLoginDefault from "../images/fachada_canada.jpg";
@@ -11,6 +11,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentImage, setCurrentImage] = useState(0);
   const [images, setImages] = useState<{ imageData: string; imageName: string }[]>([]);
   const { login, isAuthenticated } = useAuth();
@@ -38,26 +39,41 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
+    setIsSubmitting(true);
 
     // Validar DNI
     if (!validateDNI(dni)) {
       setError("El DNI debe tener hasta 12 caracteres alfanuméricos");
+      console.log("Login - Error DNI inválido:", error);
+      setIsSubmitting(false);
       return;
     }
 
     try {
       await login(dni, password);
-    } catch (err) {
-      setError("Credenciales inválidas");
+    } catch (err: any) {
+      const errorMessage = err.message || "Error al iniciar sesión, por favor intenta de nuevo";
+      setError(errorMessage);
+      console.log("Login - Error establecido:", errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   // Redirección a dashboard si ya está autenticado
   useEffect(() => {
+    console.log("Login - isAuthenticated:", isAuthenticated);
     if (isAuthenticated) {
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     }
   }, [isAuthenticated, navigate]);
+
+  // Log del estado error en cada render
+  useEffect(() => {
+    if (error) {
+      console.log("Login - Estado error renderizado:", error);
+    }
+  }, [error]);
 
   // Obtener imágenes de anuncios
   useEffect(() => {
@@ -111,6 +127,7 @@ const Login = () => {
                 className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50"
                 placeholder="12345678"
                 required
+                disabled={isSubmitting}
               />
             </div>
             <div>
@@ -123,11 +140,13 @@ const Login = () => {
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50 pr-10"
                   placeholder="••••••••"
                   required
+                  disabled={isSubmitting}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-2 top-2.5 text-gray-500 hover:text-gray-700"
+                  disabled={isSubmitting}
                 >
                   {showPassword ? <FaEyeSlash /> : <FaEye />}
                 </button>
@@ -135,9 +154,17 @@ const Login = () => {
             </div>
             <button
               type="submit"
-              className="w-full bg-[rgb(47,140,152)] hover:bg-[rgb(35,105,115)] text-white py-2 px-4 rounded-lg shadow-md transition"
+              className="w-full bg-[rgb(47,140,152)] hover:bg-[rgb(35,105,115)] text-white py-2 px-4 rounded-lg shadow-md transition flex items-center justify-center"
+              disabled={isSubmitting}
             >
-              Iniciar Sesión
+              {isSubmitting ? (
+                <>
+                  <FaSpinner className="animate-spin mr-2" />
+                  Procesando...
+                </>
+              ) : (
+                "Iniciar Sesión"
+              )}
             </button>
           </form>
         </div>

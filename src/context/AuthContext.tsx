@@ -8,26 +8,25 @@ import {
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-// Interfaz para la estructura de submenús
 interface Submenu {
   id: number;
   nombre: string;
   url: string;
   icono: string;
   orden: number;
+  estado: number;
 }
 
-// Interfaz para la estructura de menús
 interface Menu {
   id: number;
   nombre: string;
   url: string | null;
   icono: string;
   orden: number;
+  estado: number;
   submenus: Submenu[];
 }
 
-// Interfaz para el contexto de autenticación
 interface AuthContextType {
   isAuthenticated: boolean;
   userName: string | null;
@@ -52,39 +51,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [sidebarData, setSidebarData] = useState<Menu[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Función para actualizar los datos del menú
-  const updateSidebarData = (permissions: Menu[]) => {
-    // Guardar en localStorage
-    localStorage.setItem("sidebarData", JSON.stringify(permissions));
-    setSidebarData(permissions);
-    setUserPermissions(permissions);
-  };
-
-  // Función para refrescar el menú (por ejemplo, cuando cambian los permisos)
-  const refreshSidebar = async () => {
-    const token = localStorage.getItem("token");
-    if (userId && token) {
-      try {
-        const response = await fetch(`${API_URL}/validate`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          updateSidebarData(data.permissions || []);
-        }
-      } catch (error) {
-        console.error("Error al refrescar el menú:", error);
+  const updateSidebarData = async (userId: number, token: string) => {
+    try {
+      const response = await fetch(`${API_URL}/sidebar/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem("sidebarData", JSON.stringify(data));
+        setSidebarData(data);
+        setUserPermissions(data);
+        console.log("AuthContext - Updated User Permissions:", data);
+        return data;
+      } else {
+        console.error("AuthContext - Error fetching sidebar data:", response.status);
         setSidebarData([]);
         setUserPermissions([]);
         localStorage.removeItem("sidebarData");
+        return [];
       }
+    } catch (error) {
+      console.error("AuthContext - Error al obtener el menú:", error);
+      setSidebarData([]);
+      setUserPermissions([]);
+      localStorage.removeItem("sidebarData");
+      return [];
+    }
+  };
+
+  const refreshSidebar = async () => {
+    const token = localStorage.getItem("token");
+    if (userId && token) {
+      await updateSidebarData(userId, token);
     }
   };
 
   useEffect(() => {
     const validateSession = async () => {
       const token = localStorage.getItem("token");
-
       if (!token) {
         setIsAuthenticated(false);
         setUserId(null);
@@ -108,20 +112,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setRole(data.role || savedRole || null);
           setUserId(data.user?.id);
 
-          // Usar permisos de la respuesta o de localStorage
           const savedSidebarData = localStorage.getItem("sidebarData");
+          let permissionsLoaded = false;
           if (savedSidebarData) {
             const parsedData = JSON.parse(savedSidebarData);
             setSidebarData(parsedData);
             setUserPermissions(parsedData);
-          } else if (data.permissions) {
-            updateSidebarData(data.permissions);
+            console.log("AuthContext - Loaded User Permissions from localStorage:", parsedData);
+            permissionsLoaded = parsedData.length > 0;
+          }
+
+          if (!permissionsLoaded && data.user?.id) {
+            const sidebarData = await updateSidebarData(data.user.id, token);
+            permissionsLoaded = sidebarData.length > 0;
+          }
+
+          if (!permissionsLoaded) {
+            console.warn("AuthContext - No permissions loaded, logging out");
+            logout();
           }
         } else {
+          console.error("AuthContext - Session validation failed:", response.status);
           logout();
         }
       } catch (error) {
-        console.error("Error validating session:", error);
+        console.error("AuthContext - Error validating session:", error);
         logout();
       } finally {
         setIsLoading(false);
@@ -141,28 +156,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Credenciales incorrectas o error en el servidor");
+        let errorMessage = "Error al iniciar sesión";
+        if (response.status === 401) {
+          errorMessage = errorData.message || "DNI o contraseña incorrectos";
+        } else if (response.status === 500) {
+          errorMessage = "Error del servidor, por favor intenta de nuevo";
+        }
+        throw new Error(errorMessage);
       }
+
+      // Solo establecer isLoading=true después de validar credenciales
+      setIsLoading(true);
 
       const data = await response.json();
 
-      // Guardar en localStorage
       localStorage.setItem("token", data.token);
       localStorage.setItem("userName", data.userName);
       localStorage.setItem("role", data.roles?.[0] || "");
       localStorage.setItem("userId", String(data.user.id));
 
-      // Actualizar el estado
       setIsAuthenticated(true);
       setUserName(data.userName);
       setRole(data.roles?.[0] || null);
       setUserId(data.user.id);
 
-      // Actualizar datos del menú
-      updateSidebarData(data.permissions || []);
+      const sidebarData = await updateSidebarData(data.user.id, data.token);
+      if (sidebarData.length === 0) {
+        console.warn("AuthContext - No permissions loaded after login, logging out");
+        logout();
+        throw new Error("No se pudieron cargar los permisos del usuario");
+      }
     } catch (error) {
-      console.error("Error al iniciar sesión:", error);
+      console.error("AuthContext - Error al iniciar sesión:", error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -174,6 +202,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setRole(null);
     setUserPermissions([]);
     setSidebarData([]);
+    setIsLoading(false);
   };
 
   return (
