@@ -7,25 +7,13 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 // Keyframes for animations
 const slideInDown = keyframes`
-  0% {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  0% { opacity: 0; transform: translateY(-20px); }
+  100% { opacity: 1; transform: translateY(0); }
 `;
 
 const fadeIn = keyframes`
-  0% {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
 `;
 
 // Styled components
@@ -33,9 +21,7 @@ const Container = styled.div`
   padding: 1.5rem;
   background-color: #f3f4f6;
   min-height: 100vh;
-  @media (min-width: 768px) {
-    padding: 2rem;
-  }
+  @media (min-width: 768px) { padding: 2rem; }
 `;
 
 const Title = styled.h1`
@@ -53,18 +39,13 @@ const Card = styled.div`
   margin-bottom: 1.5rem;
   transition: box-shadow 0.2s ease;
   animation: ${fadeIn} 0.5s ease-out;
-  &:hover {
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-  }
-  @media (min-width: 768px) {
-    padding: 2rem;
-  }
+  &:hover { box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15); }
+  @media (min-width: 768px) { padding: 2rem; }
 `;
 
-// Interfaces
-interface UserType {
-  ID_TIPO_USUARIO: number;
-  DETALLE_USUARIO: string;
+interface Perfil {
+  ID_PERFIL: number;
+  DETALLE_PERFIL: string;
 }
 
 interface Sex {
@@ -72,8 +53,23 @@ interface Sex {
   DESCRIPCION: string;
 }
 
+interface Fase {
+  ID_FASE: number;
+  NOMBRE: string;
+}
+
+interface Departamento {
+  ID_DEPARTAMENTO: number;
+  NRO_DPTO: number;
+  ID_FASE: number;
+}
+
+interface Rol {
+  ID_ROL: number;
+  DETALLE_USUARIO: string;
+}
+
 interface FormData {
-  nro_dpto: string;
   nombres: string;
   apellidos: string;
   dni: string;
@@ -81,19 +77,22 @@ interface FormData {
   celular: string;
   contacto_emergencia: string;
   fecha_nacimiento: string;
-  id_tipo_usuario: string;
   id_sexo: string;
-  detalle: string;
-  observaciones: string;
-  comite: boolean;
+  id_perfil: string;
+  id_fase: string;
+  id_departamento: string;
+  acceso_sistema: boolean;
   usuario: string;
+  roles: string[];
 }
 
 const Users = () => {
-  const [userTypes, setUserTypes] = useState<UserType[]>([]);
+  const [perfiles, setPerfiles] = useState<Perfil[]>([]);
   const [sexes, setSexes] = useState<Sex[]>([]);
+  const [fases, setFases] = useState<Fase[]>([]);
+  const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
+  const [roles, setRoles] = useState<Rol[]>([]);
   const [formData, setFormData] = useState<FormData>({
-    nro_dpto: "",
     nombres: "",
     apellidos: "",
     dni: "",
@@ -101,12 +100,13 @@ const Users = () => {
     celular: "",
     contacto_emergencia: "",
     fecha_nacimiento: "",
-    id_tipo_usuario: "",
     id_sexo: "",
-    detalle: "",
-    observaciones: "",
-    comite: false,
+    id_perfil: "",
+    id_fase: "",
+    id_departamento: "",
+    acceso_sistema: false,
     usuario: "",
+    roles: [],
   });
   const [message, setMessage] = useState<{
     text: string;
@@ -118,7 +118,7 @@ const Users = () => {
 
   const token = localStorage.getItem("token");
 
-  // Generate username from nombres and apellidos
+  // Generar nombre de usuario
   const generateUsername = (nombres: string, apellidos: string): string => {
     if (!nombres || !apellidos) return "";
     const firstName = nombres.trim().split(" ")[0];
@@ -126,53 +126,93 @@ const Users = () => {
     return `${firstName[0].toLowerCase()}${lastName}`;
   };
 
-  // Update username whenever nombres or apellidos change
+  // Actualizar usuario cuando cambian nombres o apellidos
   useEffect(() => {
-    setFormData((prev) => ({
-      ...prev,
-      usuario: generateUsername(prev.nombres, prev.apellidos),
-    }));
-  }, [formData.nombres, formData.apellidos]);
+    if (formData.acceso_sistema) {
+      setFormData((prev) => ({
+        ...prev,
+        usuario: generateUsername(prev.nombres, prev.apellidos),
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, usuario: "" }));
+    }
+  }, [formData.nombres, formData.apellidos, formData.acceso_sistema]);
 
-  // Fetch user types and sexes
+  // Cargar datos iniciales
   useEffect(() => {
-    const fetchUserTypes = async () => {
+    const fetchPerfiles = async () => {
       try {
-        const response = await fetch(`${API_URL}/user-types`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        const response = await fetch(`${API_URL}/perfiles`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
-        if (!response.ok) throw new Error("Error al obtener tipos de usuario");
+        if (!response.ok) throw new Error("Error al obtener perfiles");
         const data = await response.json();
-        setUserTypes(data);
+        setPerfiles(data);
       } catch (error) {
-        console.error(error);
-        setMessage({ text: "Error al cargar tipos de usuario", type: "error" });
+        setMessage({ text: "Error al cargar perfiles", type: "error" });
       }
     };
 
     const fetchSexes = async () => {
       try {
         const response = await fetch(`${API_URL}/sexes`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
         if (!response.ok) throw new Error("Error al obtener sexos");
         const data = await response.json();
         setSexes(data);
       } catch (error) {
-        console.error(error);
         setMessage({ text: "Error al cargar sexos", type: "error" });
       }
     };
 
-    fetchUserTypes();
+    const fetchFases = async () => {
+      try {
+        const response = await fetch(`${API_URL}/fases`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) throw new Error("Error al obtener fases");
+        const data = await response.json();
+        setFases(data);
+      } catch (error) {
+        setMessage({ text: "Error al cargar fases", type: "error" });
+      }
+    };
+
+    const fetchDepartamentos = async () => {
+      try {
+        const response = await fetch(`${API_URL}/departamentos`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) throw new Error("Error al obtener departamentos");
+        const data = await response.json();
+        setDepartamentos(data);
+      } catch (error) {
+        setMessage({ text: "Error al cargar departamentos", type: "error" });
+      }
+    };
+
+    const fetchRoles = async () => {
+      try {
+        const response = await fetch(`${API_URL}/get-roles`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) throw new Error("Error al obtener roles");
+        const data = await response.json();
+        setRoles(data);
+      } catch (error) {
+        setMessage({ text: "Error al cargar roles", type: "error" });
+      }
+    };
+
+    fetchPerfiles();
     fetchSexes();
+    fetchFases();
+    fetchDepartamentos();
+    fetchRoles();
   }, [token]);
 
-  // Handle input changes
+  // Manejar cambios en los inputs
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
@@ -186,20 +226,22 @@ const Users = () => {
     }));
   };
 
-  // Handle form submission
+  // Manejar selección de roles
+  const handleRoleChange = (roleId: string) => {
+    setFormData((prev) => {
+      const roles = prev.roles.includes(roleId)
+        ? prev.roles.filter((id) => id !== roleId)
+        : [...prev.roles, roleId];
+      return { ...prev, roles };
+    });
+  };
+
+  // Manejar envío del formulario
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (
-      !formData.nombres ||
-      !formData.apellidos ||
-      !formData.dni ||
-      !formData.correo ||
-      !formData.celular ||
-      !formData.id_tipo_usuario ||
-      !formData.id_sexo ||
-      !formData.usuario
-    ) {
+    // Validaciones
+    if (!formData.nombres || !formData.apellidos || !formData.id_sexo || !formData.id_perfil) {
       await Swal.fire({
         icon: "error",
         title: "Campos incompletos",
@@ -210,7 +252,7 @@ const Users = () => {
       return;
     }
 
-    if (!/^[0-9]{8}$/.test(formData.dni)) {
+    if (formData.dni && !/^[0-9]{8}$/.test(formData.dni)) {
       await Swal.fire({
         icon: "error",
         title: "DNI inválido",
@@ -221,7 +263,7 @@ const Users = () => {
       return;
     }
 
-    if (!/^[9][0-9]{8}$/.test(formData.celular)) {
+    if (formData.celular && !/^[9][0-9]{8}$/.test(formData.celular)) {
       await Swal.fire({
         icon: "error",
         title: "Celular inválido",
@@ -246,11 +288,33 @@ const Users = () => {
       return;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo)) {
+    if (formData.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo)) {
       await Swal.fire({
         icon: "error",
         title: "Correo inválido",
         text: "El formato del correo no es válido",
+        timer: 2500,
+        showConfirmButton: false,
+      });
+      return;
+    }
+
+    if (formData.acceso_sistema && (!formData.correo || !formData.roles.length)) {
+      await Swal.fire({
+        icon: "error",
+        title: "Campos incompletos",
+        text: "El correo y al menos un rol son obligatorios para acceso al sistema",
+        timer: 2500,
+        showConfirmButton: false,
+      });
+      return;
+    }
+
+    if (formData.id_perfil === "1" && (!formData.id_fase || !formData.id_departamento)) {
+      await Swal.fire({
+        icon: "error",
+        title: "Campos incompletos",
+        text: "Fase y departamento son obligatorios para residentes",
         timer: 2500,
         showConfirmButton: false,
       });
@@ -265,52 +329,36 @@ const Users = () => {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          nro_dpto: formData.nro_dpto ? parseInt(formData.nro_dpto) : null,
           nombres: formData.nombres,
           apellidos: formData.apellidos,
           dni: formData.dni,
-          correo: formData.correo,
-          celular: formData.celular,
+          correo: formData.correo || null,
+          celular: formData.celular || null,
           contacto_emergencia: formData.contacto_emergencia || null,
           fecha_nacimiento: formData.fecha_nacimiento || null,
-          id_tipo_usuario: parseInt(formData.id_tipo_usuario),
           id_sexo: parseInt(formData.id_sexo),
-          detalle: formData.detalle || null,
-          observaciones: formData.observaciones || null,
-          comite: formData.comite ? 1 : 0,
-          usuario: formData.usuario,
+          id_perfil: parseInt(formData.id_perfil),
+          id_departamento: formData.id_departamento ? parseInt(formData.id_departamento) : null,
+          usuario: formData.acceso_sistema ? formData.usuario : null,
+          roles: formData.acceso_sistema ? formData.roles.map(Number) : null,
+          acceso_sistema: formData.acceso_sistema,
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        const { ID_USUARIO } = data;
-
-        if (formData.comite) {
-          try {
-            await fetch(`${API_URL}/users/${ID_USUARIO}/asignar-comite`, {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            });
-            console.log("✅ Rol de Comité asignado correctamente");
-          } catch (error) {
-            console.error("⚠️ Error al asignar Comité:", error);
-          }
-        }
-
         await Swal.fire({
           icon: "success",
-          title: "Usuario registrado correctamente",
-          text: "La contraseña por defecto es el DNI.",
+          title: "Persona registrada correctamente",
+          text: formData.acceso_sistema
+            ? "Se ha enviado un correo con las credenciales de acceso."
+            : "Registro completado.",
           timer: 2000,
           showConfirmButton: false,
         });
 
         setFormData({
-          nro_dpto: "",
           nombres: "",
           apellidos: "",
           dni: "",
@@ -318,18 +366,19 @@ const Users = () => {
           celular: "",
           contacto_emergencia: "",
           fecha_nacimiento: "",
-          id_tipo_usuario: "",
           id_sexo: "",
-          detalle: "",
-          observaciones: "",
-          comite: false,
+          id_perfil: "",
+          id_fase: "",
+          id_departamento: "",
+          acceso_sistema: false,
           usuario: "",
+          roles: [],
         });
       } else {
         await Swal.fire({
           icon: "error",
           title: "Error",
-          text: data.message || "Error al registrar el usuario",
+          text: data.message || "Error al registrar la persona",
           timer: 2000,
           showConfirmButton: false,
         });
@@ -345,11 +394,15 @@ const Users = () => {
     }
   };
 
+  // Filtrar departamentos por fase seleccionada
+  const filteredDepartamentos = departamentos.filter(
+    (dpto) => dpto.ID_FASE === Number(formData.id_fase)
+  );
+
   return (
     <Container>
-      <Title>Registro de Usuarios</Title>
+      <Title>Registro de Personas</Title>
 
-      {/* Message */}
       {message.text && (
         <Card>
           <div
@@ -369,30 +422,12 @@ const Users = () => {
         </Card>
       )}
 
-      {/* Form */}
       <Card>
-        <h2 className="text-lg font-semibold mb-4">Registrar Nuevo Usuario</h2>
+        <h2 className="text-lg font-semibold mb-4">Registrar Nueva Persona</h2>
         <form
           onSubmit={handleSubmit}
           className="grid grid-cols-1 md:grid-cols-2 gap-4"
         >
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">
-              Nro. Departamento
-            </label>
-            <input
-              type="number"
-              name="nro_dpto"
-              value={formData.nro_dpto}
-              onChange={(e) => {
-                const value = parseInt(e.target.value);
-                if (value < 0) return;
-                handleInputChange(e);
-              }}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              min="0"
-            />
-          </div>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">
               Nombres *
@@ -421,7 +456,7 @@ const Users = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">
-              DNI *
+              DNI
             </label>
             <input
               type="text"
@@ -429,12 +464,11 @@ const Users = () => {
               value={formData.dni}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">
-              Correo *
+              Correo {formData.acceso_sistema && "*"}
             </label>
             <input
               type="email"
@@ -442,12 +476,12 @@ const Users = () => {
               value={formData.correo}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
+              required={formData.acceso_sistema}
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">
-              Celular *
+              Celular
             </label>
             <input
               type="text"
@@ -455,7 +489,6 @@ const Users = () => {
               value={formData.celular}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
             />
           </div>
           <div>
@@ -484,25 +517,6 @@ const Users = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">
-              Tipo de Usuario *
-            </label>
-            <select
-              name="id_tipo_usuario"
-              value={formData.id_tipo_usuario}
-              onChange={handleInputChange}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            >
-              <option value="">Seleccione un tipo</option>
-              {userTypes.map((type) => (
-                <option key={type.ID_TIPO_USUARIO} value={type.ID_TIPO_USUARIO}>
-                  {type.DETALLE_USUARIO}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">
               Sexo *
             </label>
             <select
@@ -522,62 +536,129 @@ const Users = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">
-              Detalle
+              Perfil *
             </label>
-            <input
-              type="text"
-              name="detalle"
-              value={formData.detalle}
+            <select
+              name="id_perfil"
+              value={formData.id_perfil}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+              required
+            >
+              <option value="">Seleccione un perfil</option>
+              {perfiles.map((perfil) => (
+                <option key={perfil.ID_PERFIL} value={perfil.ID_PERFIL}>
+                  {perfil.DETALLE_PERFIL}
+                </option>
+              ))}
+            </select>
           </div>
+          {formData.id_perfil === "1" && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Fase *
+                </label>
+                <select
+                  name="id_fase"
+                  value={formData.id_fase}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Seleccione una fase</option>
+                  {fases.map((fase) => (
+                    <option key={fase.ID_FASE} value={fase.ID_FASE}>
+                      {fase.NOMBRE}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Departamento *
+                </label>
+                <select
+                  name="id_departamento"
+                  value={formData.id_departamento}
+                  onChange={handleInputChange}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                  disabled={!formData.id_fase}
+                >
+                  <option value="">Seleccione un departamento</option>
+                  {filteredDepartamentos.map((dpto) => (
+                    <option key={dpto.ID_DEPARTAMENTO} value={dpto.ID_DEPARTAMENTO}>
+                      {dpto.NRO_DPTO}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">
-              Observaciones
-            </label>
-            <textarea
-              name="observaciones"
-              value={formData.observaciones}
-              onChange={handleInputChange}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={3}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">
-              Pertenece al Comité
+              Acceso al Sistema
             </label>
             <input
               type="checkbox"
-              name="comite"
-              checked={formData.comite}
+              name="acceso_sistema"
+              checked={formData.acceso_sistema}
               onChange={handleInputChange}
               className="h-5 w-5 text-blue-500 focus:ring-blue-500 border-gray-300 rounded"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">
-              Usuario *
-            </label>
-            <input
-              type="text"
-              name="usuario"
-              value={formData.usuario}
-              className="w-full p-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
-              readOnly
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Generado automáticamente a partir del nombre y apellido.
-            </p>
-          </div>
+          {formData.acceso_sistema && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Usuario *
+                </label>
+                <input
+                  type="text"
+                  name="usuario"
+                  value={formData.usuario}
+                  className="w-full p-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed"
+                  readOnly
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Generado automáticamente a partir del nombre y apellido.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Roles *
+                </label>
+                <div className="space-y-2">
+                  {roles.map((rol) => (
+                    <div key={rol.ID_ROL} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id={`rol-${rol.ID_ROL}`}
+                        value={rol.ID_ROL}
+                        checked={formData.roles.includes(String(rol.ID_ROL))}
+                        onChange={() => handleRoleChange(String(rol.ID_ROL))}
+                        className="h-5 w-5 text-blue-500 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label
+                        htmlFor={`rol-${rol.ID_ROL}`}
+                        className="ml-2 text-sm text-gray-600"
+                      >
+                        {rol.DETALLE_USUARIO}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
           <div className="md:col-span-2 flex justify-end">
             <button
               type="submit"
               className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center transition duration-300"
             >
               <FaCheckCircle className="mr-2" />
-              Registrar Usuario
+              Registrar Persona
             </button>
           </div>
         </form>
