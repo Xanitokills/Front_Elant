@@ -304,7 +304,7 @@ const Users = () => {
         dpto.DESCRIPCION && dpto.DESCRIPCION !== String(dpto.NRO_DPTO)
           ? `${dpto.NRO_DPTO} - ${dpto.DESCRIPCION}`
           : `${dpto.NRO_DPTO}`
-      } (Fase: ${fase?.NOMBRE || "Desconocida"})`,
+      } (${fase?.NOMBRE || "Desconocida"})`,
     };
   });
 
