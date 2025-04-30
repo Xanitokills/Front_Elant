@@ -86,7 +86,6 @@ interface FormData {
   fecha_nacimiento: string;
   id_sexo: string;
   id_perfil: string;
-  id_fase: string;
   departamentos: number[];
   id_clasificacion: string;
   inicio_residencia: string;
@@ -113,7 +112,6 @@ const Users = () => {
     fecha_nacimiento: "",
     id_sexo: "",
     id_perfil: "",
-    id_fase: "",
     departamentos: [],
     id_clasificacion: "",
     inicio_residencia: "",
@@ -298,17 +296,17 @@ const Users = () => {
     });
   };
 
-  const filteredDepartamentos = departamentos.filter(
-    (dpto) => dpto.ID_FASE === Number(formData.id_fase)
-  );
-
-  const departamentoOptions = filteredDepartamentos.map((dpto) => ({
-    value: dpto.ID_DEPARTAMENTO,
-    label:
-      dpto.DESCRIPCION && dpto.DESCRIPCION !== String(dpto.NRO_DPTO)
-        ? `${dpto.NRO_DPTO} - ${dpto.DESCRIPCION}`
-        : `${dpto.NRO_DPTO}`,
-  }));
+  const departamentoOptions = departamentos.map((dpto) => {
+    const fase = fases.find((f) => f.ID_FASE === dpto.ID_FASE);
+    return {
+      value: dpto.ID_DEPARTAMENTO,
+      label: `${
+        dpto.DESCRIPCION && dpto.DESCRIPCION !== String(dpto.NRO_DPTO)
+          ? `${dpto.NRO_DPTO} - ${dpto.DESCRIPCION}`
+          : `${dpto.NRO_DPTO}`
+      } (Fase: ${fase?.NOMBRE || "Desconocida"})`,
+    };
+  });
 
   const faseOptions = fases.map((fase) => ({
     value: fase.ID_FASE,
@@ -402,7 +400,6 @@ const Users = () => {
 
     if (formData.id_perfil === "1") {
       if (
-        !formData.id_fase ||
         !formData.departamentos.length ||
         !formData.id_clasificacion ||
         !formData.inicio_residencia
@@ -411,7 +408,7 @@ const Users = () => {
           icon: "error",
           title: "Campos incompletos",
           text:
-            "Fase, departamentos, tipo de residente y fecha de inicio de residencia son obligatorios para residentes",
+            "Departamentos, tipo de residente y fecha de inicio de residencia son obligatorios para residentes",
           timer: 2500,
           showConfirmButton: false,
         });
@@ -484,7 +481,6 @@ const Users = () => {
         acceso_sistema: formData.acceso_sistema,
       };
 
-      // Log antes de enviar la solicitud
       console.log("Enviando solicitud a /register con los siguientes datos:", requestBody);
 
       const response = await fetch(`${API_URL}/register`, {
@@ -498,7 +494,6 @@ const Users = () => {
 
       const data = await response.json();
 
-      // Log de la respuesta del servidor
       console.log("Respuesta del servidor:", {
         status: response.status,
         data,
@@ -525,7 +520,6 @@ const Users = () => {
           fecha_nacimiento: "",
           id_sexo: "",
           id_perfil: "",
-          id_fase: "",
           departamentos: [],
           id_clasificacion: "",
           inicio_residencia: "",
@@ -535,16 +529,26 @@ const Users = () => {
           roles: [],
         });
       } else {
-        await Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: data.message || "Error al registrar la persona",
-          timer: 2000,
-          showConfirmButton: false,
-        });
+        // Manejo específico para el error de departamentos duplicados (50014)
+        if (data.errorNumber === 50014) {
+          await Swal.fire({
+            icon: "error",
+            title: "Error de registro",
+            text: data.message || "El residente ya está registrado en uno o más departamentos seleccionados.",
+            timer: 3000,
+            showConfirmButton: false,
+          });
+        } else {
+          await Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: data.message || "Error al registrar la persona",
+            timer: 2000,
+            showConfirmButton: false,
+          });
+        }
       }
     } catch (error) {
-      // Log del error de conexión o ejecución
       console.error("Error al enviar la solicitud a /register:", error);
       await Swal.fire({
         icon: "error",
@@ -718,25 +722,6 @@ const Users = () => {
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Fase *
-                </label>
-                <select
-                  name="id_fase"
-                  value={formData.id_fase}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="">Seleccione una fase</option>
-                  {fases.map((fase) => (
-                    <option key={fase.ID_FASE} value={fase.ID_FASE}>
-                      {fase.NOMBRE}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">
                   Departamentos *
                 </label>
                 <Select
@@ -744,7 +729,6 @@ const Users = () => {
                   options={departamentoOptions}
                   onChange={handleDepartamentosChange}
                   placeholder="Busca o selecciona departamentos..."
-                  isDisabled={!formData.id_fase}
                   className="basic-multi-select"
                   classNamePrefix="select"
                 />
