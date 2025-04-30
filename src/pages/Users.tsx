@@ -263,9 +263,16 @@ const Users = () => {
     const checked = (e.target as HTMLInputElement).checked;
     let newValue: string | boolean = type === "checkbox" ? checked : value;
 
+    const capitalizeWords = (str: string) =>
+      str
+        .split(" ")  // Divide el texto por espacios
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()) // Capitaliza la primera letra de cada palabra
+        .join(" ");  // Junta las palabras con espacio
+    
     if (name === "nombres" || name === "apellidos") {
-      newValue = value.toUpperCase();
+      newValue = capitalizeWords(value);  // Aplica la función al valor de los campos
     }
+    
 
     setFormData((prev) => ({
       ...prev,
