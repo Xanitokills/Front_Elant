@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
 import Swal from "sweetalert2";
+import Select from "react-select";
 import styled, { keyframes } from "styled-components";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -61,7 +62,13 @@ interface Fase {
 interface Departamento {
   ID_DEPARTAMENTO: number;
   NRO_DPTO: number;
+  DESCRIPCION: string;
   ID_FASE: number;
+}
+
+interface TipoResidente {
+  ID_CLASIFICACION: number;
+  DETALLE_CLASIFICACION: string;
 }
 
 interface Rol {
@@ -80,7 +87,10 @@ interface FormData {
   id_sexo: string;
   id_perfil: string;
   id_fase: string;
-  id_departamento: string;
+  departamentos: number[];
+  id_clasificacion: string;
+  inicio_residencia: string;
+  fases_trabajador: number[];
   acceso_sistema: boolean;
   usuario: string;
   roles: string[];
@@ -91,6 +101,7 @@ const Users = () => {
   const [sexes, setSexes] = useState<Sex[]>([]);
   const [fases, setFases] = useState<Fase[]>([]);
   const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
+  const [tiposResidente, setTiposResidente] = useState<TipoResidente[]>([]);
   const [roles, setRoles] = useState<Rol[]>([]);
   const [formData, setFormData] = useState<FormData>({
     nombres: "",
@@ -103,7 +114,10 @@ const Users = () => {
     id_sexo: "",
     id_perfil: "",
     id_fase: "",
-    id_departamento: "",
+    departamentos: [],
+    id_clasificacion: "",
+    inicio_residencia: "",
+    fases_trabajador: [],
     acceso_sistema: false,
     usuario: "",
     roles: [],
@@ -117,6 +131,21 @@ const Users = () => {
   });
 
   const token = localStorage.getItem("token");
+
+  // Calcular edad a partir de la fecha de nacimiento
+  const calculateAge = (birthDate: string): number => {
+    if (!birthDate) return 0;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const age = calculateAge(formData.fecha_nacimiento);
 
   // Generar nombre de usuario
   const generateUsername = (nombres: string, apellidos: string): string => {
@@ -192,6 +221,19 @@ const Users = () => {
       }
     };
 
+    const fetchTiposResidente = async () => {
+      try {
+        const response = await fetch(`${API_URL}/tipos-residente`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) throw new Error("Error al obtener tipos de residente");
+        const data = await response.json();
+        setTiposResidente(data);
+      } catch (error) {
+        setMessage({ text: "Error al cargar tipos de residente", type: "error" });
+      }
+    };
+
     const fetchRoles = async () => {
       try {
         const response = await fetch(`${API_URL}/get-roles`, {
@@ -209,6 +251,7 @@ const Users = () => {
     fetchSexes();
     fetchFases();
     fetchDepartamentos();
+    fetchTiposResidente();
     fetchRoles();
   }, [token]);
 
@@ -220,10 +263,33 @@ const Users = () => {
   ) => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
+    let newValue: string | boolean = type === "checkbox" ? checked : value;
+
+    // Convertir nombres y apellidos a mayúsculas
+    if (name === "nombres" || name === "apellidos") {
+      newValue = value.toUpperCase();
+    }
+
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: newValue,
     }));
+  };
+
+  // Manejar selección de departamentos
+  const handleDepartamentosChange = (selectedOptions: any) => {
+    const departamentos = selectedOptions
+      ? selectedOptions.map((option: any) => option.value)
+      : [];
+    setFormData((prev) => ({ ...prev, departamentos }));
+  };
+
+  // Manejar selección de fases para trabajadores
+  const handleFasesTrabajadorChange = (selectedOptions: any) => {
+    const fases_trabajador = selectedOptions
+      ? selectedOptions.map((option: any) => option.value)
+      : [];
+    setFormData((prev) => ({ ...prev, fases_trabajador }));
   };
 
   // Manejar selección de roles
@@ -236,12 +302,36 @@ const Users = () => {
     });
   };
 
+  // Filtrar departamentos por fase seleccionada
+  const filteredDepartamentos = departamentos.filter(
+    (dpto) => dpto.ID_FASE === Number(formData.id_fase)
+  );
+
+  // Opciones para react-select (departamentos)
+  const departamentoOptions = filteredDepartamentos.map((dpto) => ({
+    value: dpto.ID_DEPARTAMENTO,
+    label: `${dpto.NRO_DPTO} ${dpto.DESCRIPCION || ""}`,
+  }));
+
+  // Opciones para react-select (fases de trabajador)
+  const faseOptions = fases.map((fase) => ({
+    value: fase.ID_FASE,
+    label: fase.NOMBRE,
+  }));
+
   // Manejar envío del formulario
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validaciones
-    if (!formData.nombres || !formData.apellidos || !formData.id_sexo || !formData.id_perfil) {
+    if (
+      !formData.nombres ||
+      !formData.apellidos ||
+      !formData.dni ||
+      !formData.fecha_nacimiento ||
+      !formData.id_sexo ||
+      !formData.id_perfil
+    ) {
       await Swal.fire({
         icon: "error",
         title: "Campos incompletos",
@@ -252,7 +342,7 @@ const Users = () => {
       return;
     }
 
-    if (formData.dni && !/^[0-9]{8}$/.test(formData.dni)) {
+    if (!/^[0-9]{8}$/.test(formData.dni)) {
       await Swal.fire({
         icon: "error",
         title: "DNI inválido",
@@ -310,15 +400,71 @@ const Users = () => {
       return;
     }
 
-    if (formData.id_perfil === "1" && (!formData.id_fase || !formData.id_departamento)) {
+    if (formData.id_perfil === "1") {
+      if (
+        !formData.id_fase ||
+        !formData.departamentos.length ||
+        !formData.id_clasificacion ||
+        !formData.inicio_residencia
+      ) {
+        await Swal.fire({
+          icon: "error",
+          title: "Campos incompletos",
+          text:
+            "Fase, departamentos, tipo de residente y fecha de inicio de residencia son obligatorios para residentes",
+          timer: 2500,
+          showConfirmButton: false,
+        });
+        return;
+      }
+
+      // Validar formato de inicio_residencia (DD/MM/YYYY)
+      if (!/^\d{2}\/\d{2}\/\d{4}$/.test(formData.inicio_residencia)) {
+        await Swal.fire({
+          icon: "error",
+          title: "Formato inválido",
+          text: "La fecha de inicio de residencia debe estar en formato DD/MM/YYYY",
+          timer: 2500,
+          showConfirmButton: false,
+        });
+        return;
+      }
+    }
+
+    if (formData.id_perfil !== "1" && !formData.fases_trabajador.length) {
       await Swal.fire({
         icon: "error",
         title: "Campos incompletos",
-        text: "Fase y departamento son obligatorios para residentes",
+        text: "Debe seleccionar al menos una fase para trabajadores",
         timer: 2500,
         showConfirmButton: false,
       });
       return;
+    }
+
+    // Validaciones basadas en la edad
+    if (age < 18) {
+      if (!formData.contacto_emergencia) {
+        await Swal.fire({
+          icon: "error",
+          title: "Contacto requerido",
+          text: "El contacto de emergencia es obligatorio para menores de edad",
+          timer: 2500,
+          showConfirmButton: false,
+        });
+        return;
+      }
+    } else {
+      if (!formData.celular) {
+        await Swal.fire({
+          icon: "error",
+          title: "Celular requerido",
+          text: "El celular es obligatorio para mayores de edad",
+          timer: 2500,
+          showConfirmButton: false,
+        });
+        return;
+      }
     }
 
     try {
@@ -335,10 +481,19 @@ const Users = () => {
           correo: formData.correo || null,
           celular: formData.celular || null,
           contacto_emergencia: formData.contacto_emergencia || null,
-          fecha_nacimiento: formData.fecha_nacimiento || null,
+          fecha_nacimiento: formData.fecha_nacimiento,
           id_sexo: parseInt(formData.id_sexo),
           id_perfil: parseInt(formData.id_perfil),
-          id_departamento: formData.id_departamento ? parseInt(formData.id_departamento) : null,
+          departamentos: formData.departamentos.length
+            ? formData.departamentos
+            : null,
+          id_clasificacion: formData.id_clasificacion
+            ? parseInt(formData.id_clasificacion)
+            : null,
+          inicio_residencia: formData.inicio_residencia || null,
+          fases_trabajador: formData.fases_trabajador.length
+            ? formData.fases_trabajador
+            : null,
           usuario: formData.acceso_sistema ? formData.usuario : null,
           roles: formData.acceso_sistema ? formData.roles.map(Number) : null,
           acceso_sistema: formData.acceso_sistema,
@@ -369,7 +524,10 @@ const Users = () => {
           id_sexo: "",
           id_perfil: "",
           id_fase: "",
-          id_departamento: "",
+          departamentos: [],
+          id_clasificacion: "",
+          inicio_residencia: "",
+          fases_trabajador: [],
           acceso_sistema: false,
           usuario: "",
           roles: [],
@@ -393,11 +551,6 @@ const Users = () => {
       });
     }
   };
-
-  // Filtrar departamentos por fase seleccionada
-  const filteredDepartamentos = departamentos.filter(
-    (dpto) => dpto.ID_FASE === Number(formData.id_fase)
-  );
 
   return (
     <Container>
@@ -456,7 +609,7 @@ const Users = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">
-              DNI
+              DNI *
             </label>
             <input
               type="text"
@@ -464,6 +617,7 @@ const Users = () => {
               value={formData.dni}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
             />
           </div>
           <div>
@@ -481,7 +635,7 @@ const Users = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">
-              Celular
+              Celular {age >= 18 && "*"}
             </label>
             <input
               type="text"
@@ -489,11 +643,12 @@ const Users = () => {
               value={formData.celular}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required={age >= 18}
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">
-              Contacto de Emergencia
+              Contacto de Emergencia {age < 18 && "*"}
             </label>
             <input
               type="text"
@@ -501,11 +656,12 @@ const Users = () => {
               value={formData.contacto_emergencia}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required={age < 18}
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">
-              Fecha de Nacimiento
+              Fecha de Nacimiento *
             </label>
             <input
               type="date"
@@ -513,6 +669,7 @@ const Users = () => {
               value={formData.fecha_nacimiento}
               onChange={handleInputChange}
               className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
             />
           </div>
           <div>
@@ -576,25 +733,70 @@ const Users = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Departamento *
+                  Departamentos *
+                </label>
+                <Select
+                  isMulti
+                  options={departamentoOptions}
+                  onChange={handleDepartamentosChange}
+                  placeholder="Busca o selecciona departamentos..."
+                  isDisabled={!formData.id_fase}
+                  className="basic-multi-select"
+                  classNamePrefix="select"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Tipo de Residente *
                 </label>
                 <select
-                  name="id_departamento"
-                  value={formData.id_departamento}
+                  name="id_clasificacion"
+                  value={formData.id_clasificacion}
                   onChange={handleInputChange}
                   className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
-                  disabled={!formData.id_fase}
                 >
-                  <option value="">Seleccione un departamento</option>
-                  {filteredDepartamentos.map((dpto) => (
-                    <option key={dpto.ID_DEPARTAMENTO} value={dpto.ID_DEPARTAMENTO}>
-                      {dpto.NRO_DPTO}
+                  <option value="">Seleccione un tipo</option>
+                  {tiposResidente.map((tipo) => (
+                    <option
+                      key={tipo.ID_CLASIFICACION}
+                      value={tipo.ID_CLASIFICACION}
+                    >
+                      {tipo.DETALLE_CLASIFICACION}
                     </option>
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Inicio de Residencia (DD/MM/YYYY) *
+                </label>
+                <input
+                  type="text"
+                  name="inicio_residencia"
+                  value={formData.inicio_residencia}
+                  onChange={handleInputChange}
+                  placeholder="DD/MM/YYYY"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
             </>
+          )}
+          {formData.id_perfil !== "" && formData.id_perfil !== "1" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Fases de Trabajo *
+              </label>
+              <Select
+                isMulti
+                options={faseOptions}
+                onChange={handleFasesTrabajadorChange}
+                placeholder="Selecciona fases de trabajo..."
+                className="basic-multi-select"
+                classNamePrefix="select"
+              />
+            </div>
           )}
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">
