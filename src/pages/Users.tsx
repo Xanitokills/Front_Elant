@@ -265,7 +265,6 @@ const Users = () => {
     const checked = (e.target as HTMLInputElement).checked;
     let newValue: string | boolean = type === "checkbox" ? checked : value;
 
-    // Convertir nombres y apellidos a mayúsculas
     if (name === "nombres" || name === "apellidos") {
       newValue = value.toUpperCase();
     }
@@ -276,7 +275,6 @@ const Users = () => {
     }));
   };
 
-  // Manejar selección de departamentos
   const handleDepartamentosChange = (selectedOptions: any) => {
     const departamentos = selectedOptions
       ? selectedOptions.map((option: any) => option.value)
@@ -284,7 +282,6 @@ const Users = () => {
     setFormData((prev) => ({ ...prev, departamentos }));
   };
 
-  // Manejar selección de fases para trabajadores
   const handleFasesTrabajadorChange = (selectedOptions: any) => {
     const fases_trabajador = selectedOptions
       ? selectedOptions.map((option: any) => option.value)
@@ -292,7 +289,6 @@ const Users = () => {
     setFormData((prev) => ({ ...prev, fases_trabajador }));
   };
 
-  // Manejar selección de roles
   const handleRoleChange = (roleId: string) => {
     setFormData((prev) => {
       const roles = prev.roles.includes(roleId)
@@ -302,28 +298,32 @@ const Users = () => {
     });
   };
 
-  // Filtrar departamentos por fase seleccionada
   const filteredDepartamentos = departamentos.filter(
     (dpto) => dpto.ID_FASE === Number(formData.id_fase)
   );
 
-  // Opciones para react-select (departamentos)
   const departamentoOptions = filteredDepartamentos.map((dpto) => ({
     value: dpto.ID_DEPARTAMENTO,
-    label: `${dpto.NRO_DPTO} ${dpto.DESCRIPCION || ""}`,
+    label:
+      dpto.DESCRIPCION && dpto.DESCRIPCION !== String(dpto.NRO_DPTO)
+        ? `${dpto.NRO_DPTO} - ${dpto.DESCRIPCION}`
+        : `${dpto.NRO_DPTO}`,
   }));
 
-  // Opciones para react-select (fases de trabajador)
   const faseOptions = fases.map((fase) => ({
     value: fase.ID_FASE,
     label: fase.NOMBRE,
   }));
 
-  // Manejar envío del formulario
+  const formatDateToDDMMYYYY = (date: string): string => {
+    if (!date) return "";
+    const [year, month, day] = date.split("-");
+    return `${day}/${month}/${year}`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validaciones
     if (
       !formData.nombres ||
       !formData.apellidos ||
@@ -417,18 +417,6 @@ const Users = () => {
         });
         return;
       }
-
-      // Validar formato de inicio_residencia (DD/MM/YYYY)
-      if (!/^\d{2}\/\d{2}\/\d{4}$/.test(formData.inicio_residencia)) {
-        await Swal.fire({
-          icon: "error",
-          title: "Formato inválido",
-          text: "La fecha de inicio de residencia debe estar en formato DD/MM/YYYY",
-          timer: 2500,
-          showConfirmButton: false,
-        });
-        return;
-      }
     }
 
     if (formData.id_perfil !== "1" && !formData.fases_trabajador.length) {
@@ -442,7 +430,6 @@ const Users = () => {
       return;
     }
 
-    // Validaciones basadas en la edad
     if (age < 18) {
       if (!formData.contacto_emergencia) {
         await Swal.fire({
@@ -468,39 +455,54 @@ const Users = () => {
     }
 
     try {
+      const formattedInicioResidencia = formData.inicio_residencia
+        ? formatDateToDDMMYYYY(formData.inicio_residencia)
+        : null;
+
+      const requestBody = {
+        nombres: formData.nombres,
+        apellidos: formData.apellidos,
+        dni: formData.dni,
+        correo: formData.correo || null,
+        celular: formData.celular || null,
+        contacto_emergencia: formData.contacto_emergencia || null,
+        fecha_nacimiento: formData.fecha_nacimiento,
+        id_sexo: parseInt(formData.id_sexo),
+        id_perfil: parseInt(formData.id_perfil),
+        departamentos: formData.departamentos.length
+          ? formData.departamentos
+          : null,
+        id_clasificacion: formData.id_clasificacion
+          ? parseInt(formData.id_clasificacion)
+          : null,
+        inicio_residencia: formattedInicioResidencia,
+        fases_trabajador: formData.fases_trabajador.length
+          ? formData.fases_trabajador
+          : null,
+        usuario: formData.acceso_sistema ? formData.usuario : null,
+        roles: formData.acceso_sistema ? formData.roles.map(Number) : null,
+        acceso_sistema: formData.acceso_sistema,
+      };
+
+      // Log antes de enviar la solicitud
+      console.log("Enviando solicitud a /register con los siguientes datos:", requestBody);
+
       const response = await fetch(`${API_URL}/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          nombres: formData.nombres,
-          apellidos: formData.apellidos,
-          dni: formData.dni,
-          correo: formData.correo || null,
-          celular: formData.celular || null,
-          contacto_emergencia: formData.contacto_emergencia || null,
-          fecha_nacimiento: formData.fecha_nacimiento,
-          id_sexo: parseInt(formData.id_sexo),
-          id_perfil: parseInt(formData.id_perfil),
-          departamentos: formData.departamentos.length
-            ? formData.departamentos
-            : null,
-          id_clasificacion: formData.id_clasificacion
-            ? parseInt(formData.id_clasificacion)
-            : null,
-          inicio_residencia: formData.inicio_residencia || null,
-          fases_trabajador: formData.fases_trabajador.length
-            ? formData.fases_trabajador
-            : null,
-          usuario: formData.acceso_sistema ? formData.usuario : null,
-          roles: formData.acceso_sistema ? formData.roles.map(Number) : null,
-          acceso_sistema: formData.acceso_sistema,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
+
+      // Log de la respuesta del servidor
+      console.log("Respuesta del servidor:", {
+        status: response.status,
+        data,
+      });
 
       if (response.ok) {
         await Swal.fire({
@@ -542,6 +544,8 @@ const Users = () => {
         });
       }
     } catch (error) {
+      // Log del error de conexión o ejecución
+      console.error("Error al enviar la solicitud a /register:", error);
       await Swal.fire({
         icon: "error",
         title: "Error de conexión",
@@ -769,14 +773,13 @@ const Users = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Inicio de Residencia (DD/MM/YYYY) *
+                  Inicio de Residencia *
                 </label>
                 <input
-                  type="text"
+                  type="date"
                   name="inicio_residencia"
                   value={formData.inicio_residencia}
                   onChange={handleInputChange}
-                  placeholder="DD/MM/YYYY"
                   className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
