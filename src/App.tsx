@@ -10,8 +10,8 @@ import {
 import Sidebar from "./components/Sidebar";
 import Movements from "./components/Movements";
 import Visits from "./components/Visits";
-import Users from "./pages/Users";
-import UserList from "./pages/UserList";
+import Users from "./components/Users";
+import UserList from "./components/UserList";
 import MovementsList from "./components/Movements";
 import Dashboard from "./pages/Dashboard";
 import ChangePassword from "./components/ChangePassword";
