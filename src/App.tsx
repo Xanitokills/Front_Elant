@@ -1,3 +1,4 @@
+// App.tsx
 import { useState } from "react";
 import {
   BrowserRouter as Router,
@@ -30,7 +31,6 @@ const App = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { isAuthenticated, isLoading, userPermissions } = useAuth();
 
-  // No mostrar pantalla de carga en la ruta /login
   if (isLoading && location.pathname !== "/login") {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -48,7 +48,6 @@ const App = () => {
     return <Navigate to="/login" replace />;
   }
 
-  // Mostrar estado de carga si está autenticado pero userPermissions está vacío
   if (isAuthenticated && userPermissions.length === 0 && location.pathname !== "/login") {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -62,7 +61,6 @@ const App = () => {
     );
   }
 
-  // Redirigir a /dashboard solo si userPermissions está cargado
   if (location.pathname === "/" && !isLoading && userPermissions.length > 0) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -116,62 +114,47 @@ const App = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
 
-          <Route element={<ProtectedRoute requiredPermission="Dashboard" />}>
+          <Route element={<ProtectedRoute requiredMenuId={7} />}>
             <Route path="/dashboard" element={<Dashboard />} />
           </Route>
 
-          <Route
-            element={
-              <ProtectedRoute requiredPermission="Control de Ingresos y Salidas" />
-            }
-          >
+          <Route element={<ProtectedRoute requiredSubmenuId={3} />}>
             <Route path="/personal/movimientos" element={<Movements />} />
             <Route path="/movements-list" element={<MovementsList />} />
           </Route>
 
-          <Route
-            element={<ProtectedRoute requiredPermission="Registrar Personas" />}
-          >
+          <Route element={<ProtectedRoute requiredSubmenuId={1} />}>
             <Route path="/users" element={<Users />} />
           </Route>
-          <Route
-            element={<ProtectedRoute requiredPermission="Lista de Usuarios" />}
-          >
+          <Route element={<ProtectedRoute requiredSubmenuId={2} />}>
             <Route path="/user-list" element={<UserList />} />
           </Route>
 
-          <Route element={<ProtectedRoute requiredPermission="Gestión Visitas" />}>
+          <Route element={<ProtectedRoute requiredSubmenuId={4} />}>
             <Route path="/visits" element={<Visits />} />
           </Route>
-          <Route
-            element={<ProtectedRoute requiredPermission="Visitas Programadas" />}>
+          <Route element={<ProtectedRoute requiredSubmenuId={10} />}>
             <Route path="/VisitasProgramadas" element={<VisitasProgramadas />} />
           </Route>
 
-          <Route element={<ProtectedRoute requiredPermission="Reservas" />}>
+          <Route element={<ProtectedRoute requiredSubmenuId={8} />}>
             <Route path="/reservas" element={<Reservations />} />
           </Route>
-          <Route
-            element={
-              <ProtectedRoute requiredPermission="Gestión de Menús y Submenús" />
-            }
-          >
+          <Route element={<ProtectedRoute requiredSubmenuId={7} />}>
             <Route path="/menu-submenu" element={<MenuSubmenuGestion />} />
           </Route>
-          <Route element={<ProtectedRoute requiredPermission="Login" />}>
+          <Route element={<ProtectedRoute requiredSubmenuId={5} />}>
             <Route path="/LoginConfig" element={<LoginConfig />} />
           </Route>
-          <Route
-            element={<ProtectedRoute requiredPermission="Cambio Contraseña" />}>
+          <Route element={<ProtectedRoute requiredSubmenuId={6} />}>
             <Route path="/ChangePass" element={<ChangePassword />} />
           </Route>
 
-          <Route
-            element={<ProtectedRoute requiredPermission="Registrar Encargo" />}>
+          <Route element={<ProtectedRoute requiredSubmenuId={9} />}>
             <Route path="/RegisterOrder" element={<RegisterOrder />} />
           </Route>
 
-          <Route element={<ProtectedRoute requiredPermission="Configuración" />}>
+          <Route element={<ProtectedRoute requiredMenuId={3} />}>
             <Route
               path="/settings/:section"
               element={
