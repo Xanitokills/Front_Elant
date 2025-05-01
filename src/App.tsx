@@ -130,7 +130,7 @@ const App = () => {
           </Route>
 
           <Route
-            element={<ProtectedRoute requiredPermission="Registrar Usuarios" />}
+            element={<ProtectedRoute requiredPermission="Registrar Personas" />}
           >
             <Route path="/users" element={<Users />} />
           </Route>
