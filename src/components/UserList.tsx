@@ -1,51 +1,10 @@
-import { useState, useEffect } from "react";
-import {
-  FaExclamationCircle,
-  FaCheckCircle,
-  FaEdit,
-  FaTrash,
-  FaEye,
-  FaLock,
-  FaUserShield,
-  FaCamera,
-} from "react-icons/fa";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Modal from "react-modal";
-import Swal from "sweetalert2";
-import styled, { keyframes } from "styled-components";
 import Select from "react-select";
-
+import Swal from "sweetalert2";
+import { FaEye, FaEdit, FaTrash, FaUserShield, FaCheckCircle, FaLock, FaCamera } from "react-icons/fa";
 const API_URL = import.meta.env.VITE_API_URL;
-
-const slideInDown = keyframes`
-  0% { opacity: 0; transform: translateY(-20px); }
-  100% { opacity: 1; transform: translateY(0); }
-`;
-
-const Container = styled.div`
-  padding: 1.5rem;
-  background-color: #f3f4f6;
-  min-height: 100vh;
-  @media (min-width: 768px) { padding: 2rem; }
-`;
-
-const Title = styled.h1`
-  font-size: 1.5rem;
-  font-weight: bold;
-  margin-bottom: 1.5rem;
-  animation: ${slideInDown} 0.5s ease-out;
-`;
-
-const Card = styled.div`
-  background-color: white;
-  padding: 1.5rem;
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin-bottom: 1.5rem;
-  transition: box-shadow 0.2s ease;
-  &:hover { box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15); }
-  @media (min-width: 768px) { padding: 2rem; }
-`;
 
 interface Person {
   ID_PERSONA: number;
@@ -59,6 +18,9 @@ interface Person {
   DETALLE_PERFIL: string;
   ACCESO_SISTEMA: boolean;
   TIENE_FOTO: boolean;
+  FASES_RESIDENTE?: string;
+  FASES_TRABAJADOR?: string;
+  DEPARTAMENTOS?: string;
 }
 
 interface PersonDetails {
@@ -71,17 +33,17 @@ interface PersonDetails {
     CELULAR: string;
     CONTACTO_EMERGENCIA: string;
     FECHA_NACIMIENTO: string;
-    ID_SEXO: number;
     SEXO: string;
-    ID_PERFIL: number;
     DETALLE_PERFIL: string;
+    ID_PERFIL: number;
+    ID_SEXO: number;
     ACCESO_SISTEMA: boolean;
-    USUARIO: string;
-    ID_USUARIO: number;
+    USUARIO?: string;
+    ID_USUARIO?: number;
     FOTO?: string;
     FORMATO?: string;
   };
-  residentInfo: Array<{
+  residentInfo: {
     ID_RESIDENTE: number;
     ID_DEPARTAMENTO: number;
     NRO_DPTO: number;
@@ -90,23 +52,14 @@ interface PersonDetails {
     ID_CLASIFICACION: number;
     DETALLE_CLASIFICACION: string;
     INICIO_RESIDENCIA: string;
-    FIN_RESIDENCIA?: string;
-  }>;
-  workerInfo: Array<{
+  }[];
+  workerInfo: {
     ID_TRABAJADOR: number;
     ID_FASE: number;
     FASE: string;
     FECHA_ASIGNACION: string;
-  }>;
-  roles: Array<{
-    ID_ROL: number;
-    DETALLE_USUARIO: string;
-  }>;
-}
-
-interface Perfil {
-  ID_PERFIL: number;
-  DETALLE_PERFIL: string;
+  }[];
+  roles: { ID_ROL: number; DETALLE_USUARIO: string }[];
 }
 
 interface Sex {
@@ -114,9 +67,9 @@ interface Sex {
   DESCRIPCION: string;
 }
 
-interface Fase {
-  ID_FASE: number;
-  NOMBRE: string;
+interface Perfil {
+  ID_PERFIL: number;
+  DETALLE_PERFIL: string;
 }
 
 interface Departamento {
@@ -126,43 +79,49 @@ interface Departamento {
   ID_FASE: number;
 }
 
+interface Fase {
+  ID_FASE: number;
+  NOMBRE: string;
+}
+
 interface TipoResidente {
   ID_CLASIFICACION: number;
   DETALLE_CLASIFICACION: string;
 }
 
-interface Rol {
+interface Role {
   ID_ROL: number;
   DETALLE_USUARIO: string;
 }
 
+interface Message {
+  text: string;
+  type: "success" | "error";
+}
+
 const UserList = () => {
+  const navigate = useNavigate();
+  const token = localStorage.getItem("token");
+
   const [persons, setPersons] = useState<Person[]>([]);
-  const [perfiles, setPerfiles] = useState<Perfil[]>([]);
-  const [sexes, setSexes] = useState<Sex[]>([]);
-  const [fases, setFases] = useState<Fase[]>([]);
-  const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
-  const [tiposResidente, setTiposResidente] = useState<TipoResidente[]>([]);
-  const [roles, setRoles] = useState<Rol[]>([]);
   const [selectedPerson, setSelectedPerson] = useState<PersonDetails | null>(null);
   const [editingPerson, setEditingPerson] = useState<PersonDetails | null>(null);
   const [viewMode, setViewMode] = useState<"view" | "edit" | "roles">("view");
+  const [message, setMessage] = useState<Message | null>(null);
+  const [newPhoto, setNewPhoto] = useState<File | null>(null);
+  const [sexes, setSexes] = useState<Sex[]>([]);
+  const [perfiles, setPerfiles] = useState<Perfil[]>([]);
+  const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
+  const [fases, setFases] = useState<Fase[]>([]);
+  const [tiposResidente, setTiposResidente] = useState<TipoResidente[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<{
-    text: string;
-    type: "success" | "error" | "";
-  }>({
-    text: "",
-    type: "",
-  });
-  const [searchField, setSearchField] = useState("NOMBRES");
+
+  // Estados para búsqueda y paginación
+  const [searchField, setSearchField] = useState<keyof Person | "FASE" | "DEPARTAMENTO" | "FASE_AND_DEPARTAMENTO">("NOMBRES");
   const [searchValue, setSearchValue] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [newPhoto, setNewPhoto] = useState<File | null>(null);
-
-  const navigate = useNavigate();
-  const token = localStorage.getItem("token");
-  const ITEMS_PER_PAGE = 10;
+  const itemsPerPage = 10;
 
   const fetchPersons = async () => {
     if (!token) {
@@ -215,7 +174,9 @@ const UserList = () => {
 
       const data = await response.json();
       setSelectedPerson(data);
-      if (viewMode === "edit") setEditingPerson(data);
+      if (viewMode === "edit") {
+        setEditingPerson(data);
+      }
     } catch (error) {
       setMessage({
         text: error instanceof Error ? error.message : "Error al cargar detalles",
@@ -224,143 +185,91 @@ const UserList = () => {
     }
   };
 
-  const fetchInitialData = async () => {
+  const fetchSexes = async () => {
     try {
-      const [perfilesRes, sexesRes, fasesRes, departamentosRes, tiposResidenteRes, rolesRes] = await Promise.all([
-        fetch(`${API_URL}/perfiles`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_URL}/sexes`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_URL}/fases`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_URL}/departamentos`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_URL}/tipos-residente`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_URL}/get-roles`, { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
-
-      const [perfilesData, sexesData, fasesData, departamentosData, tiposResidenteData, rolesData] = await Promise.all([
-        perfilesRes.json(),
-        sexesRes.json(),
-        fasesRes.json(),
-        departamentosRes.json(),
-        tiposResidenteRes.json(),
-        rolesRes.json(),
-      ]);
-
-      setPerfiles(perfilesData);
-      setSexes(sexesData);
-      setFases(fasesData);
-      setDepartamentos(departamentosData);
-      setTiposResidente(tiposResidenteData);
-      setRoles(rolesData);
-    } catch (error) {
-      setMessage({
-        text: "Error al cargar datos iniciales",
-        type: "error",
+      const response = await fetch(`${API_URL}/sexes`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
+      if (!response.ok) throw new Error("Error al obtener sexos");
+      const data = await response.json();
+      setSexes(data);
+    } catch (error) {
+      console.error("Error fetching sexes:", error);
     }
   };
 
-  useEffect(() => {
-    if (token) {
-      fetchPersons();
-      fetchInitialData();
-    }
-  }, [token]);
-
-  const filteredPersons = persons.filter((person) => {
-    const target =
-      searchField === "NOMBRES"
-        ? `${person.NOMBRES} ${person.APELLIDOS}`.toLowerCase()
-        : String(person[searchField as keyof Person] ?? "").toLowerCase();
-    return target.includes(searchValue.toLowerCase());
-  });
-
-  const paginatedPersons = filteredPersons.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
-
-  const totalPages = Math.ceil(filteredPersons.length / ITEMS_PER_PAGE);
-
-  const handleUpdatePerson = async () => {
-    if (!editingPerson) return;
-
-    const payload = {
-      nombres: editingPerson.basicInfo.NOMBRES?.trim(),
-      apellidos: editingPerson.basicInfo.APELLIDOS?.trim(),
-      dni: editingPerson.basicInfo.DNI?.trim(),
-      correo: editingPerson.basicInfo.CORREO?.trim(),
-      celular: editingPerson.basicInfo.CELULAR?.trim(),
-      contacto_emergencia: editingPerson.basicInfo.CONTACTO_EMERGENCIA?.trim(),
-      fecha_nacimiento: editingPerson.basicInfo.FECHA_NACIMIENTO?.split("T")[0],
-      id_sexo: editingPerson.basicInfo.ID_SEXO,
-      id_perfil: editingPerson.basicInfo.ID_PERFIL,
-      departamentos: editingPerson.residentInfo.map((r) => r.ID_DEPARTAMENTO),
-      id_clasificacion: editingPerson.residentInfo[0]?.ID_CLASIFICACION,
-      inicio_residencia: editingPerson.residentInfo[0]?.INICIO_RESIDENCIA?.split("T")[0],
-      fases_trabajador: editingPerson.workerInfo.map((w) => w.ID_FASE),
-    };
-
+  const fetchPerfiles = async () => {
     try {
-      const response = await fetch(`${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
+      const response = await fetch(`${API_URL}/perfiles`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error al actualizar la persona");
-      }
-
-      if (newPhoto) {
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-          const base64String = reader.result?.toString().split(",")[1];
-          await fetch(`${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}/photo`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              foto: base64String,
-              formato: newPhoto.type.split("/")[1],
-            }),
-          });
-        };
-        reader.readAsDataURL(newPhoto);
-      }
-
-      await Swal.fire({
-        icon: "success",
-        title: "Éxito",
-        text: "Persona actualizada correctamente",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-
-      setEditingPerson(null);
-      setNewPhoto(null);
-      fetchPersons();
-      setSelectedPerson(null);
+      if (!response.ok) throw new Error("Error al obtener perfiles");
+      const data = await response.json();
+      setPerfiles(data);
     } catch (error) {
-      await Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: error instanceof Error ? error.message : "Error desconocido",
+      console.error("Error fetching perfiles:", error);
+    }
+  };
+
+  const fetchDepartamentos = async () => {
+    try {
+      const response = await fetch(`${API_URL}/departamentos`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
+      if (!response.ok) throw new Error("Error al obtener departamentos");
+      const data = await response.json();
+      setDepartamentos(data);
+    } catch (error) {
+      console.error("Error fetching departamentos:", error);
+    }
+  };
+
+  const fetchFases = async () => {
+    try {
+      const response = await fetch(`${API_URL}/fases`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error("Error al obtener fases");
+      const data = await response.json();
+      setFases(data);
+    } catch (error) {
+      console.error("Error fetching fases:", error);
+    }
+  };
+
+  const fetchTiposResidente = async () => {
+    try {
+      const response = await fetch(`${API_URL}/tipos-residente`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error("Error al obtener tipos de residente");
+      const data = await response.json();
+      setTiposResidente(data);
+    } catch (error) {
+      console.error("Error fetching tipos de residente:", error);
+    }
+  };
+
+  const fetchRoles = async () => {
+    try {
+      const response = await fetch(`${API_URL}/roles`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error("Error al obtener roles");
+      const data = await response.json();
+      setRoles(data);
+    } catch (error) {
+      console.error("Error fetching roles:", error);
     }
   };
 
   const handleDeletePerson = async (id: number) => {
     Swal.fire({
       title: "¿Estás seguro?",
-      text: "No podrás deshacer esta acción.",
+      text: "Esta acción no se puede deshacer.",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Sí, eliminar",
+      confirmButtonText: "Eliminar",
       cancelButtonText: "Cancelar",
     }).then(async (result) => {
       if (result.isConfirmed) {
@@ -374,14 +283,14 @@ const UserList = () => {
 
           if (!response.ok) throw new Error("Error al eliminar la persona");
 
+          setPersons(persons.filter((person) => person.ID_PERSONA !== id));
           Swal.fire({
             icon: "success",
-            title: "Éxito",
+            title: "Eliminado",
             text: "Persona eliminada correctamente",
             timer: 2000,
             showConfirmButton: false,
           });
-          fetchPersons();
         } catch (error) {
           Swal.fire({
             icon: "error",
@@ -391,6 +300,64 @@ const UserList = () => {
         }
       }
     });
+  };
+
+  const handleUpdatePerson = async () => {
+    if (!editingPerson) return;
+
+    try {
+      const formData = new FormData();
+      formData.append(
+        "basicInfo",
+        JSON.stringify({
+          nombres: editingPerson.basicInfo.NOMBRES,
+          apellidos: editingPerson.basicInfo.APELLIDOS,
+          dni: editingPerson.basicInfo.DNI,
+          correo: editingPerson.basicInfo.CORREO,
+          celular: editingPerson.basicInfo.CELULAR,
+          contacto_emergencia: editingPerson.basicInfo.CONTACTO_EMERGENCIA,
+          fecha_nacimiento: editingPerson.basicInfo.FECHA_NACIMIENTO,
+          id_sexo: editingPerson.basicInfo.ID_SEXO,
+          id_perfil: editingPerson.basicInfo.ID_PERFIL,
+        })
+      );
+      formData.append("residentInfo", JSON.stringify(editingPerson.residentInfo));
+      formData.append("workerInfo", JSON.stringify(editingPerson.workerInfo));
+      if (newPhoto) {
+        const base64 = await newPhoto.arrayBuffer().then((buffer) => Buffer.from(buffer).toString("base64"));
+        formData.append("photo", JSON.stringify({ foto: base64, formato: newPhoto.type.split("/")[1] }));
+      }
+
+      const response = await fetch(`${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error("Error al actualizar la persona");
+
+      Swal.fire({
+        icon: "success",
+        title: "Éxito",
+        text: "Persona actualizada correctamente",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+
+      setSelectedPerson(null);
+      setEditingPerson(null);
+      setNewPhoto(null);
+      setViewMode("view");
+      fetchPersons();
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo actualizar la persona",
+      });
+    }
   };
 
   const handleManageAccess = async (person: PersonDetails, activar: boolean) => {
@@ -408,7 +375,10 @@ const UserList = () => {
         try {
           const payload = activar
             ? {
-                usuario: `${person.basicInfo.NOMBRES[0].toLowerCase()}${person.basicInfo.APELLIDOS.toLowerCase().replace(/\s+/g, "")}`,
+                usuario: `${person.basicInfo.NOMBRES[0].toLowerCase()}${person.basicInfo.APELLIDOS.toLowerCase().replace(
+                  /\s+/g,
+                  ""
+                )}`,
                 correo: person.basicInfo.CORREO,
                 roles: person.roles.map((r) => r.ID_ROL),
                 activar,
@@ -428,6 +398,19 @@ const UserList = () => {
 
           if (!response.ok) throw new Error("Error al gestionar acceso");
 
+          const data = await response.json();
+
+          setSelectedPerson({
+            ...person,
+            basicInfo: {
+              ...person.basicInfo,
+              ACCESO_SISTEMA: activar,
+              USUARIO: activar ? payload.usuario : undefined,
+              ID_USUARIO: activar ? data.idUsuario : undefined,
+            },
+            roles: activar ? person.roles : [],
+          });
+
           Swal.fire({
             icon: "success",
             title: "Éxito",
@@ -436,7 +419,6 @@ const UserList = () => {
             showConfirmButton: false,
           });
           fetchPersons();
-          fetchPersonDetails(person.basicInfo.ID_PERSONA);
         } catch (error) {
           Swal.fire({
             icon: "error",
@@ -463,6 +445,11 @@ const UserList = () => {
 
       if (!response.ok) throw new Error("Error al actualizar roles");
 
+      setSelectedPerson({
+        ...selectedPerson!,
+        roles: editingPerson.roles,
+      });
+
       Swal.fire({
         icon: "success",
         title: "Éxito",
@@ -470,8 +457,6 @@ const UserList = () => {
         timer: 2000,
         showConfirmButton: false,
       });
-
-      fetchPersonDetails(editingPerson.basicInfo.ID_PERSONA);
     } catch (error) {
       Swal.fire({
         icon: "error",
@@ -481,267 +466,271 @@ const UserList = () => {
     }
   };
 
-  const handleResetPassword = async (id: number) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`${API_URL}/persons/${id}/change-password`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
+  const handleResetPassword = async (idUsuario: number) => {
+    Swal.fire({
+      title: "¿Restablecer contraseña?",
+      text: "Se generará una nueva contraseña para el usuario.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Restablecer",
+      cancelButtonText: "Cancelar",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          setIsLoading(true);
+          const response = await fetch(`${API_URL}/persons/${idUsuario}/change-password`, {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error al restablecer la contraseña");
+          if (!response.ok) throw new Error("Error al restablecer contraseña");
+
+          Swal.fire({
+            icon: "success",
+            title: "Éxito",
+            text: "Contraseña restablecida correctamente",
+            timer: 2000,
+            showConfirmButton: false,
+          });
+        } catch (error) {
+          Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "No se pudo restablecer la contraseña",
+          });
+        } finally {
+          setIsLoading(false);
+        }
       }
-
-      Swal.fire({
-        icon: "success",
-        title: "Éxito",
-        text: "Se ha restablecido la contraseña correctamente.",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-    } catch (error) {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: error instanceof Error ? error.message : "Error al restablecer la contraseña",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    });
   };
 
   const getDefaultPhoto = (sexo: string) => {
-    return sexo === "Masculino"
-      ? "https://via.placeholder.com/150?text=Hombre"
-      : "https://via.placeholder.com/150?text=Mujer";
+    return sexo === "Masculino" ? "/images/Hombree.jpeg" : "/images/Mujer.jpeg";
   };
 
-  const departamentoOptions = departamentos.map((dpto) => {
-    const fase = fases.find((f) => f.ID_FASE === dpto.ID_FASE);
-    return {
-      value: dpto.ID_DEPARTAMENTO,
-      label: `${
-        dpto.DESCRIPCION && dpto.DESCRIPCION !== String(dpto.NRO_DPTO)
-          ? `${dpto.NRO_DPTO} - ${dpto.DESCRIPCION}`
-          : `${dpto.NRO_DPTO}`
-      } (${fase?.NOMBRE || "Desconocida"})`,
-    };
-  });
+  const filteredPersons = useMemo(() => {
+    return persons.filter((person) => {
+      if (!searchValue) return true;
 
-  const faseOptions = fases.map((fase) => ({
-    value: fase.ID_FASE,
-    label: fase.NOMBRE,
+      if (searchField === "FASE") {
+        const fases = [
+          ...(person.FASES_RESIDENTE?.split(", ") || []),
+          ...(person.FASES_TRABAJADOR?.split(", ") || []),
+        ];
+        return fases.some((fase) => fase.toLowerCase().includes(searchValue.toLowerCase()));
+      }
+
+      if (searchField === "DEPARTAMENTO") {
+        return person.DEPARTAMENTOS?.toLowerCase().includes(searchValue.toLowerCase()) || false;
+      }
+
+      if (searchField === "FASE_AND_DEPARTAMENTO") {
+        const fases = [
+          ...(person.FASES_RESIDENTE?.split(", ") || []),
+          ...(person.FASES_TRABAJADOR?.split(", ") || []),
+        ];
+        const departamentos = person.DEPARTAMENTOS?.toLowerCase() || "";
+        return (
+          fases.some((fase) => fase.toLowerCase().includes(searchValue.toLowerCase())) ||
+          departamentos.includes(searchValue.toLowerCase())
+        );
+      }
+
+      const target =
+        searchField === "NOMBRES"
+          ? `${person.NOMBRES} ${person.APELLIDOS}`.toLowerCase()
+          : String(person[searchField as keyof Person] ?? "").toLowerCase();
+      return target.includes(searchValue.toLowerCase());
+    });
+  }, [persons, searchField, searchValue]);
+
+  const paginatedPersons = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredPersons.slice(start, start + itemsPerPage);
+  }, [filteredPersons, currentPage]);
+
+  const totalPages = Math.ceil(filteredPersons.length / itemsPerPage);
+
+  const departamentoOptions = departamentos.map((d) => ({
+    value: d.ID_DEPARTAMENTO,
+    label: `${d.NRO_DPTO} - ${d.DESCRIPCION}`,
   }));
 
-  const rolOptions = roles.map((rol) => ({
-    value: rol.ID_ROL,
-    label: rol.DETALLE_USUARIO,
+  const faseOptions = fases.map((f) => ({
+    value: f.ID_FASE,
+    label: f.NOMBRE,
   }));
+
+  const roleOptions = roles.map((r) => ({
+    value: r.ID_ROL,
+    label: r.DETALLE_USUARIO,
+  }));
+
+  useEffect(() => {
+    fetchPersons();
+    fetchSexes();
+    fetchPerfiles();
+    fetchDepartamentos();
+    fetchFases();
+    fetchTiposResidente();
+    fetchRoles();
+  }, []);
+
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => setMessage(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
 
   return (
-    <Container>
-      <Title>Gestión de Personas</Title>
-
-      <Card>
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
-          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">
-                Buscar por
-              </label>
-              <select
-                value={searchField}
-                onChange={(e) => {
-                  setSearchField(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="NOMBRES">Nombres</option>
-                <option value="DNI">DNI</option>
-                <option value="CORREO">Correo</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">
-                Valor
-              </label>
-              <input
-                type="text"
-                value={searchValue}
-                onChange={(e) => {
-                  setSearchValue(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Buscar..."
-              />
-            </div>
-          </div>
-          <button
-            onClick={() => navigate("/users")}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"
-          >
-            <FaCheckCircle className="mr-2" /> Registrar Persona
-          </button>
+    <div className="container mx-auto p-4 sm:p-6">
+      <h1 className="text-3xl font-bold mb-6 text-gray-800 text-center sm:text-left">Gestión de Personas</h1>
+      {message && (
+        <div
+          className={`p-4 mb-4 rounded-lg text-center ${
+            message.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+          }`}
+        >
+          {message.text}
         </div>
-
-        {message.text && (
-          <div
-            className={`p-4 mb-6 rounded-lg flex items-center ${
-              message.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-            }`}
-          >
-            {message.type === "success" ? (
-              <FaCheckCircle className="mr-2" />
-            ) : (
-              <FaExclamationCircle className="mr-2" />
-            )}
-            {message.text}
-          </div>
-        )}
-
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white border border-gray-200 rounded-lg">
-            <thead>
-              <tr className="bg-gray-50 text-gray-700 text-sm font-semibold">
-                <th className="py-3 px-4 text-left">Foto</th>
-                <th className="py-3 px-4 text-left">ID</th>
-                <th className="py-3 px-4 text-left">Nombres</th>
-                <th className="py-3 px-4 text-left">DNI</th>
-                <th className="py-3 px-4 text-left">Perfil</th>
-                <th className="py-3 px-4 text-left">Acceso</th>
-                <th className="py-3 px-4 text-left">Acciones</th>
+      )}
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:space-x-4">
+        <select
+          value={searchField}
+          onChange={(e) => {
+            setSearchField(e.target.value as keyof Person | "FASE" | "DEPARTAMENTO" | "FASE_AND_DEPARTAMENTO");
+            setCurrentPage(1);
+          }}
+          className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2 sm:mb-0 sm:w-48"
+        >
+          <option value="NOMBRES">Nombres</option>
+          <option value="DNI">DNI</option>
+          <option value="CORREO">Correo</option>
+          <option value="FASE">Fase</option>
+          <option value="DEPARTAMENTO">Departamento</option>
+          <option value="FASE_AND_DEPARTAMENTO">Fase y Departamento</option>
+        </select>
+        <input
+          type="text"
+          placeholder="Buscar..."
+          value={searchValue}
+          onChange={(e) => {
+            setSearchValue(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div className="overflow-x-auto shadow-lg rounded-lg">
+        <table className="min-w-full bg-white border border-gray-200 rounded-lg">
+          <thead className="bg-blue-600 text-white">
+            <tr>
+              <th className="py-3 px-4 text-left text-sm font-semibold">ID</th>
+              <th className="py-3 px-4 text-left text-sm font-semibold">Nombres</th>
+              <th className="py-3 px-4 text-left text-sm font-semibold">DNI</th>
+              <th className="py-3 px-4 text-left text-sm font-semibold">Perfil</th>
+              <th className="py-3 px-4 text-left text-sm font-semibold">Acceso</th>
+              <th className="py-3 px-4 text-left text-sm font-semibold">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedPersons.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-4 text-center text-gray-500">
+                  No hay personas para mostrar.
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {paginatedPersons.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-4 text-center text-gray-500">
-                    No hay personas para mostrar.
+            ) : (
+              paginatedPersons.map((person, index) => (
+                <tr
+                  key={person.ID_PERSONA}
+                  className={`border-b transition-colors ${
+                    index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                  } hover:bg-blue-50`}
+                >
+                  <td className="py-3 px-4">{person.ID_PERSONA}</td>
+                  <td className="py-3 px-4">{`${person.NOMBRES} ${person.APELLIDOS}`}</td>
+                  <td className="py-3 px-4">{person.DNI}</td>
+                  <td className="py-3 px-4">{person.DETALLE_PERFIL}</td>
+                  <td className="py-3 px-4">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        person.ACCESO_SISTEMA ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {person.ACCESO_SISTEMA ? "Sí" : "No"}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 flex space-x-2">
+                    <button
+                      onClick={() => {
+                        setViewMode("view");
+                        fetchPersonDetails(person.ID_PERSONA);
+                      }}
+                      className="text-blue-600 hover:text-blue-800 transition-colors"
+                      title="Visualizar"
+                    >
+                      <FaEye size={18} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setViewMode("edit");
+                        fetchPersonDetails(person.ID_PERSONA);
+                      }}
+                      className="text-green-600 hover:text-green-800 transition-colors"
+                      title="Editar"
+                    >
+                      <FaEdit size={18} />
+                    </button>
+                    <button
+                      onClick={() => handleDeletePerson(person.ID_PERSONA)}
+                      className="text-red-600 hover:text-red-800 transition-colors"
+                      title="Eliminar"
+                    >
+                      <FaTrash size={18} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setViewMode("roles");
+                        fetchPersonDetails(person.ID_PERSONA);
+                      }}
+                      className="text-purple-600 hover:text-purple-800 transition-colors"
+                      title="Gestionar Acceso"
+                    >
+                      <FaUserShield size={18} />
+                    </button>
                   </td>
                 </tr>
-              ) : (
-                paginatedPersons.map((person, index) => (
-                  <tr
-                    key={person.ID_PERSONA}
-                    className={`border-b transition-colors ${
-                      index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                    } hover:bg-gray-100`}
-                  >
-                    <td className="py-3 px-4">
-                      <img
-                        src={
-                          person.TIENE_FOTO
-                            ? `${API_URL}/persons/${person.ID_PERSONA}/photo`
-                            : getDefaultPhoto(person.SEXO)
-                        }
-                        alt="Foto"
-                        className="w-10 h-10 rounded-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.src = getDefaultPhoto(person.SEXO);
-                        }}
-                      />
-                    </td>
-                    <td className="py-3 px-4">{person.ID_PERSONA}</td>
-                    <td className="py-3 px-4">{`${person.NOMBRES} ${person.APELLIDOS}`}</td>
-                    <td className="py-3 px-4">{person.DNI}</td>
-                    <td className="py-3 px-4">{person.DETALLE_PERFIL}</td>
-                    <td className="py-3 px-4">
-                      {person.ACCESO_SISTEMA ? "Sí" : "No"}
-                    </td>
-                    <td className="py-3 px-4 flex space-x-2">
-                      <button
-                        onClick={() => {
-                          setViewMode("view");
-                          fetchPersonDetails(person.ID_PERSONA);
-                        }}
-                        className="text-blue-500 hover:text-blue-700"
-                        title="Visualizar"
-                      >
-                        <FaEye />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setViewMode("edit");
-                          fetchPersonDetails(person.ID_PERSONA);
-                        }}
-                        className="text-green-500 hover:text-green-700"
-                        title="Editar"
-                      >
-                        <FaEdit />
-                      </button>
-                      <button
-                        onClick={() => handleDeletePerson(person.ID_PERSONA)}
-                        className="text-red-500 hover:text-red-700"
-                        title="Eliminar"
-                      >
-                        <FaTrash />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setViewMode("roles");
-                          fetchPersonDetails(person.ID_PERSONA);
-                        }}
-                        className="text-purple-500 hover:text-purple-700"
-                        title="Gestionar Acceso"
-                      >
-                        <FaUserShield />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      {totalPages > 1 && (
+        <div className="mt-6 flex justify-center space-x-4">
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:bg-gray-300 hover:bg-blue-700 transition-colors"
+          >
+            Anterior
+          </button>
+          <span className="px-4 py-2 text-gray-700">
+            Página {currentPage} de {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:bg-gray-300 hover:bg-blue-700 transition-colors"
+          >
+            Siguiente
+          </button>
         </div>
-
-        {totalPages > 1 && (
-          <div className="flex justify-center items-center mt-6 space-x-2">
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className={`px-3 py-1 rounded-lg border ${
-                currentPage === 1
-                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  : "bg-white text-blue-500 hover:bg-blue-50"
-              }`}
-            >
-              ←
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`px-3 py-1 rounded-lg border ${
-                  page === currentPage
-                    ? "bg-blue-500 text-white"
-                    : "bg-white text-blue-500 hover:bg-blue-50"
-                }`}
-              >
-                {page}
-              </button>
-            ))}
-            <button
-              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className={`px-3 py-1 rounded-lg border ${
-                currentPage === totalPages
-                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  : "bg-white text-blue-500 hover:bg-blue-50"
-              }`}
-            >
-              →
-            </button>
-          </div>
-        )}
-      </Card>
-
+      )}
       <Modal
         isOpen={!!selectedPerson}
         onRequestClose={() => {
@@ -750,145 +739,172 @@ const UserList = () => {
           setNewPhoto(null);
           setViewMode("view");
         }}
-        className="bg-white p-6 w-full sm:max-w-3xl mx-auto mt-20 rounded-lg shadow-lg max-h-[90vh] overflow-y-auto"
-        overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        className={`bg-white p-6 w-full mx-4 sm:mx-auto mt-20 rounded-lg shadow-xl overflow-y-auto ${
+          viewMode === "view"
+            ? "max-w-4xl max-h-[85vh]"
+            : viewMode === "roles"
+            ? "max-w-2xl max-h-[80vh]"
+            : "max-w-3xl max-h-[90vh]"
+        }`}
+        overlayClassName="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50"
         ariaHideApp={false}
       >
         {selectedPerson && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-800">
-                {viewMode === "view"
-                  ? "Detalles de Persona"
-                  : viewMode === "edit"
-                  ? "Editar Persona"
-                  : "Gestionar Acceso"}
-              </h2>
-              <button
-                onClick={() => {
-                  setSelectedPerson(null);
-                  setEditingPerson(null);
-                  setNewPhoto(null);
-                  setViewMode("view");
-                }}
-                className="text-gray-500 hover:text-gray-700"
+          <div className="relative">
+            <button
+              onClick={() => {
+                setSelectedPerson(null);
+                setEditingPerson(null);
+                setNewPhoto(null);
+                setViewMode("view");
+              }}
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
               >
-                <FaExclamationCircle />
-              </button>
-            </div>
-
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
             {viewMode === "view" && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="col-span-2 flex justify-center">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div className="col-span-1 flex justify-center">
                   <img
                     src={
                       selectedPerson.basicInfo.FOTO
                         ? `data:image/${selectedPerson.basicInfo.FORMATO};base64,${selectedPerson.basicInfo.FOTO}`
                         : getDefaultPhoto(selectedPerson.basicInfo.SEXO)
                     }
-                    alt="Foto"
-                    className="w-32 h-32 rounded-full object-cover border-2 border-gray-300"
+                    alt="Foto de perfil"
+                    className="w-40 h-40 rounded-full object-cover border-4 border-blue-200 shadow-md"
                     onError={(e) => {
                       e.currentTarget.src = getDefaultPhoto(selectedPerson.basicInfo.SEXO);
                     }}
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600">Nombres</label>
-                  <p className="p-2 border border-gray-300 rounded-lg">{selectedPerson.basicInfo.NOMBRES}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600">Apellidos</label>
-                  <p className="p-2 border border-gray-300 rounded-lg">{selectedPerson.basicInfo.APELLIDOS}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600">DNI</label>
-                  <p className="p-2 border border-gray-300 rounded-lg">{selectedPerson.basicInfo.DNI}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600">Correo</label>
-                  <p className="p-2 border border-gray-300 rounded-lg">{selectedPerson.basicInfo.CORREO || "N/A"}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600">Celular</label>
-                  <p className="p-2 border border-gray-300 rounded-lg">{selectedPerson.basicInfo.CELULAR || "N/A"}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600">Contacto de Emergencia</label>
-                  <p className="p-2 border border-gray-300 rounded-lg">
-                    {selectedPerson.basicInfo.CONTACTO_EMERGENCIA || "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600">Fecha de Nacimiento</label>
-                  <p className="p-2 border border-gray-300 rounded-lg">
-                    {selectedPerson.basicInfo.FECHA_NACIMIENTO?.split("T")[0].split("-").reverse().join("/")}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600">Sexo</label>
-                  <p className="p-2 border border-gray-300 rounded-lg">{selectedPerson.basicInfo.SEXO}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600">Perfil</label>
-                  <p className="p-2 border border-gray-300 rounded-lg">{selectedPerson.basicInfo.DETALLE_PERFIL}</p>
+                <div className="col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700">Nombres</label>
+                    <p className="p-3 bg-gray-100 rounded-lg text-gray-800">{selectedPerson.basicInfo.NOMBRES}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700">Apellidos</label>
+                    <p className="p-3 bg-gray-100 rounded-lg text-gray-800">{selectedPerson.basicInfo.APELLIDOS}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700">DNI</label>
+                    <p className="p-3 bg-gray-100 rounded-lg text-gray-800">{selectedPerson.basicInfo.DNI}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700">Correo</label>
+                    <p className="p-3 bg-gray-100 rounded-lg text-gray-800">
+                      {selectedPerson.basicInfo.CORREO || "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700">Celular</label>
+                    <p className="p-3 bg-gray-100 rounded-lg text-gray-800">
+                      {selectedPerson.basicInfo.CELULAR || "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700">Contacto de Emergencia</label>
+                    <p className="p-3 bg-gray-100 rounded-lg text-gray-800">
+                      {selectedPerson.basicInfo.CONTACTO_EMERGENCIA || "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700">Fecha de Nacimiento</label>
+                    <p className="p-3 bg-gray-100 rounded-lg text-gray-800">
+                      {selectedPerson.basicInfo.FECHA_NACIMIENTO?.split("T")[0].split("-").reverse().join("/")}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700">Sexo</label>
+                    <p className="p-3 bg-gray-100 rounded-lg text-gray-800">{selectedPerson.basicInfo.SEXO}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700">Perfil</label>
+                    <p className="p-3 bg-gray-100 rounded-lg text-gray-800">
+                      {selectedPerson.basicInfo.DETALLE_PERFIL}
+                    </p>
+                  </div>
                 </div>
                 {selectedPerson.basicInfo.ID_PERFIL === 1 && (
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-600">Información de Residente</label>
-                    <div className="p-2 border border-gray-300 rounded-lg">
+                  <div className="col-span-3 mt-4">
+                    <label className="block text-sm font-semibold text-gray-700">Información de Residente</label>
+                    <div className="p-4 bg-gray-100 rounded-lg">
                       {selectedPerson.residentInfo.length > 0 ? (
                         selectedPerson.residentInfo.map((res) => (
-                          <div key={res.ID_RESIDENTE} className="mb-2">
-                            <p><strong>Departamento:</strong> {res.NRO_DPTO} - {res.DEPARTAMENTO_DESCRIPCION}</p>
-                            <p><strong>Fase:</strong> {res.FASE}</p>
-                            <p><strong>Tipo de Residente:</strong> {res.DETALLE_CLASIFICACION}</p>
-                            <p><strong>Inicio de Residencia:</strong> {res.INICIO_RESIDENCIA.split("T")[0].split("-").reverse().join("/")}</p>
+                          <div key={res.ID_RESIDENTE} className="mb-3">
+                            <p className="text-gray-800">
+                              <strong>Fase:</strong> {res.FASE}
+                            </p>
+                            <p className="text-gray-800">
+                              <strong>Departamento:</strong> {res.NRO_DPTO}
+                            </p>
+                            <p className="text-gray-800">
+                              <strong>Tipo de Residente:</strong> {res.DETALLE_CLASIFICACION}
+                            </p>
+                            <p className="text-gray-800">
+                              <strong>Inicio de Residencia:</strong>{" "}
+                              {res.INICIO_RESIDENCIA.split("T")[0].split("-").reverse().join("/")}
+                            </p>
                           </div>
                         ))
                       ) : (
-                        <p>No hay información de residente.</p>
+                        <p className="text-gray-600">No hay información de residente.</p>
                       )}
                     </div>
                   </div>
                 )}
                 {selectedPerson.basicInfo.ID_PERFIL !== 1 && (
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-600">Fases de Trabajo</label>
-                    <div className="p-2 border border-gray-300 rounded-lg">
+                  <div className="col-span-3 mt-4">
+                    <label className="block text-sm font-semibold text-gray-700">Fases de Trabajo</label>
+                    <div className="p-4 bg-gray-100 rounded-lg">
                       {selectedPerson.workerInfo.length > 0 ? (
                         selectedPerson.workerInfo.map((work) => (
-                          <div key={work.ID_FASE} className="mb-2">
-                            <p><strong>Fase:</strong> {work.FASE}</p>
-                            <p><strong>Fecha de Asignación:</strong> {work.FECHA_ASIGNACION.split("T")[0].split("-").reverse().join("/")}</p>
+                          <div key={work.ID_FASE} className="mb-3">
+                            <p className="text-gray-800">
+                              <strong>Fase:</strong> {work.FASE}
+                            </p>
+                            <p className="text-gray-800">
+                              <strong>Fecha de Asignación:</strong>{" "}
+                              {work.FECHA_ASIGNACION.split("T")[0].split("-").reverse().join("/")}
+                            </p>
                           </div>
                         ))
                       ) : (
-                        <p>No hay fases de trabajo asignadas.</p>
+                        <p className="text-gray-600">No hay fases de trabajo asignadas.</p>
                       )}
                     </div>
                   </div>
                 )}
                 {selectedPerson.basicInfo.ACCESO_SISTEMA && (
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-600">Roles</label>
-                    <div className="p-2 border border-gray-300 rounded-lg">
+                  <div className="col-span-3 mt-4">
+                    <label className="block text-sm font-semibold text-gray-700">Roles</label>
+                    <div className="p-4 bg-gray-100 rounded-lg">
                       {selectedPerson.roles.length > 0 ? (
                         selectedPerson.roles.map((rol) => (
-                          <p key={rol.ID_ROL}>{rol.DETALLE_USUARIO}</p>
+                          <p key={rol.ID_ROL} className="text-gray-800">
+                            {rol.DETALLE_USUARIO}
+                          </p>
                         ))
                       ) : (
-                        <p>No hay roles asignados.</p>
+                        <p className="text-gray-600">No hay roles asignados.</p>
                       )}
                     </div>
                   </div>
                 )}
               </div>
             )}
-
             {viewMode === "edit" && editingPerson && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="col-span-2 flex justify-center">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="col-span-2 flex justify-center mb-4">
                   <div className="relative">
                     <img
                       src={
@@ -898,17 +914,17 @@ const UserList = () => {
                           ? `data:image/${editingPerson.basicInfo.FORMATO};base64,${editingPerson.basicInfo.FOTO}`
                           : getDefaultPhoto(editingPerson.basicInfo.SEXO)
                       }
-                      alt="Foto"
-                      className="w-32 h-32 rounded-full object-cover border-2 border-gray-300"
+                      alt="Foto de perfil"
+                      className="w-40 h-40 rounded-full object-cover border-4 border-blue-200 shadow-md"
                       onError={(e) => {
                         e.currentTarget.src = getDefaultPhoto(editingPerson.basicInfo.SEXO);
                       }}
                     />
                     <label
                       htmlFor="photo-upload"
-                      className="absolute bottom-0 right-0 bg-blue-500 text-white p-2 rounded-full cursor-pointer"
+                      className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 transition-colors"
                     >
-                      <FaCamera />
+                      <FaCamera size={18} />
                     </label>
                     <input
                       id="photo-upload"
@@ -920,10 +936,10 @@ const UserList = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">Nombres</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Nombres</label>
                   <input
-                    className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={editingPerson.basicInfo.NOMBRES}
+                    className="p-3 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={editingPerson.basicInfo.NOMBRES || ""}
                     onChange={(e) =>
                       setEditingPerson({
                         ...editingPerson,
@@ -933,10 +949,10 @@ const UserList = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">Apellidos</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Apellidos</label>
                   <input
-                    className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={editingPerson.basicInfo.APELLIDOS}
+                    className="p-3 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={editingPerson.basicInfo.APELLIDOS || ""}
                     onChange={(e) =>
                       setEditingPerson({
                         ...editingPerson,
@@ -946,10 +962,10 @@ const UserList = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">DNI</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">DNI</label>
                   <input
-                    className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={editingPerson.basicInfo.DNI}
+                    className="p-3 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={editingPerson.basicInfo.DNI || ""}
                     onChange={(e) =>
                       setEditingPerson({
                         ...editingPerson,
@@ -959,9 +975,9 @@ const UserList = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">Correo</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Correo</label>
                   <input
-                    className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="p-3 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={editingPerson.basicInfo.CORREO || ""}
                     onChange={(e) =>
                       setEditingPerson({
@@ -972,9 +988,9 @@ const UserList = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">Celular</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Celular</label>
                   <input
-                    className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="p-3 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={editingPerson.basicInfo.CELULAR || ""}
                     onChange={(e) =>
                       setEditingPerson({
@@ -985,9 +1001,9 @@ const UserList = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">Contacto de Emergencia</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Contacto de Emergencia</label>
                   <input
-                    className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="p-3 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={editingPerson.basicInfo.CONTACTO_EMERGENCIA || ""}
                     onChange={(e) =>
                       setEditingPerson({
@@ -998,11 +1014,11 @@ const UserList = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">Fecha de Nacimiento</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Fecha de Nacimiento</label>
                   <input
                     type="date"
-                    className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={editingPerson.basicInfo.FECHA_NACIMIENTO?.split("T")[0]}
+                    className="p-3 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={editingPerson.basicInfo.FECHA_NACIMIENTO?.split("T")[0] || ""}
                     onChange={(e) =>
                       setEditingPerson({
                         ...editingPerson,
@@ -1012,10 +1028,10 @@ const UserList = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">Sexo</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Sexo</label>
                   <select
-                    className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={editingPerson.basicInfo.ID_SEXO}
+                    className="p-3 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={editingPerson.basicInfo.ID_SEXO || ""}
                     onChange={(e) =>
                       setEditingPerson({
                         ...editingPerson,
@@ -1023,6 +1039,7 @@ const UserList = () => {
                       })
                     }
                   >
+                    <option value="">Seleccione un sexo</option>
                     {sexes.map((sex) => (
                       <option key={sex.ID_SEXO} value={sex.ID_SEXO}>
                         {sex.DESCRIPCION}
@@ -1031,10 +1048,10 @@ const UserList = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">Perfil</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Perfil</label>
                   <select
-                    className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={editingPerson.basicInfo.ID_PERFIL}
+                    className="p-3 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={editingPerson.basicInfo.ID_PERFIL || ""}
                     onChange={(e) =>
                       setEditingPerson({
                         ...editingPerson,
@@ -1044,6 +1061,7 @@ const UserList = () => {
                       })
                     }
                   >
+                    <option value="">Seleccione un perfil</option>
                     {perfiles.map((perfil) => (
                       <option key={perfil.ID_PERFIL} value={perfil.ID_PERFIL}>
                         {perfil.DETALLE_PERFIL}
@@ -1053,8 +1071,8 @@ const UserList = () => {
                 </div>
                 {editingPerson.basicInfo.ID_PERFIL === 1 && (
                   <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Departamentos</label>
+                    <div className="col-span-2">
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Departamentos</label>
                       <Select
                         isMulti
                         options={departamentoOptions}
@@ -1073,15 +1091,15 @@ const UserList = () => {
                               FASE:
                                 fases.find(
                                   (f) =>
-                                    f.ID_FASE ===
-                                    departamentos.find((d) => d.ID_DEPARTAMENTO === opt.value)?.ID_FASE
+                                    f.ID_FASE === departamentos.find((d) => d.ID_DEPARTAMENTO === opt.value)?.ID_FASE
                                 )?.NOMBRE || "",
                               ID_CLASIFICACION: editingPerson.residentInfo[0]?.ID_CLASIFICACION || 0,
                               DETALLE_CLASIFICACION:
                                 tiposResidente.find(
                                   (t) => t.ID_CLASIFICACION === editingPerson.residentInfo[0]?.ID_CLASIFICACION
                                 )?.DETALLE_CLASIFICACION || "",
-                              INICIO_RESIDENCIA: editingPerson.residentInfo[0]?.INICIO_RESIDENCIA || new Date().toISOString(),
+                              INICIO_RESIDENCIA:
+                                editingPerson.residentInfo[0]?.INICIO_RESIDENCIA || new Date().toISOString(),
                             })),
                           })
                         }
@@ -1091,9 +1109,9 @@ const UserList = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Tipo de Residente</label>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Tipo de Residente</label>
                       <select
-                        className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="p-3 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={editingPerson.residentInfo[0]?.ID_CLASIFICACION || ""}
                         onChange={(e) =>
                           setEditingPerson({
@@ -1117,10 +1135,10 @@ const UserList = () => {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Inicio de Residencia</label>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Inicio de Residencia</label>
                       <input
                         type="date"
-                        className="p-2 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="p-3 border border-gray-300 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={editingPerson.residentInfo[0]?.INICIO_RESIDENCIA?.split("T")[0] || ""}
                         onChange={(e) =>
                           setEditingPerson({
@@ -1137,7 +1155,7 @@ const UserList = () => {
                 )}
                 {editingPerson.basicInfo.ID_PERFIL !== 1 && (
                   <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Fases de Trabajo</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Fases de Trabajo</label>
                     <Select
                       isMulti
                       options={faseOptions}
@@ -1161,91 +1179,89 @@ const UserList = () => {
                     />
                   </div>
                 )}
-                <div className="col-span-2 flex justify-end space-x-4 mt-4">
+                <div className="col-span-2 flex justify-end space-x-4 mt-6">
                   <button
                     onClick={() => {
                       setEditingPerson(null);
                       setNewPhoto(null);
                       setViewMode("view");
                     }}
-                    className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
+                    className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
                   >
                     Cancelar
                   </button>
                   <button
                     onClick={handleUpdatePerson}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
                   >
                     <FaCheckCircle className="mr-2" /> Guardar
                   </button>
                 </div>
               </div>
             )}
-
             {viewMode === "roles" && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">Estado de Acceso</label>
-                  <p className="p-2 border border-gray-300 rounded-lg">
+              <div>
+                <h2 className="text-2xl font-bold mb-6 text-gray-800">Gestionar Acceso</h2>
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Usuario</label>
+                  <p className="p-3 bg-gray-100 rounded-lg text-gray-800">
+                    {selectedPerson.basicInfo.USUARIO || "No asignado"}
+                  </p>
+                </div>
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Estado de Acceso</label>
+                  <p
+                    className={`p-3 rounded-lg text-gray-800 ${
+                      selectedPerson.basicInfo.ACCESO_SISTEMA ? "bg-green-100" : "bg-red-100"
+                    }`}
+                  >
                     {selectedPerson.basicInfo.ACCESO_SISTEMA ? "Activo" : "Inactivo"}
                   </p>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">Usuario</label>
-                  <p className="p-2 border border-gray-300 rounded-lg">
-                    {selectedPerson.basicInfo.USUARIO || "N/A"}
-                  </p>
-                </div>
                 {selectedPerson.basicInfo.ACCESO_SISTEMA && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Roles</label>
-                      <Select
-                        isMulti
-                        options={rolOptions}
-                        value={rolOptions.filter((opt) =>
-                          selectedPerson.roles.some((r) => r.ID_ROL === opt.value)
-                        )}
-                        onChange={(selected) =>
-                          setEditingPerson({
-                            ...selectedPerson,
-                            roles: selected.map((opt) => ({
-                              ID_ROL: opt.value,
-                              DETALLE_USUARIO: opt.label,
-                            })),
-                          })
-                        }
-                        placeholder="Selecciona roles..."
-                        className="basic-multi-select"
-                        classNamePrefix="select"
-                      />
-                    </div>
-                    <div className="flex justify-end">
-                      <button
-                        onClick={handleManageRoles}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"
-                      >
-                        <FaCheckCircle className="mr-2" /> Guardar Roles
-                      </button>
-                    </div>
-                  </>
+                  <div className="mb-6">
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Roles Asignados</label>
+                    <Select
+                      isMulti
+                      options={roleOptions}
+                      value={roleOptions.filter((opt) =>
+                        editingPerson?.roles.some((r) => r.ID_ROL === opt.value)
+                      )}
+                      onChange={(selected) =>
+                        setEditingPerson({
+                          ...editingPerson!,
+                          roles: selected.map((opt) => ({
+                            ID_ROL: opt.value,
+                            DETALLE_USUARIO: opt.label,
+                          })),
+                        })
+                      }
+                      placeholder="Selecciona roles..."
+                      className="basic-multi-select"
+                      classNamePrefix="select"
+                    />
+                    <button
+                      onClick={handleManageRoles}
+                      className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                    >
+                      <FaCheckCircle className="mr-2" /> Guardar Roles
+                    </button>
+                  </div>
                 )}
-                <div className="flex justify-between mt-4">
+                <div className="flex flex-col sm:flex-row sm:justify-between gap-4 mt-6">
                   <button
                     onClick={() => handleManageAccess(selectedPerson, !selectedPerson.basicInfo.ACCESO_SISTEMA)}
-                    className={`${
-                      selectedPerson.basicInfo.ACCESO_SISTEMA ? "bg-red-600" : "bg-green-600"
-                    } text-white px-4 py-2 rounded-lg hover:${
-                      selectedPerson.basicInfo.ACCESO_SISTEMA ? "bg-red-700" : "bg-green-700"
-                    } flex items-center`}
+                    className={`flex-1 ${
+                      selectedPerson.basicInfo.ACCESO_SISTEMA ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"
+                    } text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center`}
                   >
                     <FaLock className="mr-2" />
                     {selectedPerson.basicInfo.ACCESO_SISTEMA ? "Desactivar Acceso" : "Activar Acceso"}
                   </button>
                   {selectedPerson.basicInfo.ACCESO_SISTEMA && (
                     <button
-                      onClick={() => handleResetPassword(selectedPerson.basicInfo.ID_USUARIO)}
-                      className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 flex items-center"
+                      onClick={() => handleResetPassword(selectedPerson.basicInfo.ID_USUARIO!)}
+                      className="flex-1 bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors flex items-center justify-center"
                       disabled={isLoading}
                     >
                       <FaLock className="mr-2" /> Restablecer Contraseña
@@ -1257,7 +1273,7 @@ const UserList = () => {
           </div>
         )}
       </Modal>
-    </Container>
+    </div>
   );
 };
 
