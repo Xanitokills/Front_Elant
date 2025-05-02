@@ -13,8 +13,34 @@ import {
   FaLock,
   FaCamera,
 } from "react-icons/fa";
+import styled, { keyframes } from "styled-components";
 
 const API_URL = import.meta.env.VITE_API_URL;
+
+const spin = keyframes`
+  to {
+    transform: rotate(360deg);
+  }
+`;
+
+const SpinnerOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4); // Fondo oscuro opaco
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+`;
+
+const Spinner = styled.div`
+  border: 6px solid #eee;
+  border-top: 6px solid #3b82f6;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  animation: ${spin} 1s linear infinite;
+`;
 
 interface Person {
   ID_PERSONA: number;
@@ -486,77 +512,142 @@ const UserList = () => {
     return `${nombre}${apellido}`.slice(0, 15); // máximo 15 caracteres
   };
 
-  const handleManageAccess = async (person: PersonWithRoles) => {
+  const handleManageAccess = async (
+    person: PersonWithRoles,
+    activar: boolean
+  ) => {
     if (!person) return;
+    setIsLoading(true); // 🌀 Mostrar spinner
 
     const { ID_PERSONA, NOMBRES, APELLIDOS, CORREO } = person.basicInfo;
     const rolesSeleccionados = person.roles.map((r) => r.ID_ROL);
 
-    // Validar datos requeridos
-    if (!CORREO || rolesSeleccionados.length === 0) {
-      Swal.fire({
-        icon: "warning",
-        title: "Faltan datos",
-        text: "Debe ingresar un correo válido y asignar al menos un rol.",
-      });
-      return;
-    }
-
-    // Generar y validar nombre de usuario
-    const usuarioBase = person.usuario || generateUsername(NOMBRES, APELLIDOS);
-    let usuario = usuarioBase;
-    let intentos = 0;
-
-    while ((await checkUsername(usuario)) && intentos < 5) {
-      intentos++;
-      usuario = `${usuarioBase}${intentos}`;
-    }
-
-    if (await checkUsername(usuario)) {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "No se pudo generar un nombre de usuario único. Intente manualmente.",
-      });
-      return;
-    }
-
-    // Enviar solicitud de activación de acceso
-    try {
-      const response = await fetch(`${API_URL}/persons/${ID_PERSONA}/access`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          usuario,
-          correo: CORREO,
-          roles: rolesSeleccionados,
-          activar: true,
-          nombres: NOMBRES,
-          apellidos: APELLIDOS,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Error al activar acceso");
+    if (activar) {
+      // Validaciones
+      if (!CORREO || rolesSeleccionados.length === 0) {
+        Swal.fire({
+          icon: "warning",
+          title: "Faltan datos",
+          text: "Debe ingresar un correo válido y asignar al menos un rol.",
+        });
+        setIsLoading(false);
+        return;
       }
 
-      Swal.fire({
-        icon: "success",
-        title: "Acceso activado",
-        text: `Se activó el acceso correctamente para ${NOMBRES}`,
-      });
+      // Generar usuario único
+      const usuarioBase =
+        person.usuario || generateUsername(NOMBRES, APELLIDOS);
+      let usuario = usuarioBase;
+      let intentos = 0;
 
-      fetchPersons(); // recarga la tabla
-    } catch (error: any) {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: error.message || "No se pudo activar el acceso",
-      });
+      while ((await checkUsername(usuario)) && intentos < 5) {
+        intentos++;
+        usuario = `${usuarioBase}${intentos}`;
+      }
+
+      if (await checkUsername(usuario)) {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "No se pudo generar un nombre de usuario único. Intente manualmente.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${API_URL}/persons/${ID_PERSONA}/access`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              usuario,
+              correo: CORREO,
+              roles: rolesSeleccionados,
+              activar: true,
+              nombres: NOMBRES,
+              apellidos: APELLIDOS,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || "Error al activar acceso");
+        }
+
+        Swal.fire({
+          icon: "success",
+          title: "Acceso activado",
+          text: `Se activó el acceso correctamente para ${NOMBRES}`,
+          timer: 2000,
+          showConfirmButton: false,
+        });
+
+        setSelectedPerson(null);
+        setEditingPerson(null);
+        setViewMode("view");
+        fetchPersons();
+      } catch (error: any) {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: error.message || "No se pudo activar el acceso",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      // Desactivar acceso
+      try {
+        const response = await fetch(
+          `${API_URL}/persons/${ID_PERSONA}/access`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              activar: false,
+              nombres: NOMBRES,
+              apellidos: APELLIDOS,
+              correo: CORREO,
+              roles: [],
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || "Error al desactivar acceso");
+        }
+
+        Swal.fire({
+          icon: "success",
+          title: "Acceso desactivado",
+          text: `Se desactivó el acceso correctamente para ${NOMBRES}`,
+          timer: 2000,
+          showConfirmButton: false,
+        });
+
+        setSelectedPerson(null);
+        setEditingPerson(null);
+        setViewMode("view");
+        fetchPersons();
+      } catch (error: any) {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: error.message || "No se pudo desactivar el acceso",
+        });
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -1081,9 +1172,12 @@ const UserList = () => {
         ariaHideApp={false}
       >
         {isLoading ? (
-          <div className="flex justify-center items-center h-full">
-            <div className="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12"></div>
-          </div>
+          <SpinnerOverlay>
+            <div className="flex flex-col items-center">
+              <Spinner />
+              <p className="mt-4 text-white text-lg">Procesando...</p>
+            </div>
+          </SpinnerOverlay>
         ) : selectedPerson && editingPerson ? (
           <div className="relative">
             <button
@@ -1906,6 +2000,21 @@ const UserList = () => {
                 <h2 className="text-xl font-semibold text-gray-800">
                   Gestionar Acceso al Sistema
                 </h2>
+                <div className="text-gray-800 space-y-1">
+                  <p>
+                    <strong>Nombre:</strong> {editingPerson.basicInfo.NOMBRES}{" "}
+                    {editingPerson.basicInfo.APELLIDOS}
+                  </p>
+                  <p>
+                    <strong>DNI:</strong> {editingPerson.basicInfo.DNI}
+                  </p>
+                  <p>
+                    <strong>Usuario:</strong>{" "}
+                    {editingPerson.basicInfo.USUARIO ||
+                      "(a generar al activar acceso)"}
+                  </p>
+                </div>
+
                 {showEmailInput && (
                   <div className="flex flex-col space-y-2">
                     <label className="block text-sm font-semibold text-gray-700">
