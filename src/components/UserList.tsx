@@ -4,6 +4,8 @@ import Modal from "react-modal";
 import Select from "react-select";
 import Swal from "sweetalert2";
 import Switch from "react-switch";
+import { Buffer } from "buffer";
+
 import {
   FaEye,
   FaEdit,
@@ -386,20 +388,73 @@ const UserList = () => {
     });
   };
 
+  const resizeImage = (file: File, maxWidth = 600, quality = 0.7): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const reader = new FileReader();
+  
+      reader.onload = (e) => {
+        if (!e.target?.result) return reject("No se pudo leer el archivo");
+        img.src = e.target.result as string;
+      };
+  
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const scale = maxWidth / img.width;
+        canvas.width = maxWidth;
+        canvas.height = img.height * scale;
+  
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject("No se pudo crear el contexto");
+  
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        resolve(dataUrl);
+      };
+  
+      img.onerror = reject;
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+  
+  
+
   const handleUpdatePerson = async () => {
     if (!editingPerson) return;
+  
     try {
       setIsLoading(true);
-
-      const photoData = newPhoto
-        ? {
-            foto: await newPhoto
-              .arrayBuffer()
-              .then((buffer) => Buffer.from(buffer).toString("base64")),
-            formato: newPhoto.type.split("/")[1],
-          }
-        : null;
-
+  
+      let photoData = null;
+  
+      if (newPhoto) {
+        // Validación del tamaño (3MB = 3 * 1024 * 1024)
+        if (newPhoto.size > 3 * 1024 * 1024) {
+          Swal.fire({
+            icon: "warning",
+            title: "Imagen muy grande",
+            text: "La imagen supera los 3MB. Se intentará comprimir automáticamente.",
+          });
+        }
+  
+        try {
+          const resizedBase64 = await resizeImage(newPhoto);
+          photoData = {
+            foto: resizedBase64.split(",")[1], // elimina 'data:image/jpeg;base64,'
+            formato: "jpg",
+          };
+        } catch (resizeError) {
+          console.error("Error al redimensionar imagen:", resizeError);
+          Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "No se pudo procesar la imagen seleccionada.",
+          });
+          return;
+        }
+      }
+  
       const payload = {
         basicInfo: {
           nombres: editingPerson.basicInfo.NOMBRES,
@@ -423,7 +478,7 @@ const UserList = () => {
         })),
         photo: photoData,
       };
-
+  
       const response = await fetch(
         `${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}`,
         {
@@ -435,12 +490,15 @@ const UserList = () => {
           body: JSON.stringify(payload),
         }
       );
-
+  
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Error al actualizar la persona");
+        console.error("Detalle del error al actualizar persona:", errorData);
+        throw new Error(
+          errorData.message || `Error ${response.status}: ${response.statusText}`
+        );
       }
-
+  
       Swal.fire({
         icon: "success",
         title: "Éxito",
@@ -448,27 +506,30 @@ const UserList = () => {
         timer: 2000,
         showConfirmButton: false,
       });
-
+  
       setSelectedPerson(null);
       setEditingPerson(null);
       setNewPhoto(null);
       setViewMode("view");
       fetchPersons();
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Error al actualizar persona:", error);
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: error.message.includes("correo")
-          ? "El correo ya está registrado"
-          : error.message.includes("DNI")
-          ? "El DNI ya está registrado"
-          : "No se pudo actualizar la persona",
+        text:
+          error.message.includes("correo")
+            ? "El correo ya está registrado"
+            : error.message.includes("DNI")
+            ? "El DNI ya está registrado"
+            : error.message,
       });
     } finally {
       setIsLoading(false);
     }
   };
-
+  
+  
   const handleUpdateEmail = async () => {
     if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
       Swal.fire({
