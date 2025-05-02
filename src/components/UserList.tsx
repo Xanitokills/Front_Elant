@@ -4,6 +4,7 @@ import Modal from "react-modal";
 import Select from "react-select";
 import Swal from "sweetalert2";
 import { FaEye, FaEdit, FaTrash, FaUserShield, FaCheckCircle, FaLock, FaCamera } from "react-icons/fa";
+
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface Person {
@@ -134,6 +135,7 @@ const UserList = () => {
       return;
     }
 
+    setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/persons`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -155,10 +157,13 @@ const UserList = () => {
         text: error instanceof Error ? error.message : "Error al cargar las personas",
         type: "error",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const fetchPersonDetails = async (id: number) => {
+  const fetchPersonDetails = async (id: number, mode: "view" | "edit" | "roles") => {
+    setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/persons/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -168,14 +173,18 @@ const UserList = () => {
 
       const data = await response.json();
       setSelectedPerson(data);
-      if (viewMode === "edit" || viewMode === "roles") {
-        setEditingPerson(data); // Inicializar editingPerson para edit y roles
+      setEditingPerson(data);
+      setViewMode(mode);
+      if (mode === "roles" && !data.basicInfo.CORREO) {
+        setShowEmailInput(true);
       }
     } catch (error) {
       setMessage({
         text: error instanceof Error ? error.message : "Error al cargar detalles",
         type: "error",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -286,6 +295,7 @@ const UserList = () => {
     if (!editingPerson) return;
 
     try {
+      setIsLoading(true);
       const formData = new FormData();
       formData.append(
         "basicInfo",
@@ -301,8 +311,25 @@ const UserList = () => {
           id_perfil: editingPerson.basicInfo.ID_PERFIL,
         })
       );
-      formData.append("residentInfo", JSON.stringify(editingPerson.residentInfo));
-      formData.append("workerInfo", JSON.stringify(editingPerson.workerInfo));
+      formData.append(
+        "residentInfo",
+        JSON.stringify(
+          editingPerson.residentInfo.map((info) => ({
+            id_departamento: info.ID_DEPARTAMENTO,
+            id_clasificacion: info.ID_CLASIFICACION,
+            inicio_residencia: info.INICIO_RESIDENCIA,
+          }))
+        )
+      );
+      formData.append(
+        "workerInfo",
+        JSON.stringify(
+          editingPerson.workerInfo.map((info) => ({
+            id_fase: info.ID_FASE,
+            fecha_asignacion: info.FECHA_ASIGNACION,
+          }))
+        )
+      );
       if (newPhoto) {
         const base64 = await newPhoto.arrayBuffer().then((buffer) => Buffer.from(buffer).toString("base64"));
         formData.append("photo", JSON.stringify({ foto: base64, formato: newPhoto.type.split("/")[1] }));
@@ -335,6 +362,8 @@ const UserList = () => {
         title: "Error",
         text: "No se pudo actualizar la persona",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -349,16 +378,14 @@ const UserList = () => {
     }
 
     try {
-      const response = await fetch(`${API_URL}/persons/${selectedPerson?.basicInfo.ID_PERSONA}`, {
+      setIsLoading(true);
+      const response = await fetch(`${API_URL}/persons/${selectedPerson?.basicInfo.ID_PERSONA}/email`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          ...selectedPerson?.basicInfo,
-          correo: newEmail,
-        }),
+        body: JSON.stringify({ correo: newEmail }),
       });
 
       if (!response.ok) throw new Error("Error al actualizar el correo");
@@ -386,6 +413,8 @@ const UserList = () => {
         title: "Error",
         text: "No se pudo actualizar el correo",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -421,12 +450,15 @@ const UserList = () => {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
+          setIsLoading(true);
+          const username = `${person.basicInfo.NOMBRES.toLowerCase().replace(/\s+/g, "")}${person.basicInfo.APELLIDOS.toLowerCase().replace(
+            /\s+/g,
+            ""
+          )}${Math.floor(Math.random() * 1000)}`.slice(0, 50);
+
           const payload = activar
             ? {
-                usuario: `${person.basicInfo.NOMBRES[0].toLowerCase()}${person.basicInfo.APELLIDOS.toLowerCase().replace(
-                  /\s+/g,
-                  ""
-                )}`,
+                usuario: username,
                 correo: person.basicInfo.CORREO,
                 roles: editingPerson?.roles.map((r) => r.ID_ROL) || [],
                 activar,
@@ -484,6 +516,8 @@ const UserList = () => {
             title: "Error",
             text: "No se pudo gestionar el acceso",
           });
+        } finally {
+          setIsLoading(false);
         }
       }
     });
@@ -494,7 +528,7 @@ const UserList = () => {
 
     const roles = editingPerson.roles.map((r) => r.ID_ROL);
 
-    if (roles.length === 0) {
+    if (roles.length === 0 && editingPerson.basicInfo.ACCESO_SISTEMA) {
       Swal.fire({
         title: "Desactivar Acceso",
         text: "No se han asignado roles. Esto desactivará el acceso al sistema.",
@@ -505,6 +539,7 @@ const UserList = () => {
       }).then(async (result) => {
         if (result.isConfirmed) {
           try {
+            setIsLoading(true);
             const response = await fetch(`${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}/access`, {
               method: "POST",
               headers: {
@@ -542,6 +577,8 @@ const UserList = () => {
               title: "Error",
               text: "No se pudo desactivar el acceso",
             });
+          } finally {
+            setIsLoading(false);
           }
         }
       });
@@ -549,6 +586,7 @@ const UserList = () => {
     }
 
     try {
+      setIsLoading(true);
       const response = await fetch(`${API_URL}/persons/${editingPerson.basicInfo.ID_USUARIO}/roles`, {
         method: "PUT",
         headers: {
@@ -581,6 +619,8 @@ const UserList = () => {
         title: "Error",
         text: "No se pudo actualizar los roles",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -704,7 +744,6 @@ const UserList = () => {
   }, [message]);
 
   useEffect(() => {
-    // Limpiar inputs al cambiar searchField
     setSearchValue("");
     setSelectedFase("");
     setDepartamentoNumber("");
@@ -829,7 +868,7 @@ const UserList = () => {
                     <button
                       onClick={() => {
                         setViewMode("view");
-                        fetchPersonDetails(person.ID_PERSONA);
+                        fetchPersonDetails(person.ID_PERSONA, "view");
                       }}
                       className="text-blue-600 hover:text-blue-800 transition-colors"
                       title="Visualizar"
@@ -839,7 +878,7 @@ const UserList = () => {
                     <button
                       onClick={() => {
                         setViewMode("edit");
-                        fetchPersonDetails(person.ID_PERSONA);
+                        fetchPersonDetails(person.ID_PERSONA, "edit");
                       }}
                       className="text-green-600 hover:text-green-800 transition-colors"
                       title="Editar"
@@ -857,7 +896,7 @@ const UserList = () => {
                       onClick={() => {
                         setViewMode("roles");
                         setShowEmailInput(false);
-                        fetchPersonDetails(person.ID_PERSONA);
+                        fetchPersonDetails(person.ID_PERSONA, "roles");
                       }}
                       className="text-purple-600 hover:text-purple-800 transition-colors"
                       title="Gestionar Acceso"
@@ -902,7 +941,7 @@ const UserList = () => {
           setShowEmailInput(false);
           setNewEmail("");
         }}
-        className={`bg-white p-6 w-full mx-4 sm:mx-auto mt-20 rounded-lg shadow-xl overflow-y-auto ${
+        className={`bg-white p-6 w-full mx-4 sm:mx-auto mt-20 rounded锅炉 shadow-xl overflow-y-auto ${
           viewMode === "view"
             ? "max-w-4xl max-h-[85vh]"
             : viewMode === "roles"
@@ -912,7 +951,11 @@ const UserList = () => {
         overlayClassName="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50"
         ariaHideApp={false}
       >
-        {selectedPerson && (
+        {isLoading ? (
+          <div className="flex justify-center items-center h-full">
+            <div className="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12"></div>
+          </div>
+        ) : selectedPerson && editingPerson ? (
           <div className="relative">
             <button
               onClick={() => {
@@ -1028,7 +1071,7 @@ const UserList = () => {
                 )}
               </div>
             )}
-            {viewMode === "edit" && editingPerson && (
+            {viewMode === "edit" && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 <div className="col-span-1 flex flex-col items-center">
                   <img
@@ -1345,7 +1388,7 @@ const UserList = () => {
                 </div>
               </div>
             )}
-            {viewMode === "roles" && editingPerson && (
+            {viewMode === "roles" && (
               <div className="flex flex-col space-y-6">
                 <h2 className="text-lg font-semibold text-gray-800">Gestionar Acceso al Sistema</h2>
                 {showEmailInput && (
@@ -1361,7 +1404,8 @@ const UserList = () => {
                       />
                       <button
                         onClick={handleUpdateEmail}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        disabled={isLoading}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-300"
                       >
                         Guardar Correo
                       </button>
@@ -1447,7 +1491,7 @@ const UserList = () => {
               </div>
             )}
           </div>
-        )}
+        ) : null}
       </Modal>
     </div>
   );
