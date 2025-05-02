@@ -388,46 +388,48 @@ const UserList = () => {
     });
   };
 
-  const resizeImage = (file: File, maxWidth = 600, quality = 0.7): Promise<string> => {
+  const resizeImage = (
+    file: File,
+    maxWidth = 600,
+    quality = 0.7
+  ): Promise<string> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
       const reader = new FileReader();
-  
+
       reader.onload = (e) => {
         if (!e.target?.result) return reject("No se pudo leer el archivo");
         img.src = e.target.result as string;
       };
-  
+
       img.onload = () => {
         const canvas = document.createElement("canvas");
         const scale = maxWidth / img.width;
         canvas.width = maxWidth;
         canvas.height = img.height * scale;
-  
+
         const ctx = canvas.getContext("2d");
         if (!ctx) return reject("No se pudo crear el contexto");
-  
+
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL("image/jpeg", quality);
         resolve(dataUrl);
       };
-  
+
       img.onerror = reject;
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
   };
-  
-  
 
   const handleUpdatePerson = async () => {
     if (!editingPerson) return;
-  
+
     try {
       setIsLoading(true);
-  
+
       let photoData = null;
-  
+
       if (newPhoto) {
         // Validación del tamaño (3MB = 3 * 1024 * 1024)
         if (newPhoto.size > 3 * 1024 * 1024) {
@@ -437,7 +439,7 @@ const UserList = () => {
             text: "La imagen supera los 3MB. Se intentará comprimir automáticamente.",
           });
         }
-  
+
         try {
           const resizedBase64 = await resizeImage(newPhoto);
           photoData = {
@@ -454,7 +456,7 @@ const UserList = () => {
           return;
         }
       }
-  
+
       const payload = {
         basicInfo: {
           nombres: editingPerson.basicInfo.NOMBRES,
@@ -478,7 +480,7 @@ const UserList = () => {
         })),
         photo: photoData,
       };
-  
+
       const response = await fetch(
         `${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}`,
         {
@@ -490,15 +492,16 @@ const UserList = () => {
           body: JSON.stringify(payload),
         }
       );
-  
+
       if (!response.ok) {
         const errorData = await response.json();
         console.error("Detalle del error al actualizar persona:", errorData);
         throw new Error(
-          errorData.message || `Error ${response.status}: ${response.statusText}`
+          errorData.message ||
+            `Error ${response.status}: ${response.statusText}`
         );
       }
-  
+
       Swal.fire({
         icon: "success",
         title: "Éxito",
@@ -506,7 +509,7 @@ const UserList = () => {
         timer: 2000,
         showConfirmButton: false,
       });
-  
+
       setSelectedPerson(null);
       setEditingPerson(null);
       setNewPhoto(null);
@@ -517,19 +520,17 @@ const UserList = () => {
       Swal.fire({
         icon: "error",
         title: "Error",
-        text:
-          error.message.includes("correo")
-            ? "El correo ya está registrado"
-            : error.message.includes("DNI")
-            ? "El DNI ya está registrado"
-            : error.message,
+        text: error.message.includes("correo")
+          ? "El correo ya está registrado"
+          : error.message.includes("DNI")
+          ? "El DNI ya está registrado"
+          : error.message,
       });
     } finally {
       setIsLoading(false);
     }
   };
-  
-  
+
   const handleUpdateEmail = async () => {
     if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
       Swal.fire({
@@ -1479,6 +1480,56 @@ const UserList = () => {
                       className="hidden"
                     />
                   </label>
+                  <button
+                    onClick={async () => {
+                      const confirm = await Swal.fire({
+                        title: "¿Eliminar foto?",
+                        text: "Esta acción eliminará la foto actual.",
+                        icon: "warning",
+                        showCancelButton: true,
+                        confirmButtonText: "Sí, eliminar",
+                        cancelButtonText: "Cancelar",
+                      });
+
+                      if (confirm.isConfirmed) {
+                        try {
+                          await fetch(
+                            `${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}/photo`,
+                            {
+                              method: "DELETE",
+                              headers: {
+                                Authorization: `Bearer ${token}`,
+                              },
+                            }
+                          );
+
+                          setEditingPerson({
+                            ...editingPerson,
+                            basicInfo: {
+                              ...editingPerson.basicInfo,
+                              FOTO: null,
+                              FORMATO: null,
+                            },
+                          });
+
+                          Swal.fire(
+                            "Eliminada",
+                            "La foto fue eliminada",
+                            "success"
+                          );
+                        } catch (error) {
+                          Swal.fire(
+                            "Error",
+                            "No se pudo eliminar la foto",
+                            "error"
+                          );
+                        }
+                      }
+                    }}
+                    className="mt-2 text-red-500 underline hover:text-red-700"
+                  >
+                    Eliminar Foto
+                  </button>
                 </div>
                 <div className="col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
