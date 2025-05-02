@@ -110,6 +110,17 @@ interface Message {
   type: "success" | "error";
 }
 
+interface PersonWithRoles {
+  basicInfo: {
+    ID_PERSONA: number;
+    NOMBRES: string;
+    APELLIDOS: string;
+    CORREO: string;
+  };
+  roles: { ID_ROL: number }[];
+  usuario?: string;
+}
+
 const UserList = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
@@ -353,31 +364,32 @@ const UserList = () => {
     if (!editingPerson) return;
     try {
       setIsLoading(true);
-      const formData = new FormData();
-      formData.append(
-        "basicInfo",
-        JSON.stringify({
-          /* datos */
-        })
-      );
-      formData.append("residentInfo", JSON.stringify(/* datos */));
-      formData.append("workerInfo", JSON.stringify(/* datos */));
-      if (newPhoto) {
-        const base64 = await newPhoto
-          .arrayBuffer()
-          .then((buffer) => Buffer.from(buffer).toString("base64"));
-        formData.append(
-          "photo",
-          JSON.stringify({ foto: base64, formato: newPhoto.type.split("/")[1] })
-        );
-      }
+
+      const photoData = newPhoto
+        ? {
+            foto: await newPhoto
+              .arrayBuffer()
+              .then((buffer) => Buffer.from(buffer).toString("base64")),
+            formato: newPhoto.type.split("/")[1],
+          }
+        : null;
+
+      const payload = {
+        basicInfo: editingPerson.basicInfo,
+        residentInfo: editingPerson.residentInfo,
+        workerInfo: editingPerson.workerInfo,
+        photo: photoData,
+      };
 
       const response = await fetch(
         `${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}`,
         {
           method: "PUT",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
         }
       );
 
@@ -393,6 +405,7 @@ const UserList = () => {
         timer: 2000,
         showConfirmButton: false,
       });
+
       setSelectedPerson(null);
       setEditingPerson(null);
       setNewPhoto(null);
@@ -402,8 +415,8 @@ const UserList = () => {
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: error.message.includes("El correo ya está registrado")
-          ? "El correo ya está registrado para otra persona"
+        text: error.message.includes("correo")
+          ? "El correo ya está registrado"
           : error.message.includes("DNI")
           ? "El DNI ya está registrado"
           : "No se pudo actualizar la persona",
@@ -467,123 +480,84 @@ const UserList = () => {
     }
   };
 
-  const handleManageAccess = async (
-    person: PersonDetails,
-    activar: boolean
-  ) => {
-    if (activar && !person.basicInfo.CORREO) {
-      setShowEmailInput(true);
+  const generateUsername = (nombres: string, apellidos: string): string => {
+    const nombre = nombres?.split(" ")[0]?.toLowerCase() || "usuario";
+    const apellido = apellidos?.split(" ")[0]?.toLowerCase() || "nuevo";
+    return `${nombre}${apellido}`.slice(0, 15); // máximo 15 caracteres
+  };
+
+  const handleManageAccess = async (person: PersonWithRoles) => {
+    if (!person) return;
+
+    const { ID_PERSONA, NOMBRES, APELLIDOS, CORREO } = person.basicInfo;
+    const rolesSeleccionados = person.roles.map((r) => r.ID_ROL);
+
+    // Validar datos requeridos
+    if (!CORREO || rolesSeleccionados.length === 0) {
       Swal.fire({
         icon: "warning",
-        title: "Correo requerido",
-        text: "Por favor, ingrese un correo para activar el acceso.",
+        title: "Faltan datos",
+        text: "Debe ingresar un correo válido y asignar al menos un rol.",
       });
       return;
     }
 
-    if (
-      activar &&
-      (!editingPerson?.roles || editingPerson.roles.length === 0)
-    ) {
+    // Generar y validar nombre de usuario
+    const usuarioBase = person.usuario || generateUsername(NOMBRES, APELLIDOS);
+    let usuario = usuarioBase;
+    let intentos = 0;
+
+    while ((await checkUsername(usuario)) && intentos < 5) {
+      intentos++;
+      usuario = `${usuarioBase}${intentos}`;
+    }
+
+    if (await checkUsername(usuario)) {
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "Debe asignar al menos un rol para activar el acceso.",
+        text: "No se pudo generar un nombre de usuario único. Intente manualmente.",
       });
       return;
     }
 
-    Swal.fire({
-      title: activar ? "Activar Acceso" : "Desactivar Acceso",
-      text: activar
-        ? "Se generará un usuario y contraseña para esta persona."
-        : "Se desactivará el acceso al sistema para esta persona.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: activar ? "Activar" : "Desactivar",
-      cancelButtonText: "Cancelar",
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          setIsLoading(true);
-          const username = `${person.basicInfo.NOMBRES.toLowerCase().replace(
-            /\s+/g,
-            ""
-          )}${person.basicInfo.APELLIDOS.toLowerCase().replace(
-            /\s+/g,
-            ""
-          )}${Math.floor(Math.random() * 1000)}`.slice(0, 50);
+    // Enviar solicitud de activación de acceso
+    try {
+      const response = await fetch(`${API_URL}/persons/${ID_PERSONA}/access`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          usuario,
+          correo: CORREO,
+          roles: rolesSeleccionados,
+          activar: true,
+          nombres: NOMBRES,
+          apellidos: APELLIDOS,
+        }),
+      });
 
-          const payload = activar
-            ? {
-                usuario: username,
-                correo: person.basicInfo.CORREO,
-                roles: editingPerson?.roles.map((r) => r.ID_ROL) || [],
-                activar,
-                nombres: person.basicInfo.NOMBRES,
-                apellidos: person.basicInfo.APELLIDOS,
-              }
-            : { activar };
-
-          const response = await fetch(
-            `${API_URL}/persons/${person.basicInfo.ID_PERSONA}/access`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify(payload),
-            }
-          );
-
-          if (!response.ok) throw new Error("Error al gestionar acceso");
-
-          const data = await response.json();
-
-          setSelectedPerson({
-            ...person,
-            basicInfo: {
-              ...person.basicInfo,
-              ACCESO_SISTEMA: activar,
-              USUARIO: activar ? data.usuario : undefined,
-              ID_USUARIO: activar ? data.idUsuario : undefined,
-            },
-            roles: activar ? editingPerson?.roles || [] : [],
-          });
-
-          setEditingPerson({
-            ...editingPerson!,
-            basicInfo: {
-              ...editingPerson!.basicInfo,
-              ACCESO_SISTEMA: activar,
-              USUARIO: activar ? data.usuario : undefined,
-              ID_USUARIO: activar ? data.idUsuario : undefined,
-            },
-            roles: activar ? editingPerson?.roles || [] : [],
-          });
-
-          Swal.fire({
-            icon: "success",
-            title: "Éxito",
-            text: activar
-              ? "Acceso activado correctamente"
-              : "Acceso desactivado correctamente",
-            timer: 2000,
-            showConfirmButton: false,
-          });
-          fetchPersons();
-        } catch (error) {
-          Swal.fire({
-            icon: "error",
-            title: "Error",
-            text: "No se pudo gestionar el acceso",
-          });
-        } finally {
-          setIsLoading(false);
-        }
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Error al activar acceso");
       }
-    });
+
+      Swal.fire({
+        icon: "success",
+        title: "Acceso activado",
+        text: `Se activó el acceso correctamente para ${NOMBRES}`,
+      });
+
+      fetchPersons(); // recarga la tabla
+    } catch (error: any) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: error.message || "No se pudo activar el acceso",
+      });
+    }
   };
 
   const handleManageRoles = async () => {
@@ -823,6 +797,19 @@ const UserList = () => {
   const filteredDepartamentos = selectedFaseId
     ? departamentos.filter((dpto) => dpto.ID_FASE === selectedFaseId)
     : departamentos;
+
+  const checkUsername = async (username: string): Promise<boolean> => {
+    const res = await fetch(
+      `${API_URL}/check-username?username=${encodeURIComponent(username)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    const data = await res.json();
+    return data.exists;
+  };
 
   useEffect(() => {
     fetchPersons();
