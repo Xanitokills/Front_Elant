@@ -3,7 +3,16 @@ import { useNavigate } from "react-router-dom";
 import Modal from "react-modal";
 import Select from "react-select";
 import Swal from "sweetalert2";
-import { FaEye, FaEdit, FaTrash, FaUserShield, FaCheckCircle, FaLock, FaCamera } from "react-icons/fa";
+import Switch from "react-switch";
+import {
+  FaEye,
+  FaEdit,
+  FaTrash,
+  FaUserShield,
+  FaCheckCircle,
+  FaLock,
+  FaCamera,
+} from "react-icons/fa";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -19,6 +28,7 @@ interface Person {
   DETALLE_PERFIL: string;
   ACCESO_SISTEMA: boolean;
   TIENE_FOTO: boolean;
+  ESTADO: number; // Agregar campo ESTADO
   FASES_RESIDENTE?: string;
   FASES_TRABAJADOR?: string;
   DEPARTAMENTOS?: string;
@@ -105,8 +115,12 @@ const UserList = () => {
   const token = localStorage.getItem("token");
 
   const [persons, setPersons] = useState<Person[]>([]);
-  const [selectedPerson, setSelectedPerson] = useState<PersonDetails | null>(null);
-  const [editingPerson, setEditingPerson] = useState<PersonDetails | null>(null);
+  const [selectedPerson, setSelectedPerson] = useState<PersonDetails | null>(
+    null
+  );
+  const [editingPerson, setEditingPerson] = useState<PersonDetails | null>(
+    null
+  );
   const [viewMode, setViewMode] = useState<"view" | "edit" | "roles">("view");
   const [message, setMessage] = useState<Message | null>(null);
   const [newPhoto, setNewPhoto] = useState<File | null>(null);
@@ -119,42 +133,54 @@ const UserList = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [showEmailInput, setShowEmailInput] = useState(false);
+  const [showActive, setShowActive] = useState(true); // Mostrar activas por defecto
 
   // Estados para búsqueda y paginación
-  const [searchField, setSearchField] = useState<keyof Person | "FASE" | "DEPARTAMENTO" | "FASE_AND_DEPARTAMENTO">("NOMBRES");
+  const [searchField, setSearchField] = useState<
+    keyof Person | "FASE" | "DEPARTAMENTO" | "FASE_AND_DEPARTAMENTO"
+  >("NOMBRES");
   const [searchValue, setSearchValue] = useState("");
   const [selectedFase, setSelectedFase] = useState("");
   const [departamentoNumber, setDepartamentoNumber] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [selectedFaseId, setSelectedFaseId] = useState<number | null>(null);
 
   const fetchPersons = async () => {
     if (!token) {
-      setMessage({ text: "No se encontró un token. Por favor, inicia sesión.", type: "error" });
+      setMessage({
+        text: "No se encontró un token. Por favor, inicia sesión.",
+        type: "error",
+      });
       navigate("/login");
       return;
     }
-
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/persons`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
+      const response = await fetch(
+        `${API_URL}/persons?mostrarActivos=${showActive ? 1 : 0}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       if (response.status === 401) {
         localStorage.clear();
-        setMessage({ text: "Sesión expirada. Por favor, inicia sesión nuevamente.", type: "error" });
+        setMessage({
+          text: "Sesión expirada. Por favor, inicia sesión nuevamente.",
+          type: "error",
+        });
         navigate("/login");
         return;
       }
-
       if (!response.ok) throw new Error("Error al obtener las personas");
-
       const data = await response.json();
       setPersons(data);
     } catch (error) {
       setMessage({
-        text: error instanceof Error ? error.message : "Error al cargar las personas",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Error al cargar las personas",
         type: "error",
       });
     } finally {
@@ -162,14 +188,18 @@ const UserList = () => {
     }
   };
 
-  const fetchPersonDetails = async (id: number, mode: "view" | "edit" | "roles") => {
+  const fetchPersonDetails = async (
+    id: number,
+    mode: "view" | "edit" | "roles"
+  ) => {
     setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/persons/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (!response.ok) throw new Error("Error al obtener detalles de la persona");
+      if (!response.ok)
+        throw new Error("Error al obtener detalles de la persona");
 
       const data = await response.json();
       setSelectedPerson(data);
@@ -180,7 +210,8 @@ const UserList = () => {
       }
     } catch (error) {
       setMessage({
-        text: error instanceof Error ? error.message : "Error al cargar detalles",
+        text:
+          error instanceof Error ? error.message : "Error al cargar detalles",
         type: "error",
       });
     } finally {
@@ -190,7 +221,9 @@ const UserList = () => {
 
   const fetchSexes = async () => {
     try {
-      const response = await fetch(`${API_URL}/sexes`, { headers: { Authorization: `Bearer ${token}` } });
+      const response = await fetch(`${API_URL}/sexes`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!response.ok) throw new Error("Error al obtener sexos");
       const data = await response.json();
       setSexes(data);
@@ -201,7 +234,9 @@ const UserList = () => {
 
   const fetchPerfiles = async () => {
     try {
-      const response = await fetch(`${API_URL}/perfiles`, { headers: { Authorization: `Bearer ${token}` } });
+      const response = await fetch(`${API_URL}/perfiles`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!response.ok) throw new Error("Error al obtener perfiles");
       const data = await response.json();
       setPerfiles(data);
@@ -212,7 +247,9 @@ const UserList = () => {
 
   const fetchDepartamentos = async () => {
     try {
-      const response = await fetch(`${API_URL}/departamentos`, { headers: { Authorization: `Bearer ${token}` } });
+      const response = await fetch(`${API_URL}/departamentos`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!response.ok) throw new Error("Error al obtener departamentos");
       const data = await response.json();
       setDepartamentos(data);
@@ -223,7 +260,9 @@ const UserList = () => {
 
   const fetchFases = async () => {
     try {
-      const response = await fetch(`${API_URL}/fases`, { headers: { Authorization: `Bearer ${token}` } });
+      const response = await fetch(`${API_URL}/fases`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!response.ok) throw new Error("Error al obtener fases");
       const data = await response.json();
       setFases(data);
@@ -234,7 +273,9 @@ const UserList = () => {
 
   const fetchTiposResidente = async () => {
     try {
-      const response = await fetch(`${API_URL}/tipos-residente`, { headers: { Authorization: `Bearer ${token}` } });
+      const response = await fetch(`${API_URL}/tipos-residente`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!response.ok) throw new Error("Error al obtener tipos de residente");
       const data = await response.json();
       setTiposResidente(data);
@@ -245,12 +286,29 @@ const UserList = () => {
 
   const fetchRoles = async () => {
     try {
-      const response = await fetch(`${API_URL}/roles`, { headers: { Authorization: `Bearer ${token}` } });
-      if (!response.ok) throw new Error("Error al obtener roles");
+      const response = await fetch(`${API_URL}/roles`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.status === 401) {
+        localStorage.clear();
+        setMessage({
+          text: "Sesión expirada. Por favor, inicia sesión nuevamente.",
+          type: "error",
+        });
+        navigate("/login");
+        return;
+      }
+      if (!response.ok) {
+        throw new Error(`Error al obtener roles: ${response.statusText}`);
+      }
       const data = await response.json();
       setRoles(data);
     } catch (error) {
       console.error("Error fetching roles:", error);
+      setMessage({
+        text: error instanceof Error ? error.message : "Error al cargar roles",
+        type: "error",
+      });
     }
   };
 
@@ -293,55 +351,40 @@ const UserList = () => {
 
   const handleUpdatePerson = async () => {
     if (!editingPerson) return;
-
     try {
       setIsLoading(true);
       const formData = new FormData();
       formData.append(
         "basicInfo",
         JSON.stringify({
-          nombres: editingPerson.basicInfo.NOMBRES,
-          apellidos: editingPerson.basicInfo.APELLIDOS,
-          dni: editingPerson.basicInfo.DNI,
-          correo: editingPerson.basicInfo.CORREO,
-          celular: editingPerson.basicInfo.CELULAR,
-          contacto_emergencia: editingPerson.basicInfo.CONTACTO_EMERGENCIA,
-          fecha_nacimiento: editingPerson.basicInfo.FECHA_NACIMIENTO,
-          id_sexo: editingPerson.basicInfo.ID_SEXO,
-          id_perfil: editingPerson.basicInfo.ID_PERFIL,
+          /* datos */
         })
       );
-      formData.append(
-        "residentInfo",
-        JSON.stringify(
-          editingPerson.residentInfo.map((info) => ({
-            id_departamento: info.ID_DEPARTAMENTO,
-            id_clasificacion: info.ID_CLASIFICACION,
-            inicio_residencia: info.INICIO_RESIDENCIA,
-          }))
-        )
-      );
-      formData.append(
-        "workerInfo",
-        JSON.stringify(
-          editingPerson.workerInfo.map((info) => ({
-            id_fase: info.ID_FASE,
-            fecha_asignacion: info.FECHA_ASIGNACION,
-          }))
-        )
-      );
+      formData.append("residentInfo", JSON.stringify(/* datos */));
+      formData.append("workerInfo", JSON.stringify(/* datos */));
       if (newPhoto) {
-        const base64 = await newPhoto.arrayBuffer().then((buffer) => Buffer.from(buffer).toString("base64"));
-        formData.append("photo", JSON.stringify({ foto: base64, formato: newPhoto.type.split("/")[1] }));
+        const base64 = await newPhoto
+          .arrayBuffer()
+          .then((buffer) => Buffer.from(buffer).toString("base64"));
+        formData.append(
+          "photo",
+          JSON.stringify({ foto: base64, formato: newPhoto.type.split("/")[1] })
+        );
       }
 
-      const response = await fetch(`${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}`, {
-        method: "PUT",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
+      const response = await fetch(
+        `${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}`,
+        {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        }
+      );
 
-      if (!response.ok) throw new Error("Error al actualizar la persona");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al actualizar la persona");
+      }
 
       Swal.fire({
         icon: "success",
@@ -350,7 +393,6 @@ const UserList = () => {
         timer: 2000,
         showConfirmButton: false,
       });
-
       setSelectedPerson(null);
       setEditingPerson(null);
       setNewPhoto(null);
@@ -360,7 +402,11 @@ const UserList = () => {
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "No se pudo actualizar la persona",
+        text: error.message.includes("El correo ya está registrado")
+          ? "El correo ya está registrado para otra persona"
+          : error.message.includes("DNI")
+          ? "El DNI ya está registrado"
+          : "No se pudo actualizar la persona",
       });
     } finally {
       setIsLoading(false);
@@ -379,14 +425,17 @@ const UserList = () => {
 
     try {
       setIsLoading(true);
-      const response = await fetch(`${API_URL}/persons/${selectedPerson?.basicInfo.ID_PERSONA}/email`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ correo: newEmail }),
-      });
+      const response = await fetch(
+        `${API_URL}/persons/${selectedPerson?.basicInfo.ID_PERSONA}/email`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ correo: newEmail }),
+        }
+      );
 
       if (!response.ok) throw new Error("Error al actualizar el correo");
 
@@ -418,7 +467,10 @@ const UserList = () => {
     }
   };
 
-  const handleManageAccess = async (person: PersonDetails, activar: boolean) => {
+  const handleManageAccess = async (
+    person: PersonDetails,
+    activar: boolean
+  ) => {
     if (activar && !person.basicInfo.CORREO) {
       setShowEmailInput(true);
       Swal.fire({
@@ -429,7 +481,10 @@ const UserList = () => {
       return;
     }
 
-    if (activar && (!editingPerson?.roles || editingPerson.roles.length === 0)) {
+    if (
+      activar &&
+      (!editingPerson?.roles || editingPerson.roles.length === 0)
+    ) {
       Swal.fire({
         icon: "error",
         title: "Error",
@@ -451,7 +506,10 @@ const UserList = () => {
       if (result.isConfirmed) {
         try {
           setIsLoading(true);
-          const username = `${person.basicInfo.NOMBRES.toLowerCase().replace(/\s+/g, "")}${person.basicInfo.APELLIDOS.toLowerCase().replace(
+          const username = `${person.basicInfo.NOMBRES.toLowerCase().replace(
+            /\s+/g,
+            ""
+          )}${person.basicInfo.APELLIDOS.toLowerCase().replace(
             /\s+/g,
             ""
           )}${Math.floor(Math.random() * 1000)}`.slice(0, 50);
@@ -467,14 +525,17 @@ const UserList = () => {
               }
             : { activar };
 
-          const response = await fetch(`${API_URL}/persons/${person.basicInfo.ID_PERSONA}/access`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(payload),
-          });
+          const response = await fetch(
+            `${API_URL}/persons/${person.basicInfo.ID_PERSONA}/access`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify(payload),
+            }
+          );
 
           if (!response.ok) throw new Error("Error al gestionar acceso");
 
@@ -505,7 +566,9 @@ const UserList = () => {
           Swal.fire({
             icon: "success",
             title: "Éxito",
-            text: activar ? "Acceso activado correctamente" : "Acceso desactivado correctamente",
+            text: activar
+              ? "Acceso activado correctamente"
+              : "Acceso desactivado correctamente",
             timer: 2000,
             showConfirmButton: false,
           });
@@ -540,26 +603,39 @@ const UserList = () => {
         if (result.isConfirmed) {
           try {
             setIsLoading(true);
-            const response = await fetch(`${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}/access`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({ activar: false }),
-            });
+            const response = await fetch(
+              `${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}/access`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ activar: false }),
+              }
+            );
 
             if (!response.ok) throw new Error("Error al desactivar acceso");
 
             setSelectedPerson({
               ...selectedPerson!,
-              basicInfo: { ...selectedPerson!.basicInfo, ACCESO_SISTEMA: false, USUARIO: undefined, ID_USUARIO: undefined },
+              basicInfo: {
+                ...selectedPerson!.basicInfo,
+                ACCESO_SISTEMA: false,
+                USUARIO: undefined,
+                ID_USUARIO: undefined,
+              },
               roles: [],
             });
 
             setEditingPerson({
               ...editingPerson,
-              basicInfo: { ...editingPerson.basicInfo, ACCESO_SISTEMA: false, USUARIO: undefined, ID_USUARIO: undefined },
+              basicInfo: {
+                ...editingPerson.basicInfo,
+                ACCESO_SISTEMA: false,
+                USUARIO: undefined,
+                ID_USUARIO: undefined,
+              },
               roles: [],
             });
 
@@ -587,14 +663,17 @@ const UserList = () => {
 
     try {
       setIsLoading(true);
-      const response = await fetch(`${API_URL}/persons/${editingPerson.basicInfo.ID_USUARIO}/roles`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ roles }),
-      });
+      const response = await fetch(
+        `${API_URL}/persons/${editingPerson.basicInfo.ID_USUARIO}/roles`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ roles }),
+        }
+      );
 
       if (!response.ok) throw new Error("Error al actualizar roles");
 
@@ -636,10 +715,13 @@ const UserList = () => {
       if (result.isConfirmed) {
         try {
           setIsLoading(true);
-          const response = await fetch(`${API_URL}/persons/${idUsuario}/change-password`, {
-            method: "PUT",
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const response = await fetch(
+            `${API_URL}/persons/${idUsuario}/change-password`,
+            {
+              method: "PUT",
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
 
           if (!response.ok) throw new Error("Error al restablecer contraseña");
 
@@ -669,19 +751,8 @@ const UserList = () => {
 
   const filteredPersons = useMemo(() => {
     return persons.filter((person) => {
+      if (person.ESTADO === 0 && showActive) return false; // Filtrar inactivas si showActive es true
       if (!searchValue && !selectedFase && !departamentoNumber) return true;
-
-      if (searchField === "FASE") {
-        const fases = [
-          ...(person.FASES_RESIDENTE?.split(", ") || []),
-          ...(person.FASES_TRABAJADOR?.split(", ") || []),
-        ];
-        return fases.some((fase) => fase.toLowerCase().includes(searchValue.toLowerCase()));
-      }
-
-      if (searchField === "DEPARTAMENTO") {
-        return person.DEPARTAMENTOS?.toLowerCase().includes(searchValue.toLowerCase()) || false;
-      }
 
       if (searchField === "FASE_AND_DEPARTAMENTO") {
         const fases = [
@@ -702,7 +773,14 @@ const UserList = () => {
           : String(person[searchField as keyof Person] ?? "").toLowerCase();
       return target.includes(searchValue.toLowerCase());
     });
-  }, [persons, searchField, searchValue, selectedFase, departamentoNumber]);
+  }, [
+    persons,
+    searchField,
+    searchValue,
+    selectedFase,
+    departamentoNumber,
+    showActive,
+  ]);
 
   const paginatedPersons = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -711,20 +789,40 @@ const UserList = () => {
 
   const totalPages = Math.ceil(filteredPersons.length / itemsPerPage);
 
-  const departamentoOptions = departamentos.map((d) => ({
-    value: d.ID_DEPARTAMENTO,
-    label: `${d.NRO_DPTO} - ${d.DESCRIPCION}`,
-  }));
-
-  const faseOptions = fases.map((f) => ({
-    value: f.ID_FASE,
-    label: f.NOMBRE,
-  }));
-
   const roleOptions = roles.map((r) => ({
     value: r.ID_ROL,
     label: r.DETALLE_USUARIO,
   }));
+
+  const formatDate = (dateString: string): string => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("es-ES", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
+  const formatDateForInput = (dateString: string): string => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toISOString().split("T")[0]; // Devuelve YYYY-MM-DD
+  };
+
+  const formatLocalDateForInput = (dateString: string): string => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`; // Formato YYYY-MM-DD en zona horaria local
+  };
+
+  // Filtrar departamentos según la fase seleccionada
+  const filteredDepartamentos = selectedFaseId
+    ? departamentos.filter((dpto) => dpto.ID_FASE === selectedFaseId)
+    : departamentos;
 
   useEffect(() => {
     fetchPersons();
@@ -734,7 +832,7 @@ const UserList = () => {
     fetchFases();
     fetchTiposResidente();
     fetchRoles();
-  }, []);
+  }, [showActive]); // Agregar showActive como dependencia
 
   useEffect(() => {
     if (message) {
@@ -752,11 +850,29 @@ const UserList = () => {
 
   return (
     <div className="container mx-auto p-4 sm:p-6">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800 text-center sm:text-left">Gestión de Personas</h1>
+      <h1 className="text-3xl font-bold mb-6 text-gray-800 text-center sm:text-left">
+        Gestión de Personas
+      </h1>
+      <div className="mb-4 flex items-center space-x-4">
+        <label className="flex items-center space-x-2">
+          <span>Mostrar {showActive ? "Activos" : "Inactivos"}</span>
+          <Switch
+            onChange={() => {
+              setShowActive(!showActive);
+              setCurrentPage(1); // Resetear página al cambiar
+            }}
+            checked={showActive}
+            onColor="#2563EB"
+            offColor="#EF4444"
+          />
+        </label>
+      </div>
       {message && (
         <div
           className={`p-4 mb-4 rounded-lg text-center ${
-            message.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+            message.type === "success"
+              ? "bg-green-100 text-green-700"
+              : "bg-red-100 text-red-700"
           }`}
         >
           {message.text}
@@ -766,15 +882,15 @@ const UserList = () => {
         <select
           value={searchField}
           onChange={(e) => {
-            setSearchField(e.target.value as keyof Person | "FASE" | "DEPARTAMENTO" | "FASE_AND_DEPARTAMENTO");
+            setSearchField(
+              e.target.value as keyof Person | "FASE_AND_DEPARTAMENTO"
+            );
           }}
           className="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2 sm:mb-0 sm:w-48"
         >
           <option value="NOMBRES">Nombres</option>
           <option value="DNI">DNI</option>
           <option value="CORREO">Correo</option>
-          <option value="FASE">Fase</option>
-          <option value="DEPARTAMENTO">Departamento</option>
           <option value="FASE_AND_DEPARTAMENTO">Fase y Departamento</option>
         </select>
         {searchField === "FASE_AND_DEPARTAMENTO" ? (
@@ -829,11 +945,22 @@ const UserList = () => {
           <thead className="bg-blue-600 text-white">
             <tr>
               <th className="py-3 px-4 text-left text-sm font-semibold">ID</th>
-              <th className="py-3 px-4 text-left text-sm font-semibold">Nombres</th>
+              <th className="py-3 px-4 text-left text-sm font-semibold">
+                Nombres
+              </th>
               <th className="py-3 px-4 text-left text-sm font-semibold">DNI</th>
-              <th className="py-3 px-4 text-left text-sm font-semibold">Perfil</th>
-              <th className="py-3 px-4 text-left text-sm font-semibold">Acceso</th>
-              <th className="py-3 px-4 text-left text-sm font-semibold">Acciones</th>
+              <th className="py-3 px-4 text-left text-sm font-semibold">
+                Perfil
+              </th>
+              <th className="py-3 px-4 text-left text-sm font-semibold">
+                Acceso
+              </th>
+              <th className="py-3 px-4 text-left text-sm font-semibold">
+                Estado
+              </th>
+              <th className="py-3 px-4 text-left text-sm font-semibold">
+                Acciones
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -858,10 +985,23 @@ const UserList = () => {
                   <td className="py-3 px-4">
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        person.ACCESO_SISTEMA ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                        person.ACCESO_SISTEMA
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
                       }`}
                     >
                       {person.ACCESO_SISTEMA ? "Sí" : "No"}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        person.ESTADO
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {person.ESTADO ? "Activo" : "Inactivo"}
                     </span>
                   </td>
                   <td className="py-3 px-4 flex space-x-2">
@@ -923,7 +1063,9 @@ const UserList = () => {
             Página {currentPage} de {totalPages}
           </span>
           <button
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
             disabled={currentPage === totalPages}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:bg-gray-300 hover:bg-blue-700 transition-colors"
           >
@@ -941,11 +1083,11 @@ const UserList = () => {
           setShowEmailInput(false);
           setNewEmail("");
         }}
-        className={`bg-white p-6 w-full mx-4 sm:mx-auto mt-20 rounded锅炉 shadow-xl overflow-y-auto ${
+        className={`bg-white p-6 w-full mx-4 sm:mx-auto mt-20 rounded-lg shadow-xl overflow-y-auto ${
           viewMode === "view"
             ? "max-w-4xl max-h-[85vh]"
             : viewMode === "roles"
-            ? "max-w-2xl max-h-[80vh]"
+            ? "max-w-2xl max-h-[95vh]" // MÁS ALTURA AQUÍ
             : "max-w-3xl max-h-[90vh]"
         }`}
         overlayClassName="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50"
@@ -975,11 +1117,19 @@ const UserList = () => {
                 viewBox="0 0 24 24"
                 xmlns="http://www.w3.org/2000/svg"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
             {viewMode === "view" && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4 col-span-3">
+                  Visualizar Persona
+                </h2>
                 <div className="col-span-1 flex justify-center">
                   <img
                     src={
@@ -990,89 +1140,159 @@ const UserList = () => {
                     alt="Foto de perfil"
                     className="w-40 h-40 rounded-full object-cover border-4 border-blue-200 shadow-md"
                     onError={(e) => {
-                      e.currentTarget.src = getDefaultPhoto(selectedPerson.basicInfo.SEXO);
+                      e.currentTarget.src = getDefaultPhoto(
+                        selectedPerson.basicInfo.SEXO
+                      );
                     }}
                   />
                 </div>
                 <div className="col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Nombres</label>
-                    <p className="p-3 bg-gray-100 rounded-lg text-gray-800">{selectedPerson.basicInfo.NOMBRES}</p>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Nombres
+                    </label>
+                    <p className="p-3 bg-gray-100 rounded-lg text-gray-800">
+                      {selectedPerson.basicInfo.NOMBRES}
+                    </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Apellidos</label>
-                    <p className="p-3 bg-gray-100 rounded-lg text-gray-800">{selectedPerson.basicInfo.APELLIDOS}</p>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Apellidos
+                    </label>
+                    <p className="p-3 bg-gray-100 rounded-lg text-gray-800">
+                      {selectedPerson.basicInfo.APELLIDOS}
+                    </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">DNI</label>
-                    <p className="p-3 bg-gray-100 rounded-lg text-gray-800">{selectedPerson.basicInfo.DNI}</p>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      DNI
+                    </label>
+                    <p className="p-3 bg-gray-100 rounded-lg text-gray-800">
+                      {selectedPerson.basicInfo.DNI}
+                    </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Correo</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Correo
+                    </label>
                     <p className="p-3 bg-gray-100 rounded-lg text-gray-800">
                       {selectedPerson.basicInfo.CORREO || "N/A"}
                     </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Celular</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Celular
+                    </label>
                     <p className="p-3 bg-gray-100 rounded-lg text-gray-800">
                       {selectedPerson.basicInfo.CELULAR || "N/A"}
                     </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Contacto de Emergencia</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Contacto de Emergencia
+                    </label>
                     <p className="p-3 bg-gray-100 rounded-lg text-gray-800">
                       {selectedPerson.basicInfo.CONTACTO_EMERGENCIA || "N/A"}
                     </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Fecha de Nacimiento</label>
-                    <p className="p-3 bg-gray-100 rounded-lg text-gray-800">{selectedPerson.basicInfo.FECHA_NACIMIENTO}</p>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Fecha de Nacimiento
+                    </label>
+                    <p className="p-3 bg-gray-100 rounded-lg text-gray-800">
+                      {formatDate(selectedPerson.basicInfo.FECHA_NACIMIENTO)}
+                    </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Sexo</label>
-                    <p className="p-3 bg-gray-100 rounded-lg text-gray-800">{selectedPerson.basicInfo.SEXO}</p>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Sexo
+                    </label>
+                    <p className="p-3 bg-gray-100 rounded-lg text-gray-800">
+                      {selectedPerson.basicInfo.SEXO}
+                    </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Perfil</label>
-                    <p className="p-3 bg-gray-100 rounded-lg text-gray-800">{selectedPerson.basicInfo.DETALLE_PERFIL}</p>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Perfil
+                    </label>
+                    <p className="p-3 bg-gray-100 rounded-lg text-gray-800">
+                      {selectedPerson.basicInfo.DETALLE_PERFIL}
+                    </p>
                   </div>
                 </div>
                 {selectedPerson.residentInfo.length > 0 && (
                   <div className="col-span-3 mt-6">
-                    <h2 className="text-lg font-semibold text-gray-800 mb-4">Información de Residente</h2>
+                    <h2 className="text-lg font-semibold text-gray-800 mb-4">
+                      Información de Residente
+                    </h2>
                     {selectedPerson.residentInfo.map((info, index) => (
-                      <div key={index} className="mb-4 p-4 bg-gray-50 rounded-lg shadow-sm">
-                        <p><strong>Departamento:</strong> {info.DEPARTAMENTO_DESCRIPCION} (Nº {info.NRO_DPTO})</p>
-                        <p><strong>Fase:</strong> {info.FASE}</p>
-                        <p><strong>Clasificación:</strong> {info.DETALLE_CLASIFICACION}</p>
-                        <p><strong>Inicio de Residencia:</strong> {info.INICIO_RESIDENCIA}</p>
+                      <div
+                        key={index}
+                        className="mb-4 p-4 bg-gray-50 rounded-lg shadow-sm"
+                      >
+                        <p>
+                          <strong>Departamento:</strong> Nº {info.NRO_DPTO}
+                        </p>
+                        <p>
+                          <strong>Fase:</strong> {info.FASE}
+                        </p>
+                        <p>
+                          <strong>Clasificación:</strong>{" "}
+                          {info.DETALLE_CLASIFICACION}
+                        </p>
+                        <p>
+                          <strong>Inicio de Residencia:</strong>{" "}
+                          {formatDate(info.INICIO_RESIDENCIA)}
+                        </p>
                       </div>
                     ))}
                   </div>
                 )}
                 {selectedPerson.workerInfo.length > 0 && (
                   <div className="col-span-3 mt-6">
-                    <h2 className="text-lg font-semibold text-gray-800 mb-4">Información de Trabajador</h2>
+                    <h2 className="text-lg font-semibold text-gray-800 mb-4">
+                      Información de Trabajador
+                    </h2>
                     {selectedPerson.workerInfo.map((info, index) => (
-                      <div key={index} className="mb-4 p-4 bg-gray-50 rounded-lg shadow-sm">
-                        <p><strong>Fase:</strong> {info.FASE}</p>
-                        <p><strong>Fecha de Asignación:</strong> {info.FECHA_ASIGNACION}</p>
+                      <div
+                        key={index}
+                        className="mb-4 p-4 bg-gray-50 rounded-lg shadow-sm"
+                      >
+                        <p>
+                          <strong>Fase:</strong> {info.FASE}
+                        </p>
+                        <p>
+                          <strong>Fecha de Asignación:</strong>{" "}
+                          {info.FECHA_ASIGNACION}
+                        </p>
                       </div>
                     ))}
                   </div>
                 )}
                 {selectedPerson.basicInfo.ACCESO_SISTEMA && (
                   <div className="col-span-3 mt-6">
-                    <h2 className="text-lg font-semibold text-gray-800 mb-4">Información de Acceso</h2>
-                    <p><strong>Usuario:</strong> {selectedPerson.basicInfo.USUARIO || "N/A"}</p>
-                    <p><strong>Roles:</strong> {selectedPerson.roles.map((r) => r.DETALLE_USUARIO).join(", ") || "N/A"}</p>
+                    <h2 className="text-lg font-semibold text-gray-800 mb-4">
+                      Información de Acceso
+                    </h2>
+                    <p>
+                      <strong>Usuario:</strong>{" "}
+                      {selectedPerson.basicInfo.USUARIO || "N/A"}
+                    </p>
+                    <p>
+                      <strong>Roles:</strong>{" "}
+                      {selectedPerson.roles
+                        .map((r) => r.DETALLE_USUARIO)
+                        .join(", ") || "N/A"}
+                    </p>
                   </div>
                 )}
               </div>
             )}
             {viewMode === "edit" && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4 col-span-3">
+                  Editar Persona
+                </h2>
                 <div className="col-span-1 flex flex-col items-center">
                   <img
                     src={
@@ -1085,7 +1305,9 @@ const UserList = () => {
                     alt="Foto de perfil"
                     className="w-40 h-40 rounded-full object-cover border-4 border-blue-200 shadow-md mb-4"
                     onError={(e) => {
-                      e.currentTarget.src = getDefaultPhoto(editingPerson.basicInfo.SEXO);
+                      e.currentTarget.src = getDefaultPhoto(
+                        editingPerson.basicInfo.SEXO
+                      );
                     }}
                   />
                   <label className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-blue-700 transition-colors">
@@ -1101,105 +1323,144 @@ const UserList = () => {
                 </div>
                 <div className="col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Nombres</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Nombres
+                    </label>
                     <input
                       type="text"
                       value={editingPerson.basicInfo.NOMBRES}
                       onChange={(e) =>
                         setEditingPerson({
                           ...editingPerson,
-                          basicInfo: { ...editingPerson.basicInfo, NOMBRES: e.target.value },
+                          basicInfo: {
+                            ...editingPerson.basicInfo,
+                            NOMBRES: e.target.value,
+                          },
                         })
                       }
                       className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Apellidos</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Apellidos
+                    </label>
                     <input
                       type="text"
                       value={editingPerson.basicInfo.APELLIDOS}
                       onChange={(e) =>
                         setEditingPerson({
                           ...editingPerson,
-                          basicInfo: { ...editingPerson.basicInfo, APELLIDOS: e.target.value },
+                          basicInfo: {
+                            ...editingPerson.basicInfo,
+                            APELLIDOS: e.target.value,
+                          },
                         })
                       }
                       className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">DNI</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      DNI
+                    </label>
                     <input
                       type="text"
                       value={editingPerson.basicInfo.DNI}
                       onChange={(e) =>
                         setEditingPerson({
                           ...editingPerson,
-                          basicInfo: { ...editingPerson.basicInfo, DNI: e.target.value },
+                          basicInfo: {
+                            ...editingPerson.basicInfo,
+                            DNI: e.target.value,
+                          },
                         })
                       }
                       className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Correo</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Correo
+                    </label>
                     <input
                       type="email"
                       value={editingPerson.basicInfo.CORREO}
                       onChange={(e) =>
                         setEditingPerson({
                           ...editingPerson,
-                          basicInfo: { ...editingPerson.basicInfo, CORREO: e.target.value },
+                          basicInfo: {
+                            ...editingPerson.basicInfo,
+                            CORREO: e.target.value,
+                          },
                         })
                       }
                       className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Celular</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Celular
+                    </label>
                     <input
                       type="text"
                       value={editingPerson.basicInfo.CELULAR}
                       onChange={(e) =>
                         setEditingPerson({
                           ...editingPerson,
-                          basicInfo: { ...editingPerson.basicInfo, CELULAR: e.target.value },
+                          basicInfo: {
+                            ...editingPerson.basicInfo,
+                            CELULAR: e.target.value,
+                          },
                         })
                       }
                       className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Contacto de Emergencia</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Contacto de Emergencia
+                    </label>
                     <input
                       type="text"
                       value={editingPerson.basicInfo.CONTACTO_EMERGENCIA}
                       onChange={(e) =>
                         setEditingPerson({
                           ...editingPerson,
-                          basicInfo: { ...editingPerson.basicInfo, CONTACTO_EMERGENCIA: e.target.value },
+                          basicInfo: {
+                            ...editingPerson.basicInfo,
+                            CONTACTO_EMERGENCIA: e.target.value,
+                          },
                         })
                       }
                       className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Fecha de Nacimiento</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Fecha de Nacimiento
+                    </label>
                     <input
                       type="date"
-                      value={editingPerson.basicInfo.FECHA_NACIMIENTO}
+                      value={formatDateForInput(
+                        editingPerson.basicInfo.FECHA_NACIMIENTO
+                      )}
                       onChange={(e) =>
                         setEditingPerson({
                           ...editingPerson,
-                          basicInfo: { ...editingPerson.basicInfo, FECHA_NACIMIENTO: e.target.value },
+                          basicInfo: {
+                            ...editingPerson.basicInfo,
+                            FECHA_NACIMIENTO: e.target.value,
+                          },
                         })
                       }
                       className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Sexo</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Sexo
+                    </label>
                     <select
                       value={editingPerson.basicInfo.ID_SEXO}
                       onChange={(e) =>
@@ -1208,7 +1469,10 @@ const UserList = () => {
                           basicInfo: {
                             ...editingPerson.basicInfo,
                             ID_SEXO: Number(e.target.value),
-                            SEXO: sexes.find((s) => s.ID_SEXO === Number(e.target.value))?.DESCRIPCION || "",
+                            SEXO:
+                              sexes.find(
+                                (s) => s.ID_SEXO === Number(e.target.value)
+                              )?.DESCRIPCION || "",
                           },
                         })
                       }
@@ -1222,20 +1486,29 @@ const UserList = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Perfil</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Perfil
+                    </label>
                     <select
                       value={editingPerson.basicInfo.ID_PERFIL}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const newPerfilId = Number(e.target.value);
+                        const newPerfil =
+                          perfiles.find((p) => p.ID_PERFIL === newPerfilId)
+                            ?.DETALLE_PERFIL || "";
                         setEditingPerson({
                           ...editingPerson,
                           basicInfo: {
                             ...editingPerson.basicInfo,
-                            ID_PERFIL: Number(e.target.value),
-                            DETALLE_PERFIL:
-                              perfiles.find((p) => p.ID_PERFIL === Number(e.target.value))?.DETALLE_PERFIL || "",
+                            ID_PERFIL: newPerfilId,
+                            DETALLE_PERFIL: newPerfil,
                           },
-                        })
-                      }
+                          residentInfo:
+                            newPerfilId === 1 ? editingPerson.residentInfo : [], // Residente
+                          workerInfo:
+                            newPerfilId !== 1 ? editingPerson.workerInfo : [], // No Residente
+                        });
+                      }}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       {perfiles.map((perfil) => (
@@ -1248,97 +1521,312 @@ const UserList = () => {
                 </div>
                 {editingPerson.residentInfo.length > 0 && (
                   <div className="col-span-3 mt-6">
-                    <h2 className="text-lg font-semibold text-gray-800 mb-4">Información de Residente</h2>
-                    {editingPerson.residentInfo.map((info, index) => (
-                      <div key={index} className="mb-4 p-4 bg-gray-50 rounded-lg shadow-sm grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700">Departamento</label>
-                          <select
-                            value={info.ID_DEPARTAMENTO}
-                            onChange={(e) => {
-                              const newResidentInfo = [...editingPerson.residentInfo];
-                              newResidentInfo[index] = {
-                                ...info,
-                                ID_DEPARTAMENTO: Number(e.target.value),
-                                DEPARTAMENTO_DESCRIPCION:
-                                  departamentos.find((d) => d.ID_DEPARTAMENTO === Number(e.target.value))
-                                    ?.DESCRIPCION || "",
-                                NRO_DPTO:
-                                  departamentos.find((d) => d.ID_DEPARTAMENTO === Number(e.target.value))?.NRO_DPTO ||
-                                  info.NRO_DPTO,
-                              };
-                              setEditingPerson({ ...editingPerson, residentInfo: newResidentInfo });
-                            }}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            {departamentos.map((dpto) => (
-                              <option key={dpto.ID_DEPARTAMENTO} value={dpto.ID_DEPARTAMENTO}>
-                                {dpto.DESCRIPCION} (Nº {dpto.NRO_DPTO})
+                    <h2 className="text-lg font-semibold text-gray-800 mb-4">
+                      Información de Residente
+                    </h2>
+
+                    {editingPerson.residentInfo.map((info, index) => {
+                      // Filtrar departamentos según la fase seleccionada en esta fila
+                      const departamentosFiltrados = departamentos.filter(
+                        (d) =>
+                          fases.find((f) => f.NOMBRE === info.FASE)?.ID_FASE ===
+                          d.ID_FASE
+                      );
+
+                      return (
+                        <div
+                          key={index}
+                          className="mb-4 p-4 bg-gray-50 rounded-lg shadow-sm grid grid-cols-1 sm:grid-cols-2 gap-4 relative"
+                        >
+                          {/* Botón Eliminar */}
+                          {editingPerson.residentInfo.length > 1 && (
+                            <button
+                              onClick={() => {
+                                const newResidentInfo =
+                                  editingPerson.residentInfo.filter(
+                                    (_, i) => i !== index
+                                  );
+                                setEditingPerson({
+                                  ...editingPerson,
+                                  residentInfo: newResidentInfo,
+                                });
+                              }}
+                              className="absolute top-2 right-2 text-red-600 hover:text-red-800"
+                              title="Eliminar Departamento"
+                            >
+                              <FaTrash size={18} />
+                            </button>
+                          )}
+
+                          {/* Fase */}
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700">
+                              Fase
+                            </label>
+                            <select
+                              value={
+                                fases.find((f) => f.NOMBRE === info.FASE)
+                                  ?.ID_FASE || ""
+                              }
+                              onChange={(e) => {
+                                const faseId = Number(e.target.value);
+                                const faseNombre =
+                                  fases.find((f) => f.ID_FASE === faseId)
+                                    ?.NOMBRE || "";
+
+                                const departamentosFiltrados =
+                                  departamentos.filter(
+                                    (d) => d.ID_FASE === faseId
+                                  );
+
+                                const newResidentInfo = [
+                                  ...editingPerson.residentInfo,
+                                ];
+                                newResidentInfo[index] = {
+                                  ...info,
+                                  FASE: faseNombre,
+                                  ID_DEPARTAMENTO:
+                                    departamentosFiltrados[0]
+                                      ?.ID_DEPARTAMENTO || 0,
+                                  NRO_DPTO:
+                                    departamentosFiltrados[0]?.NRO_DPTO || 0,
+                                  DEPARTAMENTO_DESCRIPCION:
+                                    departamentosFiltrados[0]?.DESCRIPCION ||
+                                    "",
+                                };
+                                setEditingPerson({
+                                  ...editingPerson,
+                                  residentInfo: newResidentInfo,
+                                });
+                              }}
+                              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="">Seleccione una fase</option>
+                              {fases.map((fase) => (
+                                <option key={fase.ID_FASE} value={fase.ID_FASE}>
+                                  {fase.NOMBRE}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Departamento (filtrado por fase) */}
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700">
+                              Departamento
+                            </label>
+                            <select
+                              value={info.ID_DEPARTAMENTO}
+                              onChange={(e) => {
+                                const selectedDpto = departamentos.find(
+                                  (d) =>
+                                    d.ID_DEPARTAMENTO === Number(e.target.value)
+                                );
+
+                                const newResidentInfo = [
+                                  ...editingPerson.residentInfo,
+                                ];
+                                newResidentInfo[index] = {
+                                  ...info,
+                                  ID_DEPARTAMENTO: Number(e.target.value),
+                                  DEPARTAMENTO_DESCRIPCION:
+                                    selectedDpto?.DESCRIPCION || "",
+                                  NRO_DPTO: selectedDpto?.NRO_DPTO || 0,
+                                };
+                                setEditingPerson({
+                                  ...editingPerson,
+                                  residentInfo: newResidentInfo,
+                                });
+                              }}
+                              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="">
+                                Seleccione un departamento
                               </option>
-                            ))}
-                          </select>
+                              {departamentosFiltrados.map((dpto) => (
+                                <option
+                                  key={dpto.ID_DEPARTAMENTO}
+                                  value={dpto.ID_DEPARTAMENTO}
+                                >
+                                  Nº {dpto.NRO_DPTO}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Clasificación */}
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700">
+                              Clasificación
+                            </label>
+                            <select
+                              value={info.ID_CLASIFICACION}
+                              onChange={(e) => {
+                                const selectedClasificacion =
+                                  tiposResidente.find(
+                                    (t) =>
+                                      t.ID_CLASIFICACION ===
+                                      Number(e.target.value)
+                                  );
+                                const newResidentInfo = [
+                                  ...editingPerson.residentInfo,
+                                ];
+                                newResidentInfo[index] = {
+                                  ...info,
+                                  ID_CLASIFICACION: Number(e.target.value),
+                                  DETALLE_CLASIFICACION:
+                                    selectedClasificacion?.DETALLE_CLASIFICACION ||
+                                    "",
+                                };
+                                setEditingPerson({
+                                  ...editingPerson,
+                                  residentInfo: newResidentInfo,
+                                });
+                              }}
+                              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              {tiposResidente.map((tipo) => (
+                                <option
+                                  key={tipo.ID_CLASIFICACION}
+                                  value={tipo.ID_CLASIFICACION}
+                                >
+                                  {tipo.DETALLE_CLASIFICACION}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Inicio de Residencia */}
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700">
+                              Inicio de Residencia
+                            </label>
+                            <input
+                              type="date"
+                              value={formatLocalDateForInput(
+                                info.INICIO_RESIDENCIA
+                              )}
+                              onChange={(e) => {
+                                const newResidentInfo = [
+                                  ...editingPerson.residentInfo,
+                                ];
+                                newResidentInfo[index] = {
+                                  ...info,
+                                  INICIO_RESIDENCIA: e.target.value,
+                                };
+                                setEditingPerson({
+                                  ...editingPerson,
+                                  residentInfo: newResidentInfo,
+                                });
+                              }}
+                              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700">Clasificación</label>
-                          <select
-                            value={info.ID_CLASIFICACION}
-                            onChange={(e) => {
-                              const newResidentInfo = [...editingPerson.residentInfo];
-                              newResidentInfo[index] = {
-                                ...info,
-                                ID_CLASIFICACION: Number(e.target.value),
-                                DETALLE_CLASIFICACION:
-                                  tiposResidente.find((t) => t.ID_CLASIFICACION === Number(e.target.value))
-                                    ?.DETALLE_CLASIFICACION || "",
-                              };
-                              setEditingPerson({ ...editingPerson, residentInfo: newResidentInfo });
-                            }}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            {tiposResidente.map((tipo) => (
-                              <option key={tipo.ID_CLASIFICACION} value={tipo.ID_CLASIFICACION}>
-                                {tipo.DETALLE_CLASIFICACION}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700">Inicio de Residencia</label>
-                          <input
-                            type="date"
-                            value={info.INICIO_RESIDENCIA}
-                            onChange={(e) => {
-                              const newResidentInfo = [...editingPerson.residentInfo];
-                              newResidentInfo[index] = { ...info, INICIO_RESIDENCIA: e.target.value };
-                              setEditingPerson({ ...editingPerson, residentInfo: newResidentInfo });
-                            }}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
+
+                    {/* Botón Agregar */}
+                    <button
+                      onClick={() => {
+                        const defaultFase = fases[0];
+                        const dptosDeFase = departamentos.filter(
+                          (d) => d.ID_FASE === defaultFase?.ID_FASE
+                        );
+                        const defaultDpto = dptosDeFase[0];
+
+                        setEditingPerson({
+                          ...editingPerson,
+                          residentInfo: [
+                            ...editingPerson.residentInfo,
+                            {
+                              ID_RESIDENTE: 0,
+                              FASE: defaultFase?.NOMBRE || "",
+                              ID_DEPARTAMENTO:
+                                defaultDpto?.ID_DEPARTAMENTO || 0,
+                              DEPARTAMENTO_DESCRIPCION:
+                                defaultDpto?.DESCRIPCION || "",
+                              NRO_DPTO: defaultDpto?.NRO_DPTO || 0,
+                              ID_CLASIFICACION:
+                                tiposResidente[0]?.ID_CLASIFICACION || 0,
+                              DETALLE_CLASIFICACION:
+                                tiposResidente[0]?.DETALLE_CLASIFICACION || "",
+                              INICIO_RESIDENCIA: new Date()
+                                .toISOString()
+                                .split("T")[0],
+                            },
+                          ],
+                        });
+                      }}
+                      className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                    >
+                      Agregar Departamento
+                    </button>
                   </div>
                 )}
+
                 {editingPerson.workerInfo.length > 0 && (
                   <div className="col-span-3 mt-6">
-                    <h2 className="text-lg font-semibold text-gray-800 mb-4">Información de Trabajador</h2>
+                    <h2 className="text-lg font-semibold text-gray-800 mb-4">
+                      Información de Trabajador
+                    </h2>
+
                     {editingPerson.workerInfo.map((info, index) => (
                       <div
                         key={index}
-                        className="mb-4 p-4 bg-gray-50 rounded-lg shadow-sm grid grid-cols-1 sm:grid-cols-2 gap-4"
+                        className="mb-4 p-4 bg-gray-50 rounded-lg shadow-sm grid grid-cols-1 sm:grid-cols-2 gap-4 relative"
                       >
+                        {/* Botón Eliminar */}
+                        {editingPerson.workerInfo.length > 1 && (
+                          <button
+                            onClick={() => {
+                              if (editingPerson.workerInfo.length <= 1) {
+                                Swal.fire({
+                                  icon: "error",
+                                  title: "Error",
+                                  text: "Debe haber al menos una fase asignada",
+                                });
+                                return;
+                              }
+                              const newWorkerInfo =
+                                editingPerson.workerInfo.filter(
+                                  (_, i) => i !== index
+                                );
+                              setEditingPerson({
+                                ...editingPerson,
+                                workerInfo: newWorkerInfo,
+                              });
+                            }}
+                            className="absolute top-2 right-2 text-red-600 hover:text-red-800"
+                            title="Eliminar Fase"
+                          >
+                            <FaTrash size={18} />
+                          </button>
+                        )}
+
+                        {/* Fase */}
                         <div>
-                          <label className="block text-sm font-semibold text-gray-700">Fase</label>
+                          <label className="block text-sm font-semibold text-gray-700">
+                            Fase
+                          </label>
                           <select
                             value={info.ID_FASE}
                             onChange={(e) => {
-                              const newWorkerInfo = [...editingPerson.workerInfo];
+                              const newWorkerInfo = [
+                                ...editingPerson.workerInfo,
+                              ];
+                              const selectedFase = fases.find(
+                                (f) => f.ID_FASE === Number(e.target.value)
+                              );
                               newWorkerInfo[index] = {
                                 ...info,
                                 ID_FASE: Number(e.target.value),
-                                FASE: fases.find((f) => f.ID_FASE === Number(e.target.value))?.NOMBRE || "",
+                                FASE: selectedFase?.NOMBRE || "",
                               };
-                              setEditingPerson({ ...editingPerson, workerInfo: newWorkerInfo });
+                              setEditingPerson({
+                                ...editingPerson,
+                                workerInfo: newWorkerInfo,
+                              });
                             }}
                             className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
@@ -1349,21 +1837,59 @@ const UserList = () => {
                             ))}
                           </select>
                         </div>
+
+                        {/* Fecha de Asignación */}
                         <div>
-                          <label className="block text-sm font-semibold text-gray-700">Fecha de Asignación</label>
+                          <label className="block text-sm font-semibold text-gray-700">
+                            Fecha de Asignación
+                          </label>
                           <input
                             type="date"
-                            value={info.FECHA_ASIGNACION}
+                            value={formatDateForInput(info.FECHA_ASIGNACION)}
                             onChange={(e) => {
-                              const newWorkerInfo = [...editingPerson.workerInfo];
-                              newWorkerInfo[index] = { ...info, FECHA_ASIGNACION: e.target.value };
-                              setEditingPerson({ ...editingPerson, workerInfo: newWorkerInfo });
+                              const newWorkerInfo = [
+                                ...editingPerson.workerInfo,
+                              ];
+                              newWorkerInfo[index] = {
+                                ...info,
+                                FECHA_ASIGNACION: e.target.value,
+                              };
+                              setEditingPerson({
+                                ...editingPerson,
+                                workerInfo: newWorkerInfo,
+                              });
                             }}
                             className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
                       </div>
                     ))}
+
+                    {/* Botón Agregar Fase */}
+                    <button
+                      onClick={() => {
+                        const defaultFase = fases[0] || {
+                          ID_FASE: 0,
+                          NOMBRE: "",
+                        };
+                        setEditingPerson({
+                          ...editingPerson,
+                          workerInfo: [
+                            ...editingPerson.workerInfo,
+                            {
+                              ID_FASE: defaultFase.ID_FASE,
+                              FASE: defaultFase.NOMBRE,
+                              FECHA_ASIGNACION: new Date()
+                                .toISOString()
+                                .split("T")[0],
+                            },
+                          ],
+                        });
+                      }}
+                      className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                    >
+                      Agregar Fase
+                    </button>
                   </div>
                 )}
                 <div className="col-span-3 flex justify-end space-x-4 mt-6">
@@ -1390,10 +1916,14 @@ const UserList = () => {
             )}
             {viewMode === "roles" && (
               <div className="flex flex-col space-y-6">
-                <h2 className="text-lg font-semibold text-gray-800">Gestionar Acceso al Sistema</h2>
+                <h2 className="text-xl font-semibold text-gray-800">
+                  Gestionar Acceso al Sistema
+                </h2>
                 {showEmailInput && (
                   <div className="flex flex-col space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">Correo Electrónico</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Correo Electrónico
+                    </label>
                     <div className="flex space-x-2">
                       <input
                         type="email"
@@ -1413,12 +1943,16 @@ const UserList = () => {
                   </div>
                 )}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700">Roles</label>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Roles
+                  </label>
                   <Select
                     isMulti
                     options={roleOptions}
                     value={roleOptions.filter((option) =>
-                      editingPerson.roles.some((role) => role.ID_ROL === option.value)
+                      editingPerson.roles.some(
+                        (role) => role.ID_ROL === option.value
+                      )
                     )}
                     onChange={(selected) =>
                       setEditingPerson({
@@ -1429,9 +1963,16 @@ const UserList = () => {
                         })),
                       })
                     }
-                    placeholder="Seleccione roles..."
+                    placeholder={
+                      roles.length ? "Seleccione roles..." : "Cargando roles..."
+                    }
                     className="basic-multi-select"
                     classNamePrefix="select"
+                    isDisabled={!roles.length}
+                    menuPortalTarget={document.body} // PARA SACARLO DEL FLUJO DEL MODAL
+                    styles={{
+                      menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                    }}
                   />
                 </div>
                 <div className="flex flex-col sm:flex-row sm:justify-between space-y-4 sm:space-y-0 sm:space-x-4">
@@ -1456,7 +1997,11 @@ const UserList = () => {
                       </button>
                       {editingPerson.basicInfo.ID_USUARIO && (
                         <button
-                          onClick={() => handleResetPassword(editingPerson.basicInfo.ID_USUARIO!)}
+                          onClick={() =>
+                            handleResetPassword(
+                              editingPerson.basicInfo.ID_USUARIO!
+                            )
+                          }
                           disabled={isLoading}
                           className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors disabled:bg-yellow-300 flex items-center space-x-2"
                         >
