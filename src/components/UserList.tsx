@@ -401,9 +401,26 @@ const UserList = () => {
         : null;
 
       const payload = {
-        basicInfo: editingPerson.basicInfo,
-        residentInfo: editingPerson.residentInfo,
-        workerInfo: editingPerson.workerInfo,
+        basicInfo: {
+          nombres: editingPerson.basicInfo.NOMBRES,
+          apellidos: editingPerson.basicInfo.APELLIDOS,
+          dni: editingPerson.basicInfo.DNI,
+          correo: editingPerson.basicInfo.CORREO,
+          celular: editingPerson.basicInfo.CELULAR,
+          contacto_emergencia: editingPerson.basicInfo.CONTACTO_EMERGENCIA,
+          fecha_nacimiento: editingPerson.basicInfo.FECHA_NACIMIENTO,
+          id_sexo: editingPerson.basicInfo.ID_SEXO,
+          id_perfil: editingPerson.basicInfo.ID_PERFIL,
+        },
+        residentInfo: editingPerson.residentInfo.map((r) => ({
+          id_departamento: r.ID_DEPARTAMENTO,
+          id_clasificacion: r.ID_CLASIFICACION,
+          inicio_residencia: r.INICIO_RESIDENCIA,
+        })),
+        workerInfo: editingPerson.workerInfo.map((w) => ({
+          id_fase: w.ID_FASE,
+          fecha_asignacion: w.FECHA_ASIGNACION,
+        })),
         photo: photoData,
       };
 
