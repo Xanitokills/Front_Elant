@@ -185,6 +185,20 @@ const UserList = () => {
   const itemsPerPage = 10;
   const [selectedFaseId, setSelectedFaseId] = useState<number | null>(null);
 
+  const currentRoles = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("roles") || "[]");
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const hasAccess = (requiredRoles: string[]) => {
+    return currentRoles.some((role: string) => requiredRoles.includes(role));
+  };
+
+  console.log("Roles actuales:", currentRoles);
+
   const fetchPersons = async () => {
     if (!token) {
       setMessage({
@@ -937,15 +951,14 @@ const UserList = () => {
 
   const formatDate = (dateString: string): string => {
     if (!dateString) return "N/A";
-  
+
     // Solo toma la parte de fecha si viene con hora
-    const [year, month, day] = dateString.split('T')[0].split('-');
-  
+    const [year, month, day] = dateString.split("T")[0].split("-");
+
     if (!year || !month || !day) return "N/A";
-  
+
     return `${day}/${month}/${year}`;
   };
-  
 
   const formatDateForInput = (dateString: string): string => {
     if (!dateString) return "";
@@ -955,21 +968,23 @@ const UserList = () => {
 
   function formatInicioResidenciaInputEdit(dateStr) {
     console.log("Valor recibido:", dateStr);
-  
+
     if (!dateStr) {
       console.warn("Fecha no proporcionada");
-      return '';
+      return "";
     }
-  
+
     // Asegúrate de tomar solo la parte de la fecha
-    const [year, month, day] = dateStr.split('T')[0].split('-');
-  
+    const [year, month, day] = dateStr.split("T")[0].split("-");
+
     const formattedDate = `${year}-${month}-${day}`;
-    console.log("Fecha formateada para input date (sin desfase):", formattedDate);
-  
+    console.log(
+      "Fecha formateada para input date (sin desfase):",
+      formattedDate
+    );
+
     return formattedDate;
   }
-  
 
   // Filtrar departamentos según la fase seleccionada
   const filteredDepartamentos = selectedFaseId
@@ -1170,44 +1185,57 @@ const UserList = () => {
                     </span>
                   </td>
                   <td className="py-3 px-4 flex space-x-2">
-                    <button
-                      onClick={() => {
-                        setViewMode("view");
-                        fetchPersonDetails(person.ID_PERSONA, "view");
-                      }}
-                      className="text-blue-600 hover:text-blue-800 transition-colors"
-                      title="Visualizar"
-                    >
-                      <FaEye size={18} />
-                    </button>
-                    <button
-                      onClick={() => {
-                        setViewMode("edit");
-                        fetchPersonDetails(person.ID_PERSONA, "edit");
-                      }}
-                      className="text-green-600 hover:text-green-800 transition-colors"
-                      title="Editar"
-                    >
-                      <FaEdit size={18} />
-                    </button>
-                    <button
-                      onClick={() => handleDeletePerson(person.ID_PERSONA)}
-                      className="text-red-600 hover:text-red-800 transition-colors"
-                      title="Eliminar"
-                    >
-                      <FaTrash size={18} />
-                    </button>
-                    <button
-                      onClick={() => {
-                        setViewMode("roles");
-                        setShowEmailInput(false);
-                        fetchPersonDetails(person.ID_PERSONA, "roles");
-                      }}
-                      className="text-purple-600 hover:text-purple-800 transition-colors"
-                      title="Gestionar Acceso"
-                    >
-                      <FaUserShield size={18} />
-                    </button>
+                    {/* Visualizar: solo Seguridad, Sistemas, Administrador */}
+                    {hasAccess(["Seguridad", "Sistemas", "Administrador"]) && (
+                      <button
+                        onClick={() => {
+                          setViewMode("view");
+                          fetchPersonDetails(person.ID_PERSONA, "view");
+                        }}
+                        className="text-blue-600 hover:text-blue-800 transition-colors"
+                        title="Visualizar"
+                      >
+                        <FaEye size={18} />
+                      </button>
+                    )}
+
+                    {/* Editar y Eliminar: solo Sistemas y Administrador */}
+                    {hasAccess(["Sistemas", "Administrador"]) && (
+                      <>
+                        <button
+                          onClick={() => {
+                            setViewMode("edit");
+                            fetchPersonDetails(person.ID_PERSONA, "edit");
+                          }}
+                          className="text-green-600 hover:text-green-800 transition-colors"
+                          title="Editar"
+                        >
+                          <FaEdit size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDeletePerson(person.ID_PERSONA)}
+                          className="text-red-600 hover:text-red-800 transition-colors"
+                          title="Eliminar"
+                        >
+                          <FaTrash size={18} />
+                        </button>
+                      </>
+                    )}
+
+                    {/* Gestionar Acceso: solo Sistemas y Administrador */}
+                    {hasAccess(["Sistemas", "Administrador"]) && (
+                      <button
+                        onClick={() => {
+                          setViewMode("roles");
+                          setShowEmailInput(false);
+                          fetchPersonDetails(person.ID_PERSONA, "roles");
+                        }}
+                        className="text-purple-600 hover:text-purple-800 transition-colors"
+                        title="Gestionar Acceso"
+                      >
+                        <FaUserShield size={18} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))

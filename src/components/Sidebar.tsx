@@ -215,10 +215,15 @@ const Sidebar = ({
   closeSidebar: () => void;
   sidebarOpen: boolean;
 }) => {
-  const { logout, userName, role, isAuthenticated, isLoading, sidebarData } = useAuth();
-  const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({});
+  const { logout, userName, roles, isAuthenticated, isLoading, sidebarData } =
+    useAuth();
+  const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>(
+    {}
+  );
   const [searchTerm, setSearchTerm] = useState("");
-  const [sidebarStructure, setSidebarStructure] = useState<SidebarStructure[]>([]);
+  const [sidebarStructure, setSidebarStructure] = useState<SidebarStructure[]>(
+    []
+  );
 
   const toggleSection = (id: number) => {
     setOpenSections((prev) => {
@@ -243,12 +248,14 @@ const Sidebar = ({
         icono: menu.icono,
         url: menu.url,
         submenus: menu.submenus
-          ? menu.submenus.sort((a: any, b: any) => a.orden - b.orden).map((sub: any) => ({
-              id: sub.id,
-              nombre: sub.nombre,
-              url: sub.url,
-              icono: sub.icono,
-            }))
+          ? menu.submenus
+              .sort((a: any, b: any) => a.orden - b.orden)
+              .map((sub: any) => ({
+                id: sub.id,
+                nombre: sub.nombre,
+                url: sub.url,
+                icono: sub.icono,
+              }))
           : [],
       }));
       setSidebarStructure(structure);
@@ -273,7 +280,9 @@ const Sidebar = ({
           />
           <div>
             <p className="font-semibold">{userName || "Usuario"}</p>
-            <p className="text-sm text-gray-400">{role || "Invitado"}</p>
+            <p className="text-sm text-gray-400">
+              {roles.length > 0 ? roles.join(", ") : "Invitado"}
+            </p>
           </div>
         </div>
 
@@ -304,7 +313,11 @@ const Sidebar = ({
               if (section.submenus.length === 0 && section.url) {
                 return (
                   <MenuItem key={section.id}>
-                    <SubmenuItem to={section.url} onClick={closeSidebar} className="font-bold">
+                    <SubmenuItem
+                      to={section.url}
+                      onClick={closeSidebar}
+                      className="font-bold"
+                    >
                       {getIconComponent(section.icono)}
                       {section.nombre}
                     </SubmenuItem>
@@ -332,9 +345,15 @@ const Sidebar = ({
                       />
                     </MenuButton>
                   </MenuButtonWrapper>
-                  <SubmenuList className={openSections[section.id] ? "open" : ""}>
+                  <SubmenuList
+                    className={openSections[section.id] ? "open" : ""}
+                  >
                     {filteredSubmenus.map((submenu) => (
-                      <SubmenuItem key={submenu.id} to={submenu.url} onClick={closeSidebar}>
+                      <SubmenuItem
+                        key={submenu.id}
+                        to={submenu.url}
+                        onClick={closeSidebar}
+                      >
                         {getIconComponent(submenu.icono)}
                         {submenu.nombre}
                       </SubmenuItem>

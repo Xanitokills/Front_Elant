@@ -31,7 +31,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   userName: string | null;
   userId: number | null;
-  role: string | null;
+  roles: string[];
   userPermissions: Menu[];
   sidebarData: Menu[];
   isLoading: boolean;
@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [userName, setUserName] = useState<string | null>(null);
   const [userId, setUserId] = useState<number | null>(null);
-  const [role, setRole] = useState<string | null>(null);
+  const [roles, setRoles] = useState<string[]>([]);
   const [userPermissions, setUserPermissions] = useState<Menu[]>([]);
   const [sidebarData, setSidebarData] = useState<Menu[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -107,9 +107,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const data = await response.json();
           setIsAuthenticated(true);
           const savedName = localStorage.getItem("userName");
-          const savedRole = localStorage.getItem("role");
+          const savedRoles = JSON.parse(localStorage.getItem("roles") || "[]");
+
           setUserName(data.userName || savedName || null);
-          setRole(data.role || savedRole || null);
+          setRoles(data.roles || savedRoles || []);
           setUserId(data.user?.id);
 
           const savedSidebarData = localStorage.getItem("sidebarData");
@@ -165,19 +166,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error(errorMessage);
       }
 
-      // Solo establecer isLoading=true después de validar credenciales
       setIsLoading(true);
 
       const data = await response.json();
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("userName", data.userName);
-      localStorage.setItem("role", data.roles?.[0] || "");
+      localStorage.setItem("roles", JSON.stringify(data.roles || []));
       localStorage.setItem("userId", String(data.user.id));
 
       setIsAuthenticated(true);
       setUserName(data.userName);
-      setRole(data.roles?.[0] || null);
+      setRoles(data.roles || []);
       setUserId(data.user.id);
 
       const sidebarData = await updateSidebarData(data.user.id, data.token);
@@ -199,7 +199,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsAuthenticated(false);
     setUserName(null);
     setUserId(null);
-    setRole(null);
+    setRoles([]);
     setUserPermissions([]);
     setSidebarData([]);
     setIsLoading(false);
@@ -211,7 +211,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAuthenticated,
         userName,
         userId,
-        role,
+        roles,
         userPermissions,
         sidebarData,
         isLoading,
