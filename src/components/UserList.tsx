@@ -424,12 +424,12 @@ const UserList = () => {
 
   const handleUpdatePerson = async () => {
     if (!editingPerson) return;
-  
+
     try {
       setIsLoading(true);
-  
+
       let photoData = null;
-  
+
       if (newPhoto) {
         // Validación del tamaño (3MB = 3 * 1024 * 1024)
         if (newPhoto.size > 3 * 1024 * 1024) {
@@ -439,7 +439,7 @@ const UserList = () => {
             text: "La imagen supera los 3MB. Se intentará comprimir automáticamente.",
           });
         }
-  
+
         try {
           const resizedBase64 = await resizeImage(newPhoto);
           photoData = {
@@ -456,7 +456,7 @@ const UserList = () => {
           return;
         }
       }
-  
+
       const payload = {
         basicInfo: {
           nombres: editingPerson.basicInfo.NOMBRES,
@@ -477,7 +477,7 @@ const UserList = () => {
         workerInfo: editingPerson.workerInfo.map((w) => w.ID_FASE), // ✅ Cambio aquí
         photo: photoData,
       };
-  
+
       const response = await fetch(
         `${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}`,
         {
@@ -489,15 +489,16 @@ const UserList = () => {
           body: JSON.stringify(payload),
         }
       );
-  
+
       if (!response.ok) {
         const errorData = await response.json();
         console.error("Detalle del error al actualizar persona:", errorData);
         throw new Error(
-          errorData.message || `Error ${response.status}: ${response.statusText}`
+          errorData.message ||
+            `Error ${response.status}: ${response.statusText}`
         );
       }
-  
+
       Swal.fire({
         icon: "success",
         title: "Éxito",
@@ -505,7 +506,7 @@ const UserList = () => {
         timer: 2000,
         showConfirmButton: false,
       });
-  
+
       setSelectedPerson(null);
       setEditingPerson(null);
       setNewPhoto(null);
@@ -526,7 +527,6 @@ const UserList = () => {
       setIsLoading(false);
     }
   };
-  
 
   const handleUpdateEmail = async () => {
     if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
@@ -937,13 +937,15 @@ const UserList = () => {
 
   const formatDate = (dateString: string): string => {
     if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("es-ES", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
+  
+    // Solo toma la parte de fecha si viene con hora
+    const [year, month, day] = dateString.split('T')[0].split('-');
+  
+    if (!year || !month || !day) return "N/A";
+  
+    return `${day}/${month}/${year}`;
   };
+  
 
   const formatDateForInput = (dateString: string): string => {
     if (!dateString) return "";
@@ -951,15 +953,24 @@ const UserList = () => {
     return date.toISOString().split("T")[0]; // Devuelve YYYY-MM-DD
   };
 
-  const formatLocalDateForInput = (dateString: string): string => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`; // Formato YYYY-MM-DD en zona horaria local
-  };
+  function formatInicioResidenciaInputEdit(dateStr) {
+    console.log("Valor recibido:", dateStr);
   
+    if (!dateStr) {
+      console.warn("Fecha no proporcionada");
+      return '';
+    }
+  
+    // Asegúrate de tomar solo la parte de la fecha
+    const [year, month, day] = dateStr.split('T')[0].split('-');
+  
+    const formattedDate = `${year}-${month}-${day}`;
+    console.log("Fecha formateada para input date (sin desfase):", formattedDate);
+  
+    return formattedDate;
+  }
+  
+
   // Filtrar departamentos según la fase seleccionada
   const filteredDepartamentos = selectedFaseId
     ? departamentos.filter((dpto) => dpto.ID_FASE === selectedFaseId)
@@ -1910,7 +1921,7 @@ const UserList = () => {
                             </label>
                             <input
                               type="date"
-                              value={formatLocalDateForInput(
+                              value={formatInicioResidenciaInputEdit(
                                 info.INICIO_RESIDENCIA
                               )}
                               onChange={(e) => {
