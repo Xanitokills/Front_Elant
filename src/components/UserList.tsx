@@ -424,12 +424,12 @@ const UserList = () => {
 
   const handleUpdatePerson = async () => {
     if (!editingPerson) return;
-
+  
     try {
       setIsLoading(true);
-
+  
       let photoData = null;
-
+  
       if (newPhoto) {
         // Validación del tamaño (3MB = 3 * 1024 * 1024)
         if (newPhoto.size > 3 * 1024 * 1024) {
@@ -439,7 +439,7 @@ const UserList = () => {
             text: "La imagen supera los 3MB. Se intentará comprimir automáticamente.",
           });
         }
-
+  
         try {
           const resizedBase64 = await resizeImage(newPhoto);
           photoData = {
@@ -456,7 +456,7 @@ const UserList = () => {
           return;
         }
       }
-
+  
       const payload = {
         basicInfo: {
           nombres: editingPerson.basicInfo.NOMBRES,
@@ -474,13 +474,10 @@ const UserList = () => {
           id_clasificacion: r.ID_CLASIFICACION,
           inicio_residencia: r.INICIO_RESIDENCIA,
         })),
-        workerInfo: editingPerson.workerInfo.map((w) => ({
-          id_fase: w.ID_FASE,
-          fecha_asignacion: w.FECHA_ASIGNACION,
-        })),
+        workerInfo: editingPerson.workerInfo.map((w) => w.ID_FASE), // ✅ Cambio aquí
         photo: photoData,
       };
-
+  
       const response = await fetch(
         `${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}`,
         {
@@ -492,16 +489,15 @@ const UserList = () => {
           body: JSON.stringify(payload),
         }
       );
-
+  
       if (!response.ok) {
         const errorData = await response.json();
         console.error("Detalle del error al actualizar persona:", errorData);
         throw new Error(
-          errorData.message ||
-            `Error ${response.status}: ${response.statusText}`
+          errorData.message || `Error ${response.status}: ${response.statusText}`
         );
       }
-
+  
       Swal.fire({
         icon: "success",
         title: "Éxito",
@@ -509,7 +505,7 @@ const UserList = () => {
         timer: 2000,
         showConfirmButton: false,
       });
-
+  
       setSelectedPerson(null);
       setEditingPerson(null);
       setNewPhoto(null);
@@ -530,6 +526,7 @@ const UserList = () => {
       setIsLoading(false);
     }
   };
+  
 
   const handleUpdateEmail = async () => {
     if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
@@ -962,7 +959,7 @@ const UserList = () => {
     const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`; // Formato YYYY-MM-DD en zona horaria local
   };
-
+  
   // Filtrar departamentos según la fase seleccionada
   const filteredDepartamentos = selectedFaseId
     ? departamentos.filter((dpto) => dpto.ID_FASE === selectedFaseId)
