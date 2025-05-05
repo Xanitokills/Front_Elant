@@ -150,8 +150,12 @@ const UserList = () => {
   const token = localStorage.getItem("token");
 
   const [persons, setPersons] = useState<Person[]>([]);
-  const [selectedPerson, setSelectedPerson] = useState<PersonDetails | null>(null);
-  const [editingPerson, setEditingPerson] = useState<PersonDetails | null>(null);
+  const [selectedPerson, setSelectedPerson] = useState<PersonDetails | null>(
+    null
+  );
+  const [editingPerson, setEditingPerson] = useState<PersonDetails | null>(
+    null
+  );
   const [viewMode, setViewMode] = useState<"view" | "edit" | "roles">("view");
   const [message, setMessage] = useState<Message | null>(null);
   const [newPhoto, setNewPhoto] = useState<File | null>(null);
@@ -165,7 +169,9 @@ const UserList = () => {
   const [newEmail, setNewEmail] = useState("");
   const [showEmailInput, setShowEmailInput] = useState(false);
   const [showActive, setShowActive] = useState(true);
-  const [searchField, setSearchField] = useState<keyof Person | "FASE_AND_DEPARTAMENTO">("NOMBRES");
+  const [searchField, setSearchField] = useState<
+    keyof Person | "FASE_AND_DEPARTAMENTO"
+  >("NOMBRES");
   const [searchValue, setSearchValue] = useState("");
   const [selectedFase, setSelectedFase] = useState("");
   const [departamentoNumber, setDepartamentoNumber] = useState("");
@@ -216,7 +222,10 @@ const UserList = () => {
       setPersons(data);
     } catch (error) {
       setMessage({
-        text: error instanceof Error ? error.message : "Error al cargar las personas",
+        text:
+          error instanceof Error
+            ? error.message
+            : "Error al cargar las personas",
         type: "error",
       });
     } finally {
@@ -224,13 +233,17 @@ const UserList = () => {
     }
   };
 
-  const fetchPersonDetails = async (id: number, mode: "view" | "edit" | "roles") => {
+  const fetchPersonDetails = async (
+    id: number,
+    mode: "view" | "edit" | "roles"
+  ) => {
     setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/persons/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok) throw new Error("Error al obtener detalles de la persona");
+      if (!response.ok)
+        throw new Error("Error al obtener detalles de la persona");
       const data = await response.json();
       setSelectedPerson(data);
       setEditingPerson(data);
@@ -240,7 +253,8 @@ const UserList = () => {
       }
     } catch (error) {
       setMessage({
-        text: error instanceof Error ? error.message : "Error al cargar detalles",
+        text:
+          error instanceof Error ? error.message : "Error al cargar detalles",
         type: "error",
       });
     } finally {
@@ -376,7 +390,11 @@ const UserList = () => {
     });
   };
 
-  const resizeImage = (file: File, maxWidth = 600, quality = 0.7): Promise<string> => {
+  const resizeImage = (
+    file: File,
+    maxWidth = 600,
+    quality = 0.7
+  ): Promise<string> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
       const reader = new FileReader();
@@ -465,7 +483,8 @@ const UserList = () => {
         const errorData = await response.json();
         console.error("Detalle del error al actualizar persona:", errorData);
         throw new Error(
-          errorData.message || `Error ${response.status}: ${response.statusText}`
+          errorData.message ||
+            `Error ${response.status}: ${response.statusText}`
         );
       }
       Swal.fire({
@@ -553,7 +572,10 @@ const UserList = () => {
     return `${nombre}${apellido}`.slice(0, 15);
   };
 
-  const handleManageAccess = async (person: PersonWithRoles, activar: boolean) => {
+  const handleManageAccess = async (
+    person: PersonWithRoles,
+    activar: boolean
+  ) => {
     if (!person) return;
     setIsLoading(true);
     const { ID_PERSONA, NOMBRES, APELLIDOS, CORREO } = person.basicInfo;
@@ -568,7 +590,8 @@ const UserList = () => {
         setIsLoading(false);
         return;
       }
-      const usuarioBase = person.usuario || generateUsername(NOMBRES, APELLIDOS);
+      const usuarioBase =
+        person.usuario || generateUsername(NOMBRES, APELLIDOS);
       let usuario = usuarioBase;
       let intentos = 0;
       while ((await checkUsername(usuario)) && intentos < 5) {
@@ -846,7 +869,14 @@ const UserList = () => {
           : String(person[searchField as keyof Person] ?? "").toLowerCase();
       return target.includes(searchValue.toLowerCase());
     });
-  }, [persons, searchField, searchValue, selectedFase, departamentoNumber, showActive]);
+  }, [
+    persons,
+    searchField,
+    searchValue,
+    selectedFase,
+    departamentoNumber,
+    showActive,
+  ]);
 
   const paginatedPersons = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -943,7 +973,11 @@ const UserList = () => {
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <StyledSelect
             value={searchField}
-            onChange={(e) => setSearchField(e.target.value as keyof Person | "FASE_AND_DEPARTAMENTO")}
+            onChange={(e) =>
+              setSearchField(
+                e.target.value as keyof Person | "FASE_AND_DEPARTAMENTO"
+              )
+            }
           >
             <option value="NOMBRES">Nombres</option>
             <option value="DNI">DNI</option>
@@ -951,7 +985,7 @@ const UserList = () => {
             <option value="FASE_AND_DEPARTAMENTO">Fase y Departamento</option>
           </StyledSelect>
           {searchField === "FASE_AND_DEPARTAMENTO" ? (
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="fase-departamento-search flex flex-col sm:flex-row gap-2">
               <StyledSelect
                 value={selectedFase}
                 onChange={(e) => {
@@ -975,7 +1009,10 @@ const UserList = () => {
                   setCurrentPage(1);
                 }}
               />
-              <PrimaryButton onClick={() => setCurrentPage(1)}>
+              <PrimaryButton
+                onClick={() => setCurrentPage(1)}
+                className="small-button"
+              >
                 Buscar
               </PrimaryButton>
             </div>
@@ -991,30 +1028,50 @@ const UserList = () => {
             />
           )}
         </div>
-        <SwitchContainer>
-          <span>Mostrar {showActive ? "Activos" : "Inactivos"}</span>
-          <Switch
-            onChange={() => {
-              setShowActive(!showActive);
-              setCurrentPage(1);
-            }}
-            checked={showActive}
-            onColor="#2563EB"
-            offColor="#EF4444"
-          />
-        </SwitchContainer>
+        <div className="flex items-center gap-1">
+          {" "}
+          {/* Reducido de gap-2 a gap-1 */}
+          <SwitchContainer>
+            <span>Mostrar {showActive ? "Activos" : "Inactivos"}</span>
+            <Switch
+              onChange={() => {
+                setShowActive(!showActive);
+                setCurrentPage(1);
+              }}
+              checked={showActive}
+              onColor="#2563EB"
+              offColor="#EF4444"
+            />
+          </SwitchContainer>
+          <PrimaryButton
+            onClick={() => navigate("/users")}
+            className="small-button"
+          >
+            Registrar Persona
+          </PrimaryButton>
+        </div>
       </SearchContainer>
       <TableContainer>
         <table className="min-w-full">
           <thead className="bg-blue-600 text-white">
             <tr>
               <th className="py-3 px-4 text-left text-sm font-semibold">ID</th>
-              <th className="py-3 px-4 text-left text-sm font-semibold">Nombres</th>
+              <th className="py-3 px-4 text-left text-sm font-semibold">
+                Nombres
+              </th>
               <th className="py-3 px-4 text-left text-sm font-semibold">DNI</th>
-              <th className="py-3 px-4 text-left text-sm font-semibold">Perfil</th>
-              <th className="py-3 px-4 text-left text-sm font-semibold">Acceso</th>
-              <th className="py-3 px-4 text-left text-sm font-semibold">Estado</th>
-              <th className="py-3 px-4 text-left text-sm font-semibold">Acciones</th>
+              <th className="py-3 px-4 text-left text-sm font-semibold">
+                Perfil
+              </th>
+              <th className="py-3 px-4 text-left text-sm font-semibold">
+                Acceso
+              </th>
+              <th className="py-3 px-4 text-left text-sm font-semibold">
+                Estado
+              </th>
+              <th className="py-3 px-4 text-left text-sm font-semibold">
+                Acciones
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -1122,7 +1179,9 @@ const UserList = () => {
             Página {currentPage} de {totalPages}
           </span>
           <PrimaryButton
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
             disabled={currentPage === totalPages}
           >
             Siguiente
@@ -1177,7 +1236,9 @@ const UserList = () => {
             </CloseButton>
             {viewMode === "view" && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <SectionTitle className="col-span-3">Visualizar Persona</SectionTitle>
+                <SectionTitle className="col-span-3">
+                  Visualizar Persona
+                </SectionTitle>
                 <div className="flex justify-center">
                   <ProfileImage
                     src={
@@ -1187,46 +1248,84 @@ const UserList = () => {
                     }
                     alt="Foto de perfil"
                     onError={(e) => {
-                      e.currentTarget.src = getDefaultPhoto(selectedPerson.basicInfo.SEXO);
+                      e.currentTarget.src = getDefaultPhoto(
+                        selectedPerson.basicInfo.SEXO
+                      );
                     }}
                   />
                 </div>
                 <InfoGrid className="col-span-2">
                   <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">Nombres</label>
-                    <p className="mt-1 text-gray-800">{selectedPerson.basicInfo.NOMBRES}</p>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Nombres
+                    </label>
+                    <p className="mt-1 text-gray-800">
+                      {selectedPerson.basicInfo.NOMBRES}
+                    </p>
                   </InfoItem>
                   <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">Apellidos</label>
-                    <p className="mt-1 text-gray-800">{selectedPerson.basicInfo.APELLIDOS}</p>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Apellidos
+                    </label>
+                    <p className="mt-1 text-gray-800">
+                      {selectedPerson.basicInfo.APELLIDOS}
+                    </p>
                   </InfoItem>
                   <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">DNI</label>
-                    <p className="mt-1 text-gray-800">{selectedPerson.basicInfo.DNI}</p>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      DNI
+                    </label>
+                    <p className="mt-1 text-gray-800">
+                      {selectedPerson.basicInfo.DNI}
+                    </p>
                   </InfoItem>
                   <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">Correo</label>
-                    <p className="mt-1 text-gray-800">{selectedPerson.basicInfo.CORREO || "N/A"}</p>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Correo
+                    </label>
+                    <p className="mt-1 text-gray-800">
+                      {selectedPerson.basicInfo.CORREO || "N/A"}
+                    </p>
                   </InfoItem>
                   <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">Celular</label>
-                    <p className="mt-1 text-gray-800">{selectedPerson.basicInfo.CELULAR || "N/A"}</p>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Celular
+                    </label>
+                    <p className="mt-1 text-gray-800">
+                      {selectedPerson.basicInfo.CELULAR || "N/A"}
+                    </p>
                   </InfoItem>
                   <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">Contacto de Emergencia</label>
-                    <p className="mt-1 text-gray-800">{selectedPerson.basicInfo.CONTACTO_EMERGENCIA || "N/A"}</p>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Contacto de Emergencia
+                    </label>
+                    <p className="mt-1 text-gray-800">
+                      {selectedPerson.basicInfo.CONTACTO_EMERGENCIA || "N/A"}
+                    </p>
                   </InfoItem>
                   <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">Fecha de Nacimiento</label>
-                    <p className="mt-1 text-gray-800">{formatDate(selectedPerson.basicInfo.FECHA_NACIMIENTO)}</p>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Fecha de Nacimiento
+                    </label>
+                    <p className="mt-1 text-gray-800">
+                      {formatDate(selectedPerson.basicInfo.FECHA_NACIMIENTO)}
+                    </p>
                   </InfoItem>
                   <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">Sexo</label>
-                    <p className="mt-1 text-gray-800">{selectedPerson.basicInfo.SEXO}</p>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Sexo
+                    </label>
+                    <p className="mt-1 text-gray-800">
+                      {selectedPerson.basicInfo.SEXO}
+                    </p>
                   </InfoItem>
                   <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">Perfil</label>
-                    <p className="mt-1 text-gray-800">{selectedPerson.basicInfo.DETALLE_PERFIL}</p>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Perfil
+                    </label>
+                    <p className="mt-1 text-gray-800">
+                      {selectedPerson.basicInfo.DETALLE_PERFIL}
+                    </p>
                   </InfoItem>
                 </InfoGrid>
                 {selectedPerson.residentInfo.length > 0 && (
@@ -1235,10 +1334,20 @@ const UserList = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {selectedPerson.residentInfo.map((info, index) => (
                         <Card key={index}>
-                          <p><strong>Departamento:</strong> Nº {info.NRO_DPTO}</p>
-                          <p><strong>Fase:</strong> {info.FASE}</p>
-                          <p><strong>Clasificación:</strong> {info.DETALLE_CLASIFICACION}</p>
-                          <p><strong>Inicio de Residencia:</strong> {formatDate(info.INICIO_RESIDENCIA)}</p>
+                          <p>
+                            <strong>Departamento:</strong> Nº {info.NRO_DPTO}
+                          </p>
+                          <p>
+                            <strong>Fase:</strong> {info.FASE}
+                          </p>
+                          <p>
+                            <strong>Clasificación:</strong>{" "}
+                            {info.DETALLE_CLASIFICACION}
+                          </p>
+                          <p>
+                            <strong>Inicio de Residencia:</strong>{" "}
+                            {formatDate(info.INICIO_RESIDENCIA)}
+                          </p>
                         </Card>
                       ))}
                     </div>
@@ -1250,8 +1359,13 @@ const UserList = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {selectedPerson.workerInfo.map((info, index) => (
                         <Card key={index}>
-                          <p><strong>Fase:</strong> {info.FASE}</p>
-                          <p><strong>Fecha de Asignación:</strong> {formatDate(info.FECHA_ASIGNACION)}</p>
+                          <p>
+                            <strong>Fase:</strong> {info.FASE}
+                          </p>
+                          <p>
+                            <strong>Fecha de Asignación:</strong>{" "}
+                            {formatDate(info.FECHA_ASIGNACION)}
+                          </p>
                         </Card>
                       ))}
                     </div>
@@ -1261,8 +1375,16 @@ const UserList = () => {
                   <div className="col-span-3 mt-6">
                     <SectionTitle>Información de Acceso</SectionTitle>
                     <Card>
-                      <p><strong>Usuario:</strong> {selectedPerson.basicInfo.USUARIO || "N/A"}</p>
-                      <p><strong>Roles:</strong> {selectedPerson.roles.map((r) => r.DETALLE_USUARIO).join(", ") || "N/A"}</p>
+                      <p>
+                        <strong>Usuario:</strong>{" "}
+                        {selectedPerson.basicInfo.USUARIO || "N/A"}
+                      </p>
+                      <p>
+                        <strong>Roles:</strong>{" "}
+                        {selectedPerson.roles
+                          .map((r) => r.DETALLE_USUARIO)
+                          .join(", ") || "N/A"}
+                      </p>
                     </Card>
                   </div>
                 )}
@@ -1270,7 +1392,9 @@ const UserList = () => {
             )}
             {viewMode === "edit" && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <SectionTitle className="col-span-3">Editar Persona</SectionTitle>
+                <SectionTitle className="col-span-3">
+                  Editar Persona
+                </SectionTitle>
                 <div className="flex flex-col items-center">
                   <ProfileImage
                     src={
@@ -1282,7 +1406,9 @@ const UserList = () => {
                     }
                     alt="Foto de perfil"
                     onError={(e) => {
-                      e.currentTarget.src = getDefaultPhoto(editingPerson.basicInfo.SEXO);
+                      e.currentTarget.src = getDefaultPhoto(
+                        editingPerson.basicInfo.SEXO
+                      );
                     }}
                   />
                   <label className="mt-4 flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-blue-700 transition-colors">
@@ -1322,9 +1448,17 @@ const UserList = () => {
                               FORMATO: null,
                             },
                           });
-                          Swal.fire("Eliminada", "La foto fue eliminada", "success");
+                          Swal.fire(
+                            "Eliminada",
+                            "La foto fue eliminada",
+                            "success"
+                          );
                         } catch (error) {
-                          Swal.fire("Error", "No se pudo eliminar la foto", "error");
+                          Swal.fire(
+                            "Error",
+                            "No se pudo eliminar la foto",
+                            "error"
+                          );
                         }
                       }
                     }}
@@ -1335,72 +1469,99 @@ const UserList = () => {
                 </div>
                 <InfoGrid className="col-span-2">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Nombres</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Nombres
+                    </label>
                     <Input
                       type="text"
                       value={editingPerson.basicInfo.NOMBRES}
                       onChange={(e) =>
                         setEditingPerson({
                           ...editingPerson,
-                          basicInfo: { ...editingPerson.basicInfo, NOMBRES: e.target.value },
+                          basicInfo: {
+                            ...editingPerson.basicInfo,
+                            NOMBRES: e.target.value,
+                          },
                         })
                       }
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Apellidos</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Apellidos
+                    </label>
                     <Input
                       type="text"
                       value={editingPerson.basicInfo.APELLIDOS}
                       onChange={(e) =>
                         setEditingPerson({
                           ...editingPerson,
-                          basicInfo: { ...editingPerson.basicInfo, APELLIDOS: e.target.value },
+                          basicInfo: {
+                            ...editingPerson.basicInfo,
+                            APELLIDOS: e.target.value,
+                          },
                         })
                       }
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">DNI</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      DNI
+                    </label>
                     <Input
                       type="text"
                       value={editingPerson.basicInfo.DNI}
                       onChange={(e) =>
                         setEditingPerson({
                           ...editingPerson,
-                          basicInfo: { ...editingPerson.basicInfo, DNI: e.target.value },
+                          basicInfo: {
+                            ...editingPerson.basicInfo,
+                            DNI: e.target.value,
+                          },
                         })
                       }
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Correo</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Correo
+                    </label>
                     <Input
                       type="email"
                       value={editingPerson.basicInfo.CORREO}
                       onChange={(e) =>
                         setEditingPerson({
                           ...editingPerson,
-                          basicInfo: { ...editingPerson.basicInfo, CORREO: e.target.value },
+                          basicInfo: {
+                            ...editingPerson.basicInfo,
+                            CORREO: e.target.value,
+                          },
                         })
                       }
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Celular</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Celular
+                    </label>
                     <Input
                       type="text"
                       value={editingPerson.basicInfo.CELULAR}
                       onChange={(e) =>
                         setEditingPerson({
                           ...editingPerson,
-                          basicInfo: { ...editingPerson.basicInfo, CELULAR: e.target.value },
+                          basicInfo: {
+                            ...editingPerson.basicInfo,
+                            CELULAR: e.target.value,
+                          },
                         })
                       }
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Contacto de Emergencia</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Contacto de Emergencia
+                    </label>
                     <Input
                       type="text"
                       value={editingPerson.basicInfo.CONTACTO_EMERGENCIA}
@@ -1416,10 +1577,14 @@ const UserList = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Fecha de Nacimiento</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Fecha de Nacimiento
+                    </label>
                     <Input
                       type="date"
-                      value={formatDateForInput(editingPerson.basicInfo.FECHA_NACIMIENTO)}
+                      value={formatDateForInput(
+                        editingPerson.basicInfo.FECHA_NACIMIENTO
+                      )}
                       onChange={(e) =>
                         setEditingPerson({
                           ...editingPerson,
@@ -1432,7 +1597,9 @@ const UserList = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Sexo</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Sexo
+                    </label>
                     <StyledSelect
                       value={editingPerson.basicInfo.ID_SEXO}
                       onChange={(e) =>
@@ -1441,7 +1608,10 @@ const UserList = () => {
                           basicInfo: {
                             ...editingPerson.basicInfo,
                             ID_SEXO: Number(e.target.value),
-                            SEXO: sexes.find((s) => s.ID_SEXO === Number(e.target.value))?.DESCRIPCION || "",
+                            SEXO:
+                              sexes.find(
+                                (s) => s.ID_SEXO === Number(e.target.value)
+                              )?.DESCRIPCION || "",
                           },
                         })
                       }
@@ -1454,13 +1624,16 @@ const UserList = () => {
                     </StyledSelect>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Perfil</label>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Perfil
+                    </label>
                     <StyledSelect
                       value={editingPerson.basicInfo.ID_PERFIL}
                       onChange={(e) => {
                         const newPerfilId = Number(e.target.value);
                         const newPerfil =
-                          perfiles.find((p) => p.ID_PERFIL === newPerfilId)?.DETALLE_PERFIL || "";
+                          perfiles.find((p) => p.ID_PERFIL === newPerfilId)
+                            ?.DETALLE_PERFIL || "";
                         setEditingPerson({
                           ...editingPerson,
                           basicInfo: {
@@ -1468,8 +1641,10 @@ const UserList = () => {
                             ID_PERFIL: newPerfilId,
                             DETALLE_PERFIL: newPerfil,
                           },
-                          residentInfo: newPerfilId === 1 ? editingPerson.residentInfo : [],
-                          workerInfo: newPerfilId !== 1 ? editingPerson.workerInfo : [],
+                          residentInfo:
+                            newPerfilId === 1 ? editingPerson.residentInfo : [],
+                          workerInfo:
+                            newPerfilId !== 1 ? editingPerson.workerInfo : [],
                         });
                       }}
                     >
@@ -1486,7 +1661,9 @@ const UserList = () => {
                     <SectionTitle>Información de Residente</SectionTitle>
                     {editingPerson.residentInfo.map((info, index) => {
                       const departamentosFiltrados = departamentos.filter(
-                        (d) => fases.find((f) => f.NOMBRE === info.FASE)?.ID_FASE === d.ID_FASE
+                        (d) =>
+                          fases.find((f) => f.NOMBRE === info.FASE)?.ID_FASE ===
+                          d.ID_FASE
                       );
                       return (
                         <Card key={index} className="relative">
@@ -1502,9 +1679,10 @@ const UserList = () => {
                                   cancelButtonText: "Cancelar",
                                 });
                                 if (confirm.isConfirmed) {
-                                  const newResidentInfo = editingPerson.residentInfo.filter(
-                                    (_, i) => i !== index
-                                  );
+                                  const newResidentInfo =
+                                    editingPerson.residentInfo.filter(
+                                      (_, i) => i !== index
+                                    );
                                   setEditingPerson({
                                     ...editingPerson,
                                     residentInfo: newResidentInfo,
@@ -1526,22 +1704,37 @@ const UserList = () => {
                           )}
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700">Fase</label>
+                              <label className="block text-sm font-semibold text-gray-700">
+                                Fase
+                              </label>
                               <StyledSelect
-                                value={fases.find((f) => f.NOMBRE === info.FASE)?.ID_FASE || ""}
+                                value={
+                                  fases.find((f) => f.NOMBRE === info.FASE)
+                                    ?.ID_FASE || ""
+                                }
                                 onChange={(e) => {
                                   const faseId = Number(e.target.value);
-                                  const faseNombre = fases.find((f) => f.ID_FASE === faseId)?.NOMBRE || "";
-                                  const departamentosFiltrados = departamentos.filter(
-                                    (d) => d.ID_FASE === faseId
-                                  );
-                                  const newResidentInfo = [...editingPerson.residentInfo];
+                                  const faseNombre =
+                                    fases.find((f) => f.ID_FASE === faseId)
+                                      ?.NOMBRE || "";
+                                  const departamentosFiltrados =
+                                    departamentos.filter(
+                                      (d) => d.ID_FASE === faseId
+                                    );
+                                  const newResidentInfo = [
+                                    ...editingPerson.residentInfo,
+                                  ];
                                   newResidentInfo[index] = {
                                     ...info,
                                     FASE: faseNombre,
-                                    ID_DEPARTAMENTO: departamentosFiltrados[0]?.ID_DEPARTAMENTO || 0,
-                                    NRO_DPTO: departamentosFiltrados[0]?.NRO_DPTO || 0,
-                                    DEPARTAMENTO_DESCRIPCION: departamentosFiltrados[0]?.DESCRIPCION || "",
+                                    ID_DEPARTAMENTO:
+                                      departamentosFiltrados[0]
+                                        ?.ID_DEPARTAMENTO || 0,
+                                    NRO_DPTO:
+                                      departamentosFiltrados[0]?.NRO_DPTO || 0,
+                                    DEPARTAMENTO_DESCRIPCION:
+                                      departamentosFiltrados[0]?.DESCRIPCION ||
+                                      "",
                                   };
                                   setEditingPerson({
                                     ...editingPerson,
@@ -1551,25 +1744,35 @@ const UserList = () => {
                               >
                                 <option value="">Seleccione una fase</option>
                                 {fases.map((fase) => (
-                                  <option key={fase.ID_FASE} value={fase.ID_FASE}>
+                                  <option
+                                    key={fase.ID_FASE}
+                                    value={fase.ID_FASE}
+                                  >
                                     {fase.NOMBRE}
                                   </option>
                                 ))}
                               </StyledSelect>
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700">Departamento</label>
+                              <label className="block text-sm font-semibold text-gray-700">
+                                Departamento
+                              </label>
                               <StyledSelect
                                 value={info.ID_DEPARTAMENTO}
                                 onChange={(e) => {
                                   const selectedDpto = departamentos.find(
-                                    (d) => d.ID_DEPARTAMENTO === Number(e.target.value)
+                                    (d) =>
+                                      d.ID_DEPARTAMENTO ===
+                                      Number(e.target.value)
                                   );
-                                  const newResidentInfo = [...editingPerson.residentInfo];
+                                  const newResidentInfo = [
+                                    ...editingPerson.residentInfo,
+                                  ];
                                   newResidentInfo[index] = {
                                     ...info,
                                     ID_DEPARTAMENTO: Number(e.target.value),
-                                    DEPARTAMENTO_DESCRIPCION: selectedDpto?.DESCRIPCION || "",
+                                    DEPARTAMENTO_DESCRIPCION:
+                                      selectedDpto?.DESCRIPCION || "",
                                     NRO_DPTO: selectedDpto?.NRO_DPTO || 0,
                                   };
                                   setEditingPerson({
@@ -1578,28 +1781,41 @@ const UserList = () => {
                                   });
                                 }}
                               >
-                                <option value="">Seleccione un departamento</option>
+                                <option value="">
+                                  Seleccione un departamento
+                                </option>
                                 {departamentosFiltrados.map((dpto) => (
-                                  <option key={dpto.ID_DEPARTAMENTO} value={dpto.ID_DEPARTAMENTO}>
+                                  <option
+                                    key={dpto.ID_DEPARTAMENTO}
+                                    value={dpto.ID_DEPARTAMENTO}
+                                  >
                                     Nº {dpto.NRO_DPTO}
                                   </option>
                                 ))}
                               </StyledSelect>
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700">Clasificación</label>
+                              <label className="block text-sm font-semibold text-gray-700">
+                                Clasificación
+                              </label>
                               <StyledSelect
                                 value={info.ID_CLASIFICACION}
                                 onChange={(e) => {
-                                  const selectedClasificacion = tiposResidente.find(
-                                    (t) => t.ID_CLASIFICACION === Number(e.target.value)
-                                  );
-                                  const newResidentInfo = [...editingPerson.residentInfo];
+                                  const selectedClasificacion =
+                                    tiposResidente.find(
+                                      (t) =>
+                                        t.ID_CLASIFICACION ===
+                                        Number(e.target.value)
+                                    );
+                                  const newResidentInfo = [
+                                    ...editingPerson.residentInfo,
+                                  ];
                                   newResidentInfo[index] = {
                                     ...info,
                                     ID_CLASIFICACION: Number(e.target.value),
                                     DETALLE_CLASIFICACION:
-                                      selectedClasificacion?.DETALLE_CLASIFICACION || "",
+                                      selectedClasificacion?.DETALLE_CLASIFICACION ||
+                                      "",
                                   };
                                   setEditingPerson({
                                     ...editingPerson,
@@ -1608,19 +1824,28 @@ const UserList = () => {
                                 }}
                               >
                                 {tiposResidente.map((tipo) => (
-                                  <option key={tipo.ID_CLASIFICACION} value={tipo.ID_CLASIFICACION}>
+                                  <option
+                                    key={tipo.ID_CLASIFICACION}
+                                    value={tipo.ID_CLASIFICACION}
+                                  >
                                     {tipo.DETALLE_CLASIFICACION}
                                   </option>
                                 ))}
                               </StyledSelect>
                             </div>
                             <div>
-                              <label className="block text-sm font-semibold text-gray-700">Inicio de Residencia</label>
+                              <label className="block text-sm font-semibold text-gray-700">
+                                Inicio de Residencia
+                              </label>
                               <Input
                                 type="date"
-                                value={formatInicioResidenciaInputEdit(info.INICIO_RESIDENCIA)}
+                                value={formatInicioResidenciaInputEdit(
+                                  info.INICIO_RESIDENCIA
+                                )}
                                 onChange={(e) => {
-                                  const newResidentInfo = [...editingPerson.residentInfo];
+                                  const newResidentInfo = [
+                                    ...editingPerson.residentInfo,
+                                  ];
                                   newResidentInfo[index] = {
                                     ...info,
                                     INICIO_RESIDENCIA: e.target.value,
@@ -1639,7 +1864,9 @@ const UserList = () => {
                     <PrimaryButton
                       onClick={() => {
                         const defaultFase = fases[0];
-                        const dptosDeFase = departamentos.filter((d) => d.ID_FASE === defaultFase?.ID_FASE);
+                        const dptosDeFase = departamentos.filter(
+                          (d) => d.ID_FASE === defaultFase?.ID_FASE
+                        );
                         const defaultDpto = dptosDeFase[0];
                         setEditingPerson({
                           ...editingPerson,
@@ -1648,12 +1875,18 @@ const UserList = () => {
                             {
                               ID_RESIDENTE: 0,
                               FASE: defaultFase?.NOMBRE || "",
-                              ID_DEPARTAMENTO: defaultDpto?.ID_DEPARTAMENTO || 0,
-                              DEPARTAMENTO_DESCRIPCION: defaultDpto?.DESCRIPCION || "",
+                              ID_DEPARTAMENTO:
+                                defaultDpto?.ID_DEPARTAMENTO || 0,
+                              DEPARTAMENTO_DESCRIPCION:
+                                defaultDpto?.DESCRIPCION || "",
                               NRO_DPTO: defaultDpto?.NRO_DPTO || 0,
-                              ID_CLASIFICACION: tiposResidente[0]?.ID_CLASIFICACION || 0,
-                              DETALLE_CLASIFICACION: tiposResidente[0]?.DETALLE_CLASIFICACION || "",
-                              INICIO_RESIDENCIA: new Date().toISOString().split("T")[0],
+                              ID_CLASIFICACION:
+                                tiposResidente[0]?.ID_CLASIFICACION || 0,
+                              DETALLE_CLASIFICACION:
+                                tiposResidente[0]?.DETALLE_CLASIFICACION || "",
+                              INICIO_RESIDENCIA: new Date()
+                                .toISOString()
+                                .split("T")[0],
                             },
                           ],
                         });
@@ -1680,9 +1913,10 @@ const UserList = () => {
                                 });
                                 return;
                               }
-                              const newWorkerInfo = editingPerson.workerInfo.filter(
-                                (_, i) => i !== index
-                              );
+                              const newWorkerInfo =
+                                editingPerson.workerInfo.filter(
+                                  (_, i) => i !== index
+                                );
                               setEditingPerson({
                                 ...editingPerson,
                                 workerInfo: newWorkerInfo,
@@ -1696,11 +1930,15 @@ const UserList = () => {
                         )}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-semibold text-gray-700">Fase</label>
+                            <label className="block text-sm font-semibold text-gray-700">
+                              Fase
+                            </label>
                             <StyledSelect
                               value={info.ID_FASE}
                               onChange={(e) => {
-                                const newWorkerInfo = [...editingPerson.workerInfo];
+                                const newWorkerInfo = [
+                                  ...editingPerson.workerInfo,
+                                ];
                                 const selectedFase = fases.find(
                                   (f) => f.ID_FASE === Number(e.target.value)
                                 );
@@ -1723,12 +1961,16 @@ const UserList = () => {
                             </StyledSelect>
                           </div>
                           <div>
-                            <label className="block text-sm font-semibold text-gray-700">Fecha de Asignación</label>
+                            <label className="block text-sm font-semibold text-gray-700">
+                              Fecha de Asignación
+                            </label>
                             <Input
                               type="date"
                               value={formatDateForInput(info.FECHA_ASIGNACION)}
                               onChange={(e) => {
-                                const newWorkerInfo = [...editingPerson.workerInfo];
+                                const newWorkerInfo = [
+                                  ...editingPerson.workerInfo,
+                                ];
                                 newWorkerInfo[index] = {
                                   ...info,
                                   FECHA_ASIGNACION: e.target.value,
@@ -1745,7 +1987,10 @@ const UserList = () => {
                     ))}
                     <PrimaryButton
                       onClick={() => {
-                        const defaultFase = fases[0] || { ID_FASE: 0, NOMBRE: "" };
+                        const defaultFase = fases[0] || {
+                          ID_FASE: 0,
+                          NOMBRE: "",
+                        };
                         setEditingPerson({
                           ...editingPerson,
                           workerInfo: [
@@ -1753,7 +1998,9 @@ const UserList = () => {
                             {
                               ID_FASE: defaultFase.ID_FASE,
                               FASE: defaultFase.NOMBRE,
-                              FECHA_ASIGNACION: new Date().toISOString().split("T")[0],
+                              FECHA_ASIGNACION: new Date()
+                                .toISOString()
+                                .split("T")[0],
                             },
                           ],
                         });
@@ -1775,81 +2022,114 @@ const UserList = () => {
                   >
                     Cancelar
                   </SecondaryButton>
-                  <PrimaryButton onClick={handleUpdatePerson} disabled={isLoading}>
+                  <PrimaryButton
+                    onClick={handleUpdatePerson}
+                    disabled={isLoading}
+                  >
                     Guardar
                   </PrimaryButton>
                 </div>
               </div>
             )}
             {viewMode === "roles" && (
-              <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-4">
                 <SectionTitle>Gestionar Acceso al Sistema</SectionTitle>
                 <Card>
-                  <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">Nombre</label>
-                    <p className="mt-1 text-gray-800">
-                      {editingPerson.basicInfo.NOMBRES} {editingPerson.basicInfo.APELLIDOS}
-                    </p>
-                  </InfoItem>
-                  <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">DNI</label>
-                    <p className="mt-1 text-gray-800">{editingPerson.basicInfo.DNI}</p>
-                  </InfoItem>
-                  <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">Usuario</label>
-                    <p className="mt-1 text-gray-800">
-                      {editingPerson.basicInfo.USUARIO || "No asignado"}
-                    </p>
-                  </InfoItem>
-                  <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">Correo</label>
-                    {showEmailInput ? (
-                      <div className="flex gap-2">
-                        <Input
-                          type="email"
-                          value={newEmail}
-                          onChange={(e) => setNewEmail(e.target.value)}
-                          placeholder="Ingrese un correo"
-                        />
-                        <PrimaryButton onClick={handleUpdateEmail} disabled={isLoading}>
-                          Guardar Correo
-                        </PrimaryButton>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <p className="mt-1 text-gray-800">
-                          {editingPerson.basicInfo.CORREO || "No asignado"}
-                        </p>
-                        {!editingPerson.basicInfo.CORREO && (
-                          <WarningButton onClick={() => setShowEmailInput(true)}>
-                            Agregar Correo
-                          </WarningButton>
-                        )}
-                      </div>
-                    )}
-                  </InfoItem>
-                  <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">Roles</label>
-                    <Select
-                      isMulti
-                      options={roleOptions}
-                      value={roleOptions.filter((option) =>
-                        editingPerson.roles.some((role) => role.ID_ROL === option.value)
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-700">
+                      Información de la Persona
+                    </h3>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Nombre
+                      </label>
+                      <p className="mt-1 text-gray-800">
+                        {editingPerson.basicInfo.NOMBRES}{" "}
+                        {editingPerson.basicInfo.APELLIDOS}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700">
+                        DNI
+                      </label>
+                      <p className="mt-1 text-gray-800">
+                        {editingPerson.basicInfo.DNI}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Usuario
+                      </label>
+                      <p className="mt-1 text-gray-800">
+                        {editingPerson.basicInfo.USUARIO || "No asignado"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Correo
+                      </label>
+                      {showEmailInput ? (
+                        <div className="flex flex-col sm:flex-row gap-2 mt-1">
+                          <Input
+                            type="email"
+                            value={newEmail}
+                            onChange={(e) => setNewEmail(e.target.value)}
+                            placeholder="Ingrese un correo"
+                          />
+                          <PrimaryButton
+                            onClick={handleUpdateEmail}
+                            disabled={isLoading}
+                          >
+                            Guardar Correo
+                          </PrimaryButton>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mt-1">
+                          <p className="text-gray-800">
+                            {editingPerson.basicInfo.CORREO || "No asignado"}
+                          </p>
+                          {!editingPerson.basicInfo.CORREO && (
+                            <WarningButton
+                              onClick={() => setShowEmailInput(true)}
+                            >
+                              Agregar Correo
+                            </WarningButton>
+                          )}
+                        </div>
                       )}
-                      onChange={(selectedOptions) => {
-                        const newRoles = selectedOptions.map((option) => ({
-                          ID_ROL: option.value,
-                          DETALLE_USUARIO: option.label,
-                        }));
-                        setEditingPerson({
-                          ...editingPerson,
-                          roles: newRoles,
-                        });
-                      }}
-                      placeholder="Seleccione roles..."
-                      className="mt-2"
-                    />
-                  </InfoItem>
+                    </div>
+                  </div>
+                  <div className="mt-6 border-t border-gray-200 pt-4">
+                    <h3 className="text-lg font-semibold text-gray-700">
+                      Roles
+                    </h3>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Roles
+                      </label>
+                      <Select
+                        isMulti
+                        options={roleOptions}
+                        value={roleOptions.filter((option) =>
+                          editingPerson.roles.some(
+                            (role) => role.ID_ROL === option.value
+                          )
+                        )}
+                        onChange={(selectedOptions) => {
+                          const newRoles = selectedOptions.map((option) => ({
+                            ID_ROL: option.value,
+                            DETALLE_USUARIO: option.label,
+                          }));
+                          setEditingPerson({
+                            ...editingPerson,
+                            roles: newRoles,
+                          });
+                        }}
+                        placeholder="Seleccione roles..."
+                        className="mt-2"
+                      />
+                    </div>
+                  </div>
                 </Card>
                 <div className="flex flex-col sm:flex-row gap-4 justify-end">
                   {editingPerson.basicInfo.ACCESO_SISTEMA ? (
@@ -1872,9 +2152,13 @@ const UserList = () => {
                       </DangerButton>
                       <WarningButton
                         onClick={() =>
-                          handleResetPassword(editingPerson.basicInfo.ID_USUARIO!)
+                          handleResetPassword(
+                            editingPerson.basicInfo.ID_USUARIO!
+                          )
                         }
-                        disabled={isLoading || !editingPerson.basicInfo.ID_USUARIO}
+                        disabled={
+                          isLoading || !editingPerson.basicInfo.ID_USUARIO
+                        }
                       >
                         <FaLock className="mr-2" />
                         Restablecer Contraseña
