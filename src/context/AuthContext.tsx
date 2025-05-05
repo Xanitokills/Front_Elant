@@ -5,8 +5,8 @@ import {
   useEffect,
   ReactNode,
 } from "react";
-import { jwtDecode } from "jwt-decode"; // Usa importación nombrada // Dependencia instalada
-import Swal from "sweetalert2"; // Dependencia instalada
+import { jwtDecode } from "jwt-decode";
+import Swal from "sweetalert2";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -91,10 +91,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Función para validar la sesión
   const validateSession = async () => {
     const token = localStorage.getItem("token");
+    console.log("AuthContext - Validating session, token:", token ? "Present" : "Not present");
     if (!token) {
+      console.log("AuthContext - No token, logging out");
       setIsAuthenticated(false);
       setUserId(null);
       setUserPermissions([]);
@@ -155,128 +156,111 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Verificar expiración del token
   useEffect(() => {
     const checkTokenExpiration = () => {
       const token = localStorage.getItem("token");
+      console.log("AuthContext - Checking token expiration, token:", token ? "Present" : "Not present");
       if (token) {
         try {
           const decoded: { exp: number } = jwtDecode(token);
-          const currentTime = Date.now() / 1000; // Tiempo actual en segundos
-          if (decoded.exp < currentTime + 5) {
-            logout(); // Cierra sesión si el token expiró
-          } else {
-            const timeLeft = decoded.exp - currentTime;
-            // Notificación 1 minuto antes de la expiración
-            if (timeLeft <= 60 && timeLeft > 0) {
-              Swal.fire({
-                icon: "warning",
-                title: "Sesión a punto de expirar",
-                text: "Tu sesión expirará en menos de 1 minuto. ¿Quieres renovarla?",
-                showCancelButton: true,
-                confirmButtonText: "Renovar",
-                cancelButtonText: "Cerrar sesión",
-                timer: 60000, // 1 minuto
-                timerProgressBar: true,
-                didOpen: () => {
-                  const button = Swal.getConfirmButton();
-                  if (button) button.focus();
-                },
-              }).then(async (result) => {
-                if (result.isConfirmed) {
-                  // Lógica para renovar el token
-                  try {
-                    setIsLoading(true);
-                    const response = await fetch(`${API_URL}/refresh-token`, {
-                      method: "POST",
-                      headers: {
-                        Authorization: `Bearer ${token}`,
-                        "Content-Type": "application/json",
-                      },
-                    });
+          const currentTime = Date.now() / 1000;
+          console.log("AuthContext - Token decoded, exp:", decoded.exp, "currentTime:", currentTime);
+          if (decoded.exp < currentTime + 10) {
+            console.log("AuthContext - Token expired or too close to expiry, logging out");
+            logout();
+            return;
+          }
+          const timeLeft = decoded.exp - currentTime;
+          console.log("AuthContext - Time left for token (seconds):", timeLeft);
+          if (timeLeft <= 120 && timeLeft > 0) {
+            console.log("AuthContext - Showing token expiration warning");
+            Swal.fire({
+              icon: "warning",
+              title: "Sesión a punto de expirar",
+              text: "Tu sesión expirará en menos de 2 minutos. ¿Quieres renovarla?",
+              showCancelButton: true,
+              confirmButtonText: "Renovar",
+              cancelButtonText: "Cerrar sesión",
+              timer: 120000,
+              timerProgressBar: true,
+              didOpen: () => {
+                const button = Swal.getConfirmButton();
+                if (button) button.focus();
+              },
+            }).then(async (result) => {
+              if (result.isConfirmed) {
+                console.log("AuthContext - User clicked 'Renovar', sending request to /refresh-token");
+                try {
+                  setIsLoading(true);
+                  const response = await fetch(`${API_URL}/refresh-token`, {
+                    method: "POST",
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                      "Content-Type": "application/json",
+                    },
+                  });
+                  console.log("AuthContext - /refresh-token response status:", response.status);
+                  const responseText = await response.text();
+                  console.log("AuthContext - /refresh-token response body:", responseText);
 
-                    if (response.ok) {
-                      const data = await response.json();
-                      // Actualizar el token y los datos en localStorage
-                      localStorage.setItem("token", data.token);
-                      localStorage.setItem("userName", data.userName);
-                      localStorage.setItem(
-                        "roles",
-                        JSON.stringify(data.roles || [])
-                      );
-                      localStorage.setItem("userId", String(data.user.id));
-                      localStorage.setItem(
-                        "personaId",
-                        String(data.user.personaId || "")
-                      );
-                      localStorage.setItem(
-                        "sexo",
-                        data.user.sexo || "Masculino"
-                      );
+                  if (response.ok) {
+                    const data = JSON.parse(responseText);
+                    console.log("AuthContext - New token received:", data.token);
+                    localStorage.setItem("token", data.token);
+                    localStorage.setItem("userName", data.userName);
+                    localStorage.setItem("roles", JSON.stringify(data.roles || []));
+                    localStorage.setItem("userId", String(data.user.id));
+                    localStorage.setItem("personaId", String(data.user.personaId || ""));
+                    localStorage.setItem("sexo", data.user.sexo || "Masculino");
+                    localStorage.setItem("sidebarData", JSON.stringify(data.permissions || []));
 
-                      // Actualizar el estado
-                      setIsAuthenticated(true);
-                      setUserName(data.userName);
-                      setRoles(data.roles || []);
-                      setUserId(data.user.id);
-                      setUserPermissions(data.permissions || []);
-                      setSidebarData(data.permissions || []);
+                    setIsAuthenticated(true);
+                    setUserName(data.userName);
+                    setRoles(data.roles || []);
+                    setUserId(data.user.id);
+                    setUserPermissions(data.permissions || []);
+                    setSidebarData(data.permissions || []);
 
-                      // Guardar permisos en localStorage
-                      localStorage.setItem(
-                        "sidebarData",
-                        JSON.stringify(data.permissions || [])
-                      );
-
-                      console.log("AuthContext - Token renovado exitosamente");
-                    } else {
-                      console.error(
-                        "AuthContext - Error al renovar el token:",
-                        response.status
-                      );
-                      Swal.fire({
-                        icon: "error",
-                        title: "Error",
-                        text: "No se pudo renovar la sesión. Por favor, inicia sesión nuevamente.",
-                      });
-                      logout();
-                    }
-                  } catch (error) {
-                    console.error(
-                      "AuthContext - Error al renovar el token:",
-                      error
-                    );
+                    console.log("AuthContext - Token renewed successfully, state updated");
+                    // Forzar validación de la sesión con el nuevo token
+                    await validateSession();
+                  } else {
+                    console.error("AuthContext - Failed to renew token, status:", response.status, "body:", responseText);
                     Swal.fire({
                       icon: "error",
                       title: "Error",
                       text: "No se pudo renovar la sesión. Por favor, inicia sesión nuevamente.",
                     });
                     logout();
-                  } finally {
-                    setIsLoading(false);
                   }
-                } else {
+                } catch (error) {
+                  console.error("AuthContext - Error during token refresh:", error);
+                  Swal.fire({
+                    icon: "error",
+                    title: "Error",
+                    text: "No se pudo renovar la sesión. Por favor, inicia sesión nuevamente.",
+                  });
                   logout();
+                } finally {
+                  setIsLoading(false);
                 }
-              });
-            }
-            // Configurar un temporizador para cerrar sesión cuando expire
-            const timeout = setTimeout(() => {
-              logout();
-            }, timeLeft * 1000);
-            return () => clearTimeout(timeout); // Limpiar el temporizador al desmontar
+              } else {
+                console.log("AuthContext - User clicked 'Cerrar sesión' or dismissed");
+                logout();
+              }
+            });
           }
         } catch (error) {
-          console.error("Error decodificando token:", error);
+          console.error("AuthContext - Error decoding token:", error);
           logout();
         }
       }
     };
 
     checkTokenExpiration();
-    const interval = setInterval(checkTokenExpiration, 60000); // Revisar cada minuto
-    return () => clearInterval(interval); // Limpiar intervalo al desmontar
-  }, [userId]);
+    const interval = setInterval(checkTokenExpiration, 60000);
+    return () => clearInterval(interval);
+  }, []); // Cambiado de [userId] a []
 
   useEffect(() => {
     validateSession();
@@ -305,7 +289,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const data = await response.json();
 
-      // Guardado en localStorage
       localStorage.setItem("token", data.token);
       localStorage.setItem("userName", data.userName);
       localStorage.setItem("roles", JSON.stringify(data.roles || []));
@@ -336,6 +319,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
+    console.log("AuthContext - Logging out, clearing localStorage, isAuthenticated:", isAuthenticated);
     localStorage.clear();
     setIsAuthenticated(false);
     setUserName(null);
