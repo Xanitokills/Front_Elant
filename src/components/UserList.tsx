@@ -924,6 +924,42 @@ const UserList = () => {
     return data.exists;
   };
 
+  const handleActivatePerson = async (id: number) => {
+    Swal.fire({
+      title: "¿Estás seguro?",
+      text: "Esta acción reactivará a la persona.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Activar",
+      cancelButtonText: "Cancelar",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          const response = await fetch(`${API_URL}/persons/${id}/activate`, {
+            method: "PUT",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!response.ok) throw new Error("Error al activar la persona");
+          // Filtrar la persona reactivada de la lista de inactivos
+          setPersons(persons.filter((person) => person.ID_PERSONA !== id));
+          Swal.fire({
+            icon: "success",
+            title: "Activado",
+            text: "Persona activada correctamente",
+            timer: 2000,
+            showConfirmButton: false,
+          });
+        } catch (error) {
+          Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "No se pudo activar la persona",
+          });
+        }
+      }
+    });
+  };
+
   useEffect(() => {
     fetchPersons();
     fetchSexes();
@@ -1140,13 +1176,27 @@ const UserList = () => {
                         >
                           <FaEdit size={20} />
                         </button>
-                        <button
-                          onClick={() => handleDeletePerson(person.ID_PERSONA)}
-                          className="text-red-600 hover:text-red-800 transition-colors"
-                          title="Eliminar"
-                        >
-                          <FaTrash size={20} />
-                        </button>
+                        {showActive ? (
+                          <button
+                            onClick={() =>
+                              handleDeletePerson(person.ID_PERSONA)
+                            }
+                            className="text-red-600 hover:text-red-800 transition-colors"
+                            title="Eliminar"
+                          >
+                            <FaTrash size={20} />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() =>
+                              handleActivatePerson(person.ID_PERSONA)
+                            }
+                            className="text-green-600 hover:text-green-800 transition-colors"
+                            title="Activar"
+                          >
+                            <FaCheckCircle size={20} />
+                          </button>
+                        )}
                         <button
                           onClick={() => {
                             setViewMode("roles");
