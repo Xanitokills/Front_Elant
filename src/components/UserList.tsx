@@ -2031,186 +2031,186 @@ const UserList = () => {
                 </div>
               </div>
             )}
-{viewMode === "roles" && (
-  <div className="flex flex-col gap-4">
-    <SectionTitle>Gestionar Acceso al Sistema</SectionTitle>
+            {viewMode === "roles" && (
+              <div className="flex flex-col gap-4">
+                <SectionTitle>Gestionar Acceso al Sistema</SectionTitle>
 
-    {/* Contenedor para Información de la Persona */}
-    <Card>
-      <h3 className="text-lg font-semibold text-gray-700 mb-4">
-        Información de la Persona
-      </h3>
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-semibold text-gray-700">
-            Nombre
-          </label>
-          <p className="mt-1 text-gray-800">
-            {editingPerson.basicInfo.NOMBRES}{" "}
-            {editingPerson.basicInfo.APELLIDOS}
-          </p>
-        </div>
-        <div>
-          <label className="block text-sm font-semibold text-gray-700">
-            DNI
-          </label>
-          <p className="mt-1 text-gray-800">
-            {editingPerson.basicInfo.DNI}
-          </p>
-        </div>
-        <div>
-          <label className="block text-sm font-semibold text-gray-700">
-            Usuario
-          </label>
-          <p className="mt-1 text-gray-800">
-            {editingPerson.basicInfo.USUARIO || "No asignado"}
-          </p>
-        </div>
-        <div>
-          <label className="block text-sm font-semibold text-gray-700">
-            Correo
-          </label>
-          {showEmailInput ? (
-            <div className="flex flex-col sm:flex-row gap-2 mt-1">
-              <Input
-                type="email"
-                value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
-                placeholder="Ingrese un correo"
-              />
-              <PrimaryButton
-                onClick={handleUpdateEmail}
-                disabled={isLoading}
-              >
-                Guardar Correo
-              </PrimaryButton>
-            </div>
-          ) : (
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mt-1">
-              <p className="text-gray-800">
-                {editingPerson.basicInfo.CORREO || "No asignado"}
-              </p>
-              {!editingPerson.basicInfo.CORREO && (
-                <WarningButton
-                  onClick={() => setShowEmailInput(true)}
-                >
-                  Agregar Correo
-                </WarningButton>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </Card>
+                {/* Contenedor para Información de la Persona */}
+                <Card>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-4">
+                    Información de la Persona
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Nombre
+                      </label>
+                      <p className="mt-1 text-gray-800">
+                        {editingPerson.basicInfo.NOMBRES}{" "}
+                        {editingPerson.basicInfo.APELLIDOS}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700">
+                        DNI
+                      </label>
+                      <p className="mt-1 text-gray-800">
+                        {editingPerson.basicInfo.DNI}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Usuario
+                      </label>
+                      <p className="mt-1 text-gray-800">
+                        {editingPerson.basicInfo.USUARIO || "No asignado"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Correo
+                      </label>
+                      {showEmailInput ? (
+                        <div className="flex flex-col sm:flex-row gap-2 mt-1">
+                          <Input
+                            type="email"
+                            value={newEmail}
+                            onChange={(e) => setNewEmail(e.target.value)}
+                            placeholder="Ingrese un correo"
+                          />
+                          <PrimaryButton
+                            onClick={handleUpdateEmail}
+                            disabled={isLoading}
+                          >
+                            Guardar Correo
+                          </PrimaryButton>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mt-1">
+                          <p className="text-gray-800">
+                            {editingPerson.basicInfo.CORREO || "No asignado"}
+                          </p>
+                          {!editingPerson.basicInfo.CORREO && (
+                            <WarningButton
+                              onClick={() => setShowEmailInput(true)}
+                            >
+                              Agregar Correo
+                            </WarningButton>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Card>
 
-    {/* Contenedor para Roles */}
-    <Card>
-      <h3 className="text-lg font-semibold text-gray-700 mb-4">
-        Roles
-      </h3>
-      <div>
-        <label className="block text-sm font-semibold text-gray-700">
-          Roles
-        </label>
-        <Select
-          isMulti
-          options={roleOptions}
-          value={roleOptions.filter((option) =>
-            editingPerson.roles.some(
-              (role) => role.ID_ROL === option.value
-            )
-          )}
-          onChange={(selectedOptions) => {
-            const newRoles = selectedOptions.map((option) => ({
-              ID_ROL: option.value,
-              DETALLE_USUARIO: option.label,
-            }));
-            setEditingPerson({
-              ...editingPerson,
-              roles: newRoles,
-            });
-          }}
-          placeholder="Seleccione roles..."
-          className="mt-2"
-          menuPortalTarget={document.body} // Renderiza el dropdown fuera del modal
-          styles={{
-            menuPortal: (base) => ({ ...base, zIndex: 10000 }), // Asegura que el dropdown esté por encima del modal
-          }}
-        />
-      </div>
-    </Card>
+                {/* Contenedor para Roles */}
+                <Card>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-4">
+                    Roles
+                  </h3>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Roles
+                    </label>
+                    <Select
+                      isMulti
+                      options={roleOptions}
+                      value={roleOptions.filter((option) =>
+                        editingPerson.roles.some(
+                          (role) => role.ID_ROL === option.value
+                        )
+                      )}
+                      onChange={(selectedOptions) => {
+                        const newRoles = selectedOptions.map((option) => ({
+                          ID_ROL: option.value,
+                          DETALLE_USUARIO: option.label,
+                        }));
+                        setEditingPerson({
+                          ...editingPerson,
+                          roles: newRoles,
+                        });
+                      }}
+                      placeholder="Seleccione roles..."
+                      className="mt-2"
+                      menuPortalTarget={document.body} // Renderiza el dropdown fuera del modal
+                      styles={{
+                        menuPortal: (base) => ({ ...base, zIndex: 10000 }), // Asegura que el dropdown esté por encima del modal
+                      }}
+                    />
+                  </div>
+                </Card>
 
-    {/* Botones de acción */}
-    <div className="flex flex-col sm:flex-row gap-4 justify-end">
-      {editingPerson.basicInfo.ACCESO_SISTEMA ? (
-        <>
-          <DangerButton
-            onClick={() =>
-              handleManageAccess(
-                {
-                  basicInfo: editingPerson.basicInfo,
-                  roles: editingPerson.roles,
-                  usuario: editingPerson.basicInfo.USUARIO,
-                },
-                false
-              )
-            }
-            disabled={isLoading}
-          >
-            <FaLock className="mr-2" />
-            Desactivar Acceso
-          </DangerButton>
-          <WarningButton
-            onClick={() =>
-              handleResetPassword(
-                editingPerson.basicInfo.ID_USUARIO!
-              )
-            }
-            disabled={
-              isLoading || !editingPerson.basicInfo.ID_USUARIO
-            }
-          >
-            <FaLock className="mr-2" />
-            Restablecer Contraseña
-          </WarningButton>
-          <PrimaryButton
-            onClick={handleManageRoles}
-            disabled={isLoading}
-          >
-            Guardar Roles
-          </PrimaryButton>
-        </>
-      ) : (
-        <PrimaryButton
-          onClick={() =>
-            handleManageAccess(
-              {
-                basicInfo: editingPerson.basicInfo,
-                roles: editingPerson.roles,
-              },
-              true
-            )
-          }
-          disabled={isLoading || !editingPerson.basicInfo.CORREO}
-        >
-          <FaUserShield className="mr-2" />
-          Activar Acceso
-        </PrimaryButton>
-      )}
-      <SecondaryButton
-        onClick={() => {
-          setSelectedPerson(null);
-          setEditingPerson(null);
-          setViewMode("view");
-          setShowEmailInput(false);
-          setNewEmail("");
-        }}
-      >
-        Cancelar
-      </SecondaryButton>
-    </div>
-  </div>
-)}
+                {/* Botones de acción */}
+                <div className="flex flex-col sm:flex-row gap-4 justify-end">
+                  {editingPerson.basicInfo.ACCESO_SISTEMA ? (
+                    <>
+                      <DangerButton
+                        onClick={() =>
+                          handleManageAccess(
+                            {
+                              basicInfo: editingPerson.basicInfo,
+                              roles: editingPerson.roles,
+                              usuario: editingPerson.basicInfo.USUARIO,
+                            },
+                            false
+                          )
+                        }
+                        disabled={isLoading}
+                      >
+                        <FaLock className="mr-2" />
+                        Desactivar Acceso
+                      </DangerButton>
+                      <WarningButton
+                        onClick={() =>
+                          handleResetPassword(
+                            editingPerson.basicInfo.ID_USUARIO!
+                          )
+                        }
+                        disabled={
+                          isLoading || !editingPerson.basicInfo.ID_USUARIO
+                        }
+                      >
+                        <FaLock className="mr-2" />
+                        Restablecer Contraseña
+                      </WarningButton>
+                      <PrimaryButton
+                        onClick={handleManageRoles}
+                        disabled={isLoading}
+                      >
+                        Guardar Roles
+                      </PrimaryButton>
+                    </>
+                  ) : (
+                    <PrimaryButton
+                      onClick={() =>
+                        handleManageAccess(
+                          {
+                            basicInfo: editingPerson.basicInfo,
+                            roles: editingPerson.roles,
+                          },
+                          true
+                        )
+                      }
+                      disabled={isLoading || !editingPerson.basicInfo.CORREO}
+                    >
+                      <FaUserShield className="mr-2" />
+                      Activar Acceso
+                    </PrimaryButton>
+                  )}
+                  <SecondaryButton
+                    onClick={() => {
+                      setSelectedPerson(null);
+                      setEditingPerson(null);
+                      setViewMode("view");
+                      setShowEmailInput(false);
+                      setNewEmail("");
+                    }}
+                  >
+                    Cancelar
+                  </SecondaryButton>
+                </div>
+              </div>
+            )}
           </ModalContent>
         ) : null}
       </Modal>
