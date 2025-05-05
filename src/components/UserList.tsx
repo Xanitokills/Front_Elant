@@ -13,6 +13,7 @@ import {
   FaCheckCircle,
   FaLock,
   FaCamera,
+  FaUserPlus,
 } from "react-icons/fa";
 import {
   Container,
@@ -1064,28 +1065,27 @@ const UserList = () => {
             />
           )}
         </div>
-        <div className="flex items-center gap-1">
-          {" "}
-          {/* Reducido de gap-2 a gap-1 */}
-          <SwitchContainer>
-            <span>Mostrar {showActive ? "Activos" : "Inactivos"}</span>
-            <Switch
-              onChange={() => {
-                setShowActive(!showActive);
-                setCurrentPage(1);
-              }}
-              checked={showActive}
-              onColor="#2563EB"
-              offColor="#EF4444"
-            />
-          </SwitchContainer>
-          <PrimaryButton
-            onClick={() => navigate("/users")}
-            className="small-button"
-          >
-            Registrar Persona
-          </PrimaryButton>
-        </div>
+        <SwitchContainer>
+          <span>Mostrar {showActive ? "Activos" : "Inactivos"}</span>
+          <Switch
+            onChange={() => {
+              setShowActive(!showActive);
+              setCurrentPage(1);
+            }}
+            checked={showActive}
+            onColor="#2563EB"
+            offColor="#EF4444"
+          />
+          {hasAccess(["Sistemas", "Administrador"]) && (
+            <PrimaryButton
+              onClick={() => navigate("/users")}
+              className="small-button ml-2"
+              title="Registrar nueva persona"
+            >
+              <FaUserPlus className="mr-1" /> Registrar
+            </PrimaryButton>
+          )}
+        </SwitchContainer>
       </SearchContainer>
       <TableContainer>
         <table className="min-w-full">
