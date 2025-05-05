@@ -180,6 +180,10 @@ const UserList = () => {
   const itemsPerPage = 10;
   const [selectedFaseId, setSelectedFaseId] = useState<number | null>(null);
 
+  const [loadingActions, setLoadingActions] = useState<{
+    [key: number]: "view" | "edit" | "delete" | "activate" | "roles" | null;
+  }>({});
+
   const currentRoles = useMemo(() => {
     try {
       return JSON.parse(localStorage.getItem("roles") || "[]");
@@ -238,7 +242,7 @@ const UserList = () => {
     id: number,
     mode: "view" | "edit" | "roles"
   ) => {
-    setIsLoading(true);
+    setLoadingAction(id, mode);
     try {
       const response = await fetch(`${API_URL}/persons/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -259,7 +263,7 @@ const UserList = () => {
         type: "error",
       });
     } finally {
-      setIsLoading(false);
+      setLoadingAction(id, null);
     }
   };
 
@@ -366,6 +370,7 @@ const UserList = () => {
       cancelButtonText: "Cancelar",
     }).then(async (result) => {
       if (result.isConfirmed) {
+        setLoadingAction(id, "delete");
         try {
           const response = await fetch(`${API_URL}/persons/${id}`, {
             method: "DELETE",
@@ -386,6 +391,8 @@ const UserList = () => {
             title: "Error",
             text: "No se pudo eliminar la persona",
           });
+        } finally {
+          setLoadingAction(id, null);
         }
       }
     });
@@ -935,13 +942,13 @@ const UserList = () => {
       cancelButtonText: "Cancelar",
     }).then(async (result) => {
       if (result.isConfirmed) {
+        setLoadingAction(id, "activate");
         try {
           const response = await fetch(`${API_URL}/persons/${id}/activate`, {
             method: "PUT",
             headers: { Authorization: `Bearer ${token}` },
           });
           if (!response.ok) throw new Error("Error al activar la persona");
-          // Filtrar la persona reactivada de la lista de inactivos
           setPersons(persons.filter((person) => person.ID_PERSONA !== id));
           Swal.fire({
             icon: "success",
@@ -956,9 +963,21 @@ const UserList = () => {
             title: "Error",
             text: "No se pudo activar la persona",
           });
+        } finally {
+          setLoadingAction(id, null);
         }
       }
     });
+  };
+
+  const setLoadingAction = (
+    id: number,
+    action: "view" | "edit" | "delete" | "activate" | "roles" | null
+  ) => {
+    setLoadingActions((prev) => ({
+      ...prev,
+      [id]: action,
+    }));
   };
 
   useEffect(() => {
@@ -1158,10 +1177,15 @@ const UserList = () => {
                           setViewMode("view");
                           fetchPersonDetails(person.ID_PERSONA, "view");
                         }}
-                        className="text-blue-600 hover:text-blue-800 transition-colors"
+                        className="text-blue-600 hover:text-blue-800 transition-colors relative"
                         title="Visualizar"
+                        disabled={!!loadingActions[person.ID_PERSONA]}
                       >
-                        <FaEye size={20} />
+                        {loadingActions[person.ID_PERSONA] === "view" ? (
+                          <div className="w-5 h-5 border-2 border-t-blue-600 border-gray-200 rounded-full animate-spin" />
+                        ) : (
+                          <FaEye size={20} />
+                        )}
                       </button>
                     )}
                     {hasAccess(["Sistemas", "Administrador"]) && (
@@ -1171,30 +1195,46 @@ const UserList = () => {
                             setViewMode("edit");
                             fetchPersonDetails(person.ID_PERSONA, "edit");
                           }}
-                          className="text-green-600 hover:text-green-800 transition-colors"
+                          className="text-green-600 hover:text-green-800 transition-colors relative"
                           title="Editar"
+                          disabled={!!loadingActions[person.ID_PERSONA]}
                         >
-                          <FaEdit size={20} />
+                          {loadingActions[person.ID_PERSONA] === "edit" ? (
+                            <div className="w-5 h-5 border-2 border-t-green-600 border-gray-200 rounded-full animate-spin" />
+                          ) : (
+                            <FaEdit size={20} />
+                          )}
                         </button>
                         {showActive ? (
                           <button
                             onClick={() =>
                               handleDeletePerson(person.ID_PERSONA)
                             }
-                            className="text-red-600 hover:text-red-800 transition-colors"
+                            className="text-red-600 hover:text-red-800 transition-colors relative"
                             title="Eliminar"
+                            disabled={!!loadingActions[person.ID_PERSONA]}
                           >
-                            <FaTrash size={20} />
+                            {loadingActions[person.ID_PERSONA] === "delete" ? (
+                              <div className="w-5 h-5 border-2 border-t-red-600 border-gray-200 rounded-full animate-spin" />
+                            ) : (
+                              <FaTrash size={20} />
+                            )}
                           </button>
                         ) : (
                           <button
                             onClick={() =>
                               handleActivatePerson(person.ID_PERSONA)
                             }
-                            className="text-green-600 hover:text-green-800 transition-colors"
+                            className="text-green-600 hover:text-green-800 transition-colors relative"
                             title="Activar"
+                            disabled={!!loadingActions[person.ID_PERSONA]}
                           >
-                            <FaCheckCircle size={20} />
+                            {loadingActions[person.ID_PERSONA] ===
+                            "activate" ? (
+                              <div className="w-5 h-5 border-2 border-t-green-600 border-gray-200 rounded-full animate-spin" />
+                            ) : (
+                              <FaCheckCircle size={20} />
+                            )}
                           </button>
                         )}
                         <button
@@ -1203,10 +1243,15 @@ const UserList = () => {
                             setShowEmailInput(false);
                             fetchPersonDetails(person.ID_PERSONA, "roles");
                           }}
-                          className="text-purple-600 hover:text-purple-800 transition-colors"
+                          className="text-purple-600 hover:text-purple-800 transition-colors relative"
                           title="Gestionar Acceso"
+                          disabled={!!loadingActions[person.ID_PERSONA]}
                         >
-                          <FaUserShield size={20} />
+                          {loadingActions[person.ID_PERSONA] === "roles" ? (
+                            <div className="w-5 h-5 border-2 border-t-purple-600 border-gray-200 rounded-full animate-spin" />
+                          ) : (
+                            <FaUserShield size={20} />
+                          )}
                         </button>
                       </>
                     )}
