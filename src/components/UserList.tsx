@@ -429,6 +429,24 @@ const UserList = () => {
 
   const handleUpdatePerson = async () => {
     if (!editingPerson) return;
+
+    // Validar campos de residentInfo
+    for (const info of editingPerson.residentInfo) {
+      if (
+        !info.FASE ||
+        info.ID_DEPARTAMENTO === 0 ||
+        info.ID_CLASIFICACION === 0 ||
+        !info.INICIO_RESIDENCIA
+      ) {
+        Swal.fire({
+          icon: "error",
+          title: "Campos incompletos",
+          text: "Por favor, complete todos los campos de Fase, Departamento, Clasificación e Inicio de Residencia para todos los departamentos.",
+        });
+        return;
+      }
+    }
+
     try {
       setIsLoading(true);
       let photoData = null;
@@ -1800,7 +1818,7 @@ const UserList = () => {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                               <label className="block text-sm font-semibold text-gray-700">
-                                Fase
+                                Fase <span className="text-red-500">*</span>
                               </label>
                               <StyledSelect
                                 value={
@@ -1836,6 +1854,7 @@ const UserList = () => {
                                     residentInfo: newResidentInfo,
                                   });
                                 }}
+                                required
                               >
                                 <option value="">Seleccione una fase</option>
                                 {fases.map((fase) => (
@@ -1850,7 +1869,8 @@ const UserList = () => {
                             </div>
                             <div>
                               <label className="block text-sm font-semibold text-gray-700">
-                                Departamento
+                                Departamento{" "}
+                                <span className="text-red-500">*</span>
                               </label>
                               <StyledSelect
                                 value={info.ID_DEPARTAMENTO}
@@ -1875,6 +1895,7 @@ const UserList = () => {
                                     residentInfo: newResidentInfo,
                                   });
                                 }}
+                                required
                               >
                                 <option value="">
                                   Seleccione un departamento
@@ -1891,7 +1912,8 @@ const UserList = () => {
                             </div>
                             <div>
                               <label className="block text-sm font-semibold text-gray-700">
-                                Clasificación
+                                Clasificación{" "}
+                                <span className="text-red-500">*</span>
                               </label>
                               <StyledSelect
                                 value={info.ID_CLASIFICACION}
@@ -1917,7 +1939,11 @@ const UserList = () => {
                                     residentInfo: newResidentInfo,
                                   });
                                 }}
+                                required
                               >
+                                <option value="">
+                                  Seleccione una clasificación
+                                </option>
                                 {tiposResidente.map((tipo) => (
                                   <option
                                     key={tipo.ID_CLASIFICACION}
@@ -1930,7 +1956,8 @@ const UserList = () => {
                             </div>
                             <div>
                               <label className="block text-sm font-semibold text-gray-700">
-                                Inicio de Residencia
+                                Inicio de Residencia{" "}
+                                <span className="text-red-500">*</span>
                               </label>
                               <Input
                                 type="date"
@@ -1950,6 +1977,7 @@ const UserList = () => {
                                     residentInfo: newResidentInfo,
                                   });
                                 }}
+                                required
                               />
                             </div>
                           </div>
@@ -1958,30 +1986,19 @@ const UserList = () => {
                     })}
                     <PrimaryButton
                       onClick={() => {
-                        const defaultFase = fases[0];
-                        const dptosDeFase = departamentos.filter(
-                          (d) => d.ID_FASE === defaultFase?.ID_FASE
-                        );
-                        const defaultDpto = dptosDeFase[0];
                         setEditingPerson({
                           ...editingPerson,
                           residentInfo: [
                             ...editingPerson.residentInfo,
                             {
                               ID_RESIDENTE: 0,
-                              FASE: defaultFase?.NOMBRE || "",
-                              ID_DEPARTAMENTO:
-                                defaultDpto?.ID_DEPARTAMENTO || 0,
-                              DEPARTAMENTO_DESCRIPCION:
-                                defaultDpto?.DESCRIPCION || "",
-                              NRO_DPTO: defaultDpto?.NRO_DPTO || 0,
-                              ID_CLASIFICACION:
-                                tiposResidente[0]?.ID_CLASIFICACION || 0,
-                              DETALLE_CLASIFICACION:
-                                tiposResidente[0]?.DETALLE_CLASIFICACION || "",
-                              INICIO_RESIDENCIA: new Date()
-                                .toISOString()
-                                .split("T")[0],
+                              FASE: "",
+                              ID_DEPARTAMENTO: 0,
+                              DEPARTAMENTO_DESCRIPCION: "",
+                              NRO_DPTO: 0,
+                              ID_CLASIFICACION: 0,
+                              DETALLE_CLASIFICACION: "",
+                              INICIO_RESIDENCIA: "",
                             },
                           ],
                         });
