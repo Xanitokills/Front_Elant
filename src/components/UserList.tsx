@@ -2034,11 +2034,13 @@ const UserList = () => {
             {viewMode === "roles" && (
               <div className="flex flex-col gap-4">
                 <SectionTitle>Gestionar Acceso al Sistema</SectionTitle>
+
+                {/* Contenedor para Información de la Persona */}
                 <Card>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-4">
+                    Información de la Persona
+                  </h3>
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-gray-700">
-                      Información de la Persona
-                    </h3>
                     <div>
                       <label className="block text-sm font-semibold text-gray-700">
                         Nombre
@@ -2099,38 +2101,42 @@ const UserList = () => {
                       )}
                     </div>
                   </div>
-                  <div className="mt-6 border-t border-gray-200 pt-4">
-                    <h3 className="text-lg font-semibold text-gray-700">
+                </Card>
+
+                {/* Contenedor para Roles */}
+                <Card>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-4">
+                    Roles
+                  </h3>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700">
                       Roles
-                    </h3>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700">
-                        Roles
-                      </label>
-                      <Select
-                        isMulti
-                        options={roleOptions}
-                        value={roleOptions.filter((option) =>
-                          editingPerson.roles.some(
-                            (role) => role.ID_ROL === option.value
-                          )
-                        )}
-                        onChange={(selectedOptions) => {
-                          const newRoles = selectedOptions.map((option) => ({
-                            ID_ROL: option.value,
-                            DETALLE_USUARIO: option.label,
-                          }));
-                          setEditingPerson({
-                            ...editingPerson,
-                            roles: newRoles,
-                          });
-                        }}
-                        placeholder="Seleccione roles..."
-                        className="mt-2"
-                      />
-                    </div>
+                    </label>
+                    <Select
+                      isMulti
+                      options={roleOptions}
+                      value={roleOptions.filter((option) =>
+                        editingPerson.roles.some(
+                          (role) => role.ID_ROL === option.value
+                        )
+                      )}
+                      onChange={(selectedOptions) => {
+                        const newRoles = selectedOptions.map((option) => ({
+                          ID_ROL: option.value,
+                          DETALLE_USUARIO: option.label,
+                        }));
+                        setEditingPerson({
+                          ...editingPerson,
+                          roles: newRoles,
+                        });
+                      }}
+                      placeholder="Seleccione roles..."
+                      className="mt-2"
+                    />
                   </div>
                 </Card>
+
+                {/* Botones de acción */}
                 <div className="flex flex-col sm:flex-row gap-4 justify-end">
                   {editingPerson.basicInfo.ACCESO_SISTEMA ? (
                     <>

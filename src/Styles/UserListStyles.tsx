@@ -293,9 +293,42 @@ export const Select = styled.select`
     border-color: #2563eb;
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
   }
+
+  /* Estilos para react-select */
+  & .react-select__control {
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    padding: 0.25rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    &:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+  }
+
+  & .react-select__menu {
+    z-index: 9999; /* Asegura que el dropdown sobresalga del modal */
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    margin-top: 0.25rem;
+    overflow: visible; /* Evita que el modal corte el dropdown */
+  }
+
+  & .react-select__menu-list {
+    padding: 0;
+    border-radius: 0.5rem;
+  }
+
+  & .react-select__option {
+    padding: 0.75rem;
+    cursor: pointer;
+    &:hover {
+      background: #f3f4f6;
+    }
+  }
 `;
 
-// Componentes del modal
+// Componentes del modal genérico (no específico de roles)
 export const ModalContent = styled.div`
   background: white;
   padding: 2rem;
@@ -305,39 +338,88 @@ export const ModalContent = styled.div`
   overflow-y: auto;
   width: 100%;
   max-width: ${(props: { mode: string }) =>
-    props.mode === "view" ? "64rem" : props.mode === "roles" ? "48rem" : "48rem"};
+    props.mode === "view" ? "64rem" : "48rem"};
+  animation: ${fadeIn} 0.3s ease-out;
+  position: relative;
+`;
+
+// Componentes específicos del modal de roles
+export const RolesModalContent = styled.div`
+  background: white;
+  padding: 2rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  max-height: 90vh;
+  width: 100%;
+  max-width: 48rem;
   animation: ${fadeIn} 0.3s ease-out;
   position: relative;
 
-  /* Ajustar el layout interno para el modo roles */
-  &[mode="roles"] {
-    & > div {
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-    }
+  & > div {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+`;
 
-    /* Ajustar el contenedor de los InfoItem para que sean más anchos */
-    & ${InfoItem} {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      padding: 1.25rem;
-    }
+export const RolesModalInfoItem = styled.div`
+  background: #f9fafb;
+  padding: 1.25rem;
+  border-radius: 0.375rem;
+  animation: ${fadeIn} 0.4s ease-out;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+  &:hover {
+    background: #f3f4f6;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  }
+`;
 
-    /* Asegurar que los inputs y selects sean más anchos */
-    & input,
-    & .react-select__control {
-      width: 100%;
-      max-width: 36rem;
-    }
+export const RolesModalSelect = styled.select`
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  &:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
 
-    /* Ajustar los botones para que se alineen mejor */
-    & > div:last-child {
-      flex-direction: row;
-      justify-content: flex-end;
-      flex-wrap: wrap;
-      gap: 0.75rem;
+  /* Estilos para react-select */
+  & .react-select__control {
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    padding: 0.25rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    &:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+  }
+
+  & .react-select__menu {
+    position: fixed; /* Posicionamiento fijo para que no sea afectado por el overflow del modal */
+    z-index: 10000; /* Más alto que el modal para asegurar que sobresalga */
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    margin-top: 0.25rem;
+    background: white;
+    width: inherit; /* Mantiene el ancho del control */
+  }
+
+  & .react-select__menu-list {
+    padding: 0;
+    border-radius: 0.5rem;
+    max-height: 200px; /* Limita la altura del dropdown para que no sea demasiado largo */
+    overflow-y: auto; /* Permite desplazamiento dentro del dropdown si hay muchas opciones */
+  }
+
+  & .react-select__option {
+    padding: 0.75rem;
+    cursor: pointer;
+    &:hover {
+      background: #f3f4f6;
     }
   }
 `;
