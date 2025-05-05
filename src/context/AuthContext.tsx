@@ -163,7 +163,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         try {
           const decoded: { exp: number } = jwtDecode(token);
           const currentTime = Date.now() / 1000; // Tiempo actual en segundos
-          if (decoded.exp < currentTime) {
+          if (decoded.exp < currentTime + 5) {
             logout(); // Cierra sesión si el token expiró
           } else {
             const timeLeft = decoded.exp - currentTime;
@@ -182,10 +182,79 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   const button = Swal.getConfirmButton();
                   if (button) button.focus();
                 },
-              }).then((result) => {
+              }).then(async (result) => {
                 if (result.isConfirmed) {
                   // Lógica para renovar el token
-                  validateSession();
+                  try {
+                    setIsLoading(true);
+                    const response = await fetch(`${API_URL}/refresh-token`, {
+                      method: "POST",
+                      headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                      },
+                    });
+
+                    if (response.ok) {
+                      const data = await response.json();
+                      // Actualizar el token y los datos en localStorage
+                      localStorage.setItem("token", data.token);
+                      localStorage.setItem("userName", data.userName);
+                      localStorage.setItem(
+                        "roles",
+                        JSON.stringify(data.roles || [])
+                      );
+                      localStorage.setItem("userId", String(data.user.id));
+                      localStorage.setItem(
+                        "personaId",
+                        String(data.user.personaId || "")
+                      );
+                      localStorage.setItem(
+                        "sexo",
+                        data.user.sexo || "Masculino"
+                      );
+
+                      // Actualizar el estado
+                      setIsAuthenticated(true);
+                      setUserName(data.userName);
+                      setRoles(data.roles || []);
+                      setUserId(data.user.id);
+                      setUserPermissions(data.permissions || []);
+                      setSidebarData(data.permissions || []);
+
+                      // Guardar permisos en localStorage
+                      localStorage.setItem(
+                        "sidebarData",
+                        JSON.stringify(data.permissions || [])
+                      );
+
+                      console.log("AuthContext - Token renovado exitosamente");
+                    } else {
+                      console.error(
+                        "AuthContext - Error al renovar el token:",
+                        response.status
+                      );
+                      Swal.fire({
+                        icon: "error",
+                        title: "Error",
+                        text: "No se pudo renovar la sesión. Por favor, inicia sesión nuevamente.",
+                      });
+                      logout();
+                    }
+                  } catch (error) {
+                    console.error(
+                      "AuthContext - Error al renovar el token:",
+                      error
+                    );
+                    Swal.fire({
+                      icon: "error",
+                      title: "Error",
+                      text: "No se pudo renovar la sesión. Por favor, inicia sesión nuevamente.",
+                    });
+                    logout();
+                  } finally {
+                    setIsLoading(false);
+                  }
                 } else {
                   logout();
                 }
