@@ -5,6 +5,8 @@ import {
   useEffect,
   ReactNode,
 } from "react";
+import { jwtDecode } from "jwt-decode"; // Usa importación nombrada // Dependencia instalada
+import Swal from "sweetalert2"; // Dependencia instalada
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -64,7 +66,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log("AuthContext - Updated User Permissions:", data);
         return data;
       } else {
-        console.error("AuthContext - Error fetching sidebar data:", response.status);
+        console.error(
+          "AuthContext - Error fetching sidebar data:",
+          response.status
+        );
         setSidebarData([]);
         setUserPermissions([]);
         localStorage.removeItem("sidebarData");
@@ -86,64 +91,125 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  useEffect(() => {
-    const validateSession = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setIsAuthenticated(false);
-        setUserId(null);
-        setUserPermissions([]);
-        setSidebarData([]);
-        setIsLoading(false);
-        return;
-      }
+  // Función para validar la sesión
+  const validateSession = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setIsAuthenticated(false);
+      setUserId(null);
+      setUserPermissions([]);
+      setSidebarData([]);
+      setIsLoading(false);
+      return;
+    }
 
-      try {
-        const response = await fetch(`${API_URL}/validate`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+    try {
+      const response = await fetch(`${API_URL}/validate`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-        if (response.ok) {
-          const data = await response.json();
-          setIsAuthenticated(true);
-          const savedName = localStorage.getItem("userName");
-          const savedRoles = JSON.parse(localStorage.getItem("roles") || "[]");
+      if (response.ok) {
+        const data = await response.json();
+        setIsAuthenticated(true);
+        const savedName = localStorage.getItem("userName");
+        const savedRoles = JSON.parse(localStorage.getItem("roles") || "[]");
 
-          setUserName(data.userName || savedName || null);
-          setRoles(data.roles || savedRoles || []);
-          setUserId(data.user?.id);
+        setUserName(data.userName || savedName || null);
+        setRoles(data.roles || savedRoles || []);
+        setUserId(data.user?.id);
 
-          const savedSidebarData = localStorage.getItem("sidebarData");
-          let permissionsLoaded = false;
-          if (savedSidebarData) {
-            const parsedData = JSON.parse(savedSidebarData);
-            setSidebarData(parsedData);
-            setUserPermissions(parsedData);
-            console.log("AuthContext - Loaded User Permissions from localStorage:", parsedData);
-            permissionsLoaded = parsedData.length > 0;
-          }
+        const savedSidebarData = localStorage.getItem("sidebarData");
+        let permissionsLoaded = false;
+        if (savedSidebarData) {
+          const parsedData = JSON.parse(savedSidebarData);
+          setSidebarData(parsedData);
+          setUserPermissions(parsedData);
+          console.log(
+            "AuthContext - Loaded User Permissions from localStorage:",
+            parsedData
+          );
+          permissionsLoaded = parsedData.length > 0;
+        }
 
-          if (!permissionsLoaded && data.user?.id) {
-            const sidebarData = await updateSidebarData(data.user.id, token);
-            permissionsLoaded = sidebarData.length > 0;
-          }
+        if (!permissionsLoaded && data.user?.id) {
+          const sidebarData = await updateSidebarData(data.user.id, token);
+          permissionsLoaded = sidebarData.length > 0;
+        }
 
-          if (!permissionsLoaded) {
-            console.warn("AuthContext - No permissions loaded, logging out");
-            logout();
-          }
-        } else {
-          console.error("AuthContext - Session validation failed:", response.status);
+        if (!permissionsLoaded) {
+          console.warn("AuthContext - No permissions loaded, logging out");
           logout();
         }
-      } catch (error) {
-        console.error("AuthContext - Error validating session:", error);
+      } else {
+        console.error(
+          "AuthContext - Session validation failed:",
+          response.status
+        );
         logout();
-      } finally {
-        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error("AuthContext - Error validating session:", error);
+      logout();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Verificar expiración del token
+  useEffect(() => {
+    const checkTokenExpiration = () => {
+      const token = localStorage.getItem("token");
+      if (token) {
+        try {
+          const decoded: { exp: number } = jwtDecode(token);
+          const currentTime = Date.now() / 1000; // Tiempo actual en segundos
+          if (decoded.exp < currentTime) {
+            logout(); // Cierra sesión si el token expiró
+          } else {
+            const timeLeft = decoded.exp - currentTime;
+            // Notificación 1 minuto antes de la expiración
+            if (timeLeft <= 60 && timeLeft > 0) {
+              Swal.fire({
+                icon: "warning",
+                title: "Sesión a punto de expirar",
+                text: "Tu sesión expirará en menos de 1 minuto. ¿Quieres renovarla?",
+                showCancelButton: true,
+                confirmButtonText: "Renovar",
+                cancelButtonText: "Cerrar sesión",
+                timer: 60000, // 1 minuto
+                timerProgressBar: true,
+                didOpen: () => {
+                  const button = Swal.getConfirmButton();
+                  if (button) button.focus();
+                },
+              }).then((result) => {
+                if (result.isConfirmed) {
+                  // Lógica para renovar el token
+                  validateSession();
+                } else {
+                  logout();
+                }
+              });
+            }
+            // Configurar un temporizador para cerrar sesión cuando expire
+            const timeout = setTimeout(() => {
+              logout();
+            }, timeLeft * 1000);
+            return () => clearTimeout(timeout); // Limpiar el temporizador al desmontar
+          }
+        } catch (error) {
+          console.error("Error decodificando token:", error);
+          logout();
+        }
       }
     };
 
+    checkTokenExpiration();
+    const interval = setInterval(checkTokenExpiration, 60000); // Revisar cada minuto
+    return () => clearInterval(interval); // Limpiar intervalo al desmontar
+  }, [userId]);
+
+  useEffect(() => {
     validateSession();
   }, []);
 
@@ -177,7 +243,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem("userId", String(data.user.id));
       localStorage.setItem("personaId", String(data.user.personaId || ""));
       localStorage.setItem("sexo", data.user.sexo || "Masculino");
-      localStorage.setItem("foto", data.user.foto || ""); // ✅ NUEVO
+      localStorage.setItem("foto", data.user.foto || "");
 
       setIsAuthenticated(true);
       setUserName(data.userName);
@@ -186,7 +252,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const sidebarData = await updateSidebarData(data.user.id, data.token);
       if (sidebarData.length === 0) {
-        console.warn("AuthContext - No permissions loaded after login, logging out");
+        console.warn(
+          "AuthContext - No permissions loaded after login, logging out"
+        );
         logout();
         throw new Error("No se pudieron cargar los permisos del usuario");
       }
