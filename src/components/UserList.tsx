@@ -967,7 +967,7 @@ const UserList = () => {
   };
 
   function formatInicioResidenciaInputEdit(dateStr) {
-    console.log("Valor recibido:", dateStr);
+    //console.log("Valor recibido:", dateStr);
 
     if (!dateStr) {
       console.warn("Fecha no proporcionada");
@@ -978,8 +978,7 @@ const UserList = () => {
     const [year, month, day] = dateStr.split("T")[0].split("-");
 
     const formattedDate = `${year}-${month}-${day}`;
-    console.log(
-      "Fecha formateada para input date (sin desfase):",
+    console.log( "Fecha formateada para input date (sin desfase):",
       formattedDate
     );
 

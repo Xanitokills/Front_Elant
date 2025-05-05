@@ -170,10 +170,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const data = await response.json();
 
+      // Guardado en localStorage
       localStorage.setItem("token", data.token);
       localStorage.setItem("userName", data.userName);
       localStorage.setItem("roles", JSON.stringify(data.roles || []));
       localStorage.setItem("userId", String(data.user.id));
+      localStorage.setItem("personaId", String(data.user.personaId || ""));
+      localStorage.setItem("sexo", data.user.sexo || "Masculino");
+      localStorage.setItem("foto", data.user.foto || ""); // ✅ NUEVO
 
       setIsAuthenticated(true);
       setUserName(data.userName);

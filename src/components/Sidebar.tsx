@@ -1,9 +1,12 @@
+// Sidebar.tsx
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import * as FaIcons from "react-icons/fa";
 import { FaChevronDown, FaSearch, FaSignOutAlt } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 import styled from "styled-components";
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 const SidebarContainer = styled.div.withConfig({
   shouldForwardProp: (prop) => prop !== "sidebarOpen",
@@ -19,12 +22,10 @@ const SidebarContainer = styled.div.withConfig({
   position: fixed;
   top: 0;
   left: 0;
-
   @media (min-width: 768px) {
     position: relative;
     transform: translateX(0);
   }
-
   transform: ${({ sidebarOpen }) =>
     sidebarOpen ? "translateX(0)" : "translateX(-100%)"};
 `;
@@ -32,7 +33,6 @@ const SidebarContainer = styled.div.withConfig({
 const FixedHeader = styled.div`
   padding: 1rem;
   position: relative;
-
   &::after {
     content: "";
     position: absolute;
@@ -54,29 +54,23 @@ const ScrollableContent = styled.div`
   flex: 1;
   overflow-y: auto;
   padding: 1rem;
-
   scrollbar-width: none;
   -ms-overflow-style: none;
-
   &::-webkit-scrollbar {
     width: 6px;
     background: transparent;
   }
-
   &::-webkit-scrollbar-track {
     background: transparent;
   }
-
   &::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 10px;
     transition: background 0.3s ease;
   }
-
   &:hover::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.3);
   }
-
   &::-webkit-scrollbar-thumb:hover {
     background: rgba(59, 130, 246, 0.5);
   }
@@ -85,7 +79,6 @@ const ScrollableContent = styled.div`
 const Footer = styled.div`
   padding: 1rem;
   position: relative;
-
   &::before {
     content: "";
     position: absolute;
@@ -112,7 +105,6 @@ const SearchInput = styled.input`
   placeholder-color: #a0aec0;
   outline: none;
   transition: ring 0.2s ease;
-
   &:focus {
     ring: 1px solid #3b82f6;
   }
@@ -130,7 +122,6 @@ const MenuItem = styled.div`
 
 const MenuButtonWrapper = styled.div`
   position: relative;
-
   &:hover button {
     background-color: #2d3748;
   }
@@ -156,7 +147,6 @@ const SubmenuList = styled.nav`
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.3s ease-in-out;
-
   &.open {
     max-height: 500px;
   }
@@ -171,11 +161,9 @@ const SubmenuItem = styled(NavLink)`
   font-size: 0.875rem;
   margin-bottom: 0.5rem;
   transition: background-color 0.2s ease, color 0.2s ease;
-
   &:hover {
     background-color: #2d3748;
   }
-
   &.active {
     background-color: #4a5568;
     color: #93c5fd;
@@ -189,7 +177,6 @@ const LogoutButton = styled.button`
   border-radius: 0.75rem;
   width: 100%;
   transition: background-color 0.2s ease;
-
   &:hover {
     background-color: #2d3748;
   }
@@ -217,13 +204,10 @@ const Sidebar = ({
 }) => {
   const { logout, userName, roles, isAuthenticated, isLoading, sidebarData } =
     useAuth();
-  const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>(
-    {}
-  );
+  const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({});
   const [searchTerm, setSearchTerm] = useState("");
-  const [sidebarStructure, setSidebarStructure] = useState<SidebarStructure[]>(
-    []
-  );
+  const [sidebarStructure, setSidebarStructure] = useState<SidebarStructure[]>([]);
+  const [fotoUrl, setFotoUrl] = useState<string>("");
 
   const toggleSection = (id: number) => {
     setOpenSections((prev) => {
@@ -264,8 +248,68 @@ const Sidebar = ({
     }
   }, [sidebarData]);
 
+
+  useEffect(() => {
+    const fetchFoto = async () => {
+      let personaId = localStorage.getItem("personaId");
+      let sexo = localStorage.getItem("sexo");
+      let storedFoto = localStorage.getItem("foto");
+  
+      if (!sexo || (sexo !== "Femenino" && sexo !== "Masculino")) {
+        sexo = "Masculino";
+      }
+  
+      // Usar la foto de localStorage si está disponible
+      if (storedFoto && storedFoto !== "") {
+        //console.log("Usando foto desde localStorage:", storedFoto.substring(0, 100), "...");
+        setFotoUrl(storedFoto);
+        return;
+      }
+  
+      // Si no hay personaId, usar la imagen predeterminada
+      if (!personaId) {
+        const defaultFoto = sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
+        //console.log("No se encontró personaId. Usando foto por defecto:", defaultFoto);
+        setFotoUrl(defaultFoto);
+        return;
+      }
+  
+      // Intentar obtener la foto desde el backend
+      try {
+        const token = localStorage.getItem("token");
+        const response = await fetch(`${API_URL}/users/foto/${personaId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+  
+        if (response.ok) {
+          const data = await response.json();
+          if (data.fotoBase64) {
+            //console.log("Foto base64 obtenida desde el backend:", data.fotoBase64.substring(0, 100), "...");
+            setFotoUrl(data.fotoBase64);
+            localStorage.setItem("foto", data.fotoBase64); // Guardar en localStorage
+          } else {
+            const defaultFoto = sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
+            //console.log("Respuesta OK pero sin foto. Usando foto por defecto:", defaultFoto);
+            setFotoUrl(defaultFoto);
+          }
+        } else {
+          const defaultFoto = sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
+          //console.log("Error en la respuesta del servidor:", response.status);
+          setFotoUrl(defaultFoto);
+        }
+      } catch (error) {
+        console.error("Error cargando la foto desde el backend:", error);
+        const defaultFoto = sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
+        setFotoUrl(defaultFoto);
+      }
+    };
+  
+    fetchFoto();
+  }, []);
+
   if (isLoading || !isAuthenticated) {
-    console.log("⏳ Esperando a que el contexto esté listo...");
     return null;
   }
 
@@ -274,9 +318,9 @@ const Sidebar = ({
       <FixedHeader>
         <div className="flex items-center mb-4">
           <img
-            src="https://randomuser.me/api/portraits/men/75.jpg"
+            src={fotoUrl}
             alt="Usuario"
-            className="w-12 h-12 rounded-full mr-3"
+            className="w-12 h-12 rounded-full mr-3 object-cover"
           />
           <div>
             <p className="font-semibold">{userName || "Usuario"}</p>
@@ -285,7 +329,6 @@ const Sidebar = ({
             </p>
           </div>
         </div>
-
         <form autoComplete="off">
           <div className="flex items-center gap-3 mb-4">
             <FaSearch className="text-gray-400" />
