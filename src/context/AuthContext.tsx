@@ -60,6 +60,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [sidebarData, setSidebarData] = useState<Menu[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [isAlertShown, setIsAlertShown] = useState<boolean>(false);
+  const [lastAlertTime, setLastAlertTime] = useState<number>(0);
 
   const updateSidebarData = async (userId: number, token: string) => {
     try {
@@ -255,11 +257,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return false;
     } finally {
       setIsRefreshing(false);
+      setIsAlertShown(false);
+      setLastAlertTime(Date.now()); // Actualizar el tiempo de la última alerta
     }
   };
 
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
 
     const checkTokenExpiration = () => {
       const token = localStorage.getItem("token");
@@ -304,8 +309,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           return;
         }
 
-        if (timeLeft <= 60 && timeLeft > 0 && !isRefreshing) {
+        // Verificar si ha pasado suficiente tiempo desde la última alerta
+        const timeSinceLastAlert = (Date.now() - lastAlertTime) / 1000;
+        if (
+          timeLeft <= 60 &&
+          timeLeft > 0 &&
+          !isRefreshing &&
+          !isAlertShown &&
+          timeSinceLastAlert >= 60
+        ) {
           console.log("AuthContext - Showing session expiration warning");
+          setIsAlertShown(true);
+          setLastAlertTime(Date.now()); // Actualizar el tiempo de la última alerta
+          // Detener el intervalo mientras la alerta está abierta
+          if (interval) clearInterval(interval);
+          interval = null;
+
           // Ajustar el temporizador de la alerta al tiempo restante (en milisegundos)
           const alertTimer = Math.max(timeLeft * 1000, 10000); // Mínimo 10 segundos
           // Cancelar el timeout mientras la alerta está abierta
@@ -326,6 +345,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               if (button) button.focus();
             },
           }).then(async (result) => {
+            setIsAlertShown(false);
+            // Reiniciar el intervalo después de que la alerta se resuelva
+            if (!interval) {
+              interval = setInterval(checkTokenExpiration, 15000); // Intervalo ajustado a 15 segundos
+            }
+
             if (result.isConfirmed) {
               console.log("AuthContext - User clicked 'Renovar'");
               const success = await refreshToken();
@@ -364,9 +389,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     checkTokenExpiration();
-    const interval = setInterval(checkTokenExpiration, 10000); // Revisar cada 10 segundos
+    interval = setInterval(checkTokenExpiration, 15000); // Intervalo ajustado a 15 segundos
     return () => {
-      clearInterval(interval);
+      if (interval) clearInterval(interval);
       if (timeout) clearTimeout(timeout);
     };
   }, [isRefreshing]);
@@ -429,6 +454,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     console.log("AuthContext - Logging out");
+    setIsAlertShown(false);
+    setLastAlertTime(0); // Resetear el tiempo de la última alerta
     localStorage.clear();
     setIsAuthenticated(false);
     setUserName(null);
