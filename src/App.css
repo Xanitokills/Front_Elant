@@ -3,37 +3,37 @@ html, body {
   margin: 0;
   padding: 0;
   font-family: 'Arial', sans-serif;
-  overflow-x: hidden; /* Evita el desplazamiento horizontal */
-  height: 100%; /* Asegura que el body ocupe toda la altura */
+  overflow-x: hidden;
+  height: 100%;
 }
 
 /* Sidebar en pantallas grandes debe ser fijo */
 .sidebar {
-  position: fixed; /* Sidebar fijo en la pantalla */
+  position: fixed;
   top: 0;
   left: 0;
   z-index: 50;
   height: 100vh;
   width: 250px;
-  background-color: #1a202c; /* Fondo oscuro */
+  background-color: #1a202c;
   padding: 1rem;
-  transition: transform 0.3s ease; /* Transición suave para animación */
-  overflow-y: auto; /* Permite scroll interno en el sidebar */
-  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1); /* Añadido para mejorar la visibilidad del sidebar */
+  transition: transform 0.3s ease;
+  overflow-y: auto;
+  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
 }
 
 /* Asegura que el contenido no se solape con el sidebar */
 .main-content {
   padding: 2rem;
   transition: margin-left 0.3s ease;
-  overflow-y: auto; /* Permite desplazamiento dentro del contenido */
-  height: 100vh; /* Asegura que el contenido ocupe toda la altura disponible */
-  margin-left: 0; /* No hay margen izquierdo por defecto */
+  overflow-y: auto;
+  height: 100vh;
+  margin-left: 0;
 }
 
 /* Asegurar que el contenido se ajuste correctamente cuando el sidebar esté visible */
 .sidebar.open ~ .main-content {
-  margin-left: 250px; /* Da espacio al sidebar */
+  margin-left: 250px;
 }
 
 /* Sidebar en pantallas pequeñas (móviles) */
@@ -41,7 +41,7 @@ html, body {
   .sidebar {
     position: fixed;
     top: 0;
-    left: -250px; /* Sidebar fuera de la vista por defecto */
+    left: -250px;
     z-index: 50;
     height: 100%;
     width: 250px;
@@ -49,11 +49,11 @@ html, body {
   }
 
   .sidebar.open {
-    left: 0; /* El sidebar aparece cuando está abierto */
+    left: 0;
   }
 
   .main-content {
-    margin-left: 0; /* El contenido no se moverá en dispositivos móviles */
+    margin-left: 0;
   }
 
   /* Fondo oscuro de overlay para cuando el sidebar está abierto */
@@ -63,7 +63,21 @@ html, body {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.5); /* Fondo oscuro para el overlay */
+    background-color: rgba(0, 0, 0, 0.5);
     z-index: 40;
   }
+}
+
+/* Estilos para el badge de notificaciones */
+.notification-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  transform: translateX(50%) translateY(-50%);
+  background-color: #ef4444;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: bold;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
 }

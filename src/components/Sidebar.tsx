@@ -1,8 +1,7 @@
-// Sidebar.tsx
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import * as FaIcons from "react-icons/fa";
-import { FaChevronDown, FaSearch, FaSignOutAlt } from "react-icons/fa";
+import { FaChevronDown, FaSearch, FaSignOutAlt, FaBell } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 import styled from "styled-components";
 
@@ -182,6 +181,19 @@ const LogoutButton = styled.button`
   }
 `;
 
+const NotificationsButton = styled.button`
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  width: 100%;
+  font-size: 0.875rem;
+  transition: background-color 0.2s ease;
+  &:hover {
+    background-color: #2d3748;
+  }
+`;
+
 const getIconComponent = (iconName: string) => {
   const Icon = FaIcons[iconName as keyof typeof FaIcons];
   return Icon ? <Icon /> : null;
@@ -198,9 +210,11 @@ interface SidebarStructure {
 const Sidebar = ({
   closeSidebar,
   sidebarOpen,
+  setNotificationsOpen,
 }: {
   closeSidebar: () => void;
   sidebarOpen: boolean;
+  setNotificationsOpen: (open: boolean) => void;
 }) => {
   const { logout, userName, roles, isAuthenticated, isLoading, sidebarData } =
     useAuth();
@@ -248,33 +262,27 @@ const Sidebar = ({
     }
   }, [sidebarData]);
 
-
   useEffect(() => {
     const fetchFoto = async () => {
       let personaId = localStorage.getItem("personaId");
       let sexo = localStorage.getItem("sexo");
       let storedFoto = localStorage.getItem("foto");
-  
+
       if (!sexo || (sexo !== "Femenino" && sexo !== "Masculino")) {
         sexo = "Masculino";
       }
-  
-      // Usar la foto de localStorage si está disponible
+
       if (storedFoto && storedFoto !== "") {
-        //console.log("Usando foto desde localStorage:", storedFoto.substring(0, 100), "...");
         setFotoUrl(storedFoto);
         return;
       }
-  
-      // Si no hay personaId, usar la imagen predeterminada
+
       if (!personaId) {
         const defaultFoto = sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
-        //console.log("No se encontró personaId. Usando foto por defecto:", defaultFoto);
         setFotoUrl(defaultFoto);
         return;
       }
-  
-      // Intentar obtener la foto desde el backend
+
       try {
         const token = localStorage.getItem("token");
         const response = await fetch(`${API_URL}/users/foto/${personaId}`, {
@@ -282,21 +290,18 @@ const Sidebar = ({
             Authorization: `Bearer ${token}`,
           },
         });
-  
+
         if (response.ok) {
           const data = await response.json();
           if (data.fotoBase64) {
-            //console.log("Foto base64 obtenida desde el backend:", data.fotoBase64.substring(0, 100), "...");
             setFotoUrl(data.fotoBase64);
-            localStorage.setItem("foto", data.fotoBase64); // Guardar en localStorage
+            localStorage.setItem("foto", data.fotoBase64);
           } else {
             const defaultFoto = sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
-            //console.log("Respuesta OK pero sin foto. Usando foto por defecto:", defaultFoto);
             setFotoUrl(defaultFoto);
           }
         } else {
           const defaultFoto = sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
-          //console.log("Error en la respuesta del servidor:", response.status);
           setFotoUrl(defaultFoto);
         }
       } catch (error) {
@@ -305,7 +310,7 @@ const Sidebar = ({
         setFotoUrl(defaultFoto);
       }
     };
-  
+
     fetchFoto();
   }, []);
 
@@ -344,6 +349,15 @@ const Sidebar = ({
       </FixedHeader>
 
       <ScrollableContent>
+        <MenuItem>
+          <NotificationsButton onClick={() => setNotificationsOpen(true)}>
+            <FaBell className="mr-3" />
+            Notificaciones
+            <span className="ml-auto inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+              3
+            </span>
+          </NotificationsButton>
+        </MenuItem>
         {sidebarStructure.length === 0 ? (
           <p className="text-gray-400 text-sm">No hay menús disponibles</p>
         ) : (

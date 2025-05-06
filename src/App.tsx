@@ -1,4 +1,3 @@
-// App.tsx
 import { useState } from "react";
 import {
   BrowserRouter as Router,
@@ -24,11 +23,13 @@ import RegisterOrder from "./components/RegisterOrder";
 import Unauthorized from "./pages/Unauthorized";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { FaBars, FaSpinner } from "react-icons/fa";
+import { FaBars, FaSpinner, FaBell } from "react-icons/fa";
+import Notifications from "./components/Notifications";
 
 const App = () => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { isAuthenticated, isLoading, userPermissions } = useAuth();
 
   if (isLoading && location.pathname !== "/login") {
@@ -74,6 +75,7 @@ const App = () => {
           <Sidebar
             closeSidebar={() => setSidebarOpen(false)}
             sidebarOpen={true}
+            setNotificationsOpen={setNotificationsOpen}
           />
         </div>
       )}
@@ -88,6 +90,7 @@ const App = () => {
             <Sidebar
               closeSidebar={() => setSidebarOpen(false)}
               sidebarOpen={sidebarOpen}
+              setNotificationsOpen={setNotificationsOpen}
             />
           </div>
         </>
@@ -101,8 +104,23 @@ const App = () => {
           >
             <FaBars />
           </button>
-          <h1 className="text-lg font-semibold">Mi App</h1>
+          <button
+            onClick={() => setNotificationsOpen(true)}
+            className="relative text-white text-2xl"
+          >
+            <FaBell />
+            <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full transform translate-x-1/2 -translate-y-1/2">
+              3
+            </span>
+          </button>
         </div>
+      )}
+
+      {!isLoginPage && (
+        <Notifications
+          isOpen={notificationsOpen}
+          onClose={() => setNotificationsOpen(false)}
+        />
       )}
 
       <div
