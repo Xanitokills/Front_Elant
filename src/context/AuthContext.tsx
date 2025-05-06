@@ -350,7 +350,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           Swal.fire({
             icon: "warning",
             title: "Sesión a punto de expirar",
-            text: `Tu sesión expirará en ${formatTime(timeLeft)}. ¿Quieres renovarla?`,
+            text: `Tu sesión expira en menos de 1 minuto. ¿Deseas seguir conectado?`,
             showCancelButton: true,
             confirmButtonText: "Renovar",
             cancelButtonText: "Cerrar sesión",
