@@ -177,7 +177,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const refreshToken = async () => {
+  const refreshToken = async (showError: boolean = true) => {
     if (isRefreshing) {
       console.log("AuthContext - Refresh already in progress, skipping");
       return false;
@@ -229,31 +229,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log("AuthContext - Token refresh completed successfully");
         return true;
       } else {
-        console.error(
-          "AuthContext - Token refresh failed:",
-          response.status,
-          response.statusText
-        );
-        Swal.fire({
-          icon: "error",
-          title: "Error al renovar la sesión",
-          text: "No se pudo renovar la sesión. Por favor, inicia sesión nuevamente.",
-          confirmButtonText: "Aceptar",
-        }).then(() => {
+        if (response.status === 401) {
+          console.log(
+            "AuthContext - Token refresh failed due to unauthorized access (401)"
+          );
+        } else {
+          console.error(
+            "AuthContext - Token refresh failed:",
+            response.status,
+            response.statusText
+          );
+        }
+        if (showError) {
+          Swal.fire({
+            icon: "error",
+            title: "Error al renovar la sesión",
+            text: "No se pudo renovar la sesión. Por favor, inicia sesión nuevamente.",
+            confirmButtonText: "Aceptar",
+          }).then(() => {
+            logout();
+          });
+        } else {
+          console.log("AuthContext - Silent logout due to refresh failure");
           logout();
-        });
+        }
         return false;
       }
     } catch (error) {
       console.error("AuthContext - Error refreshing token:", error);
-      Swal.fire({
-        icon: "error",
-        title: "Error al renovar la sesión",
-        text: "Ocurrió un error al intentar renovar la sesión. Por favor, inicia sesión nuevamente.",
-        confirmButtonText: "Aceptar",
-      }).then(() => {
+      if (showError) {
+        Swal.fire({
+          icon: "error",
+          title: "Error al renovar la sesión",
+          text: "Ocurrió un error al intentar renovar la sesión. Por favor, inicia sesión nuevamente.",
+          confirmButtonText: "Aceptar",
+        }).then(() => {
+          logout();
+        });
+      } else {
+        console.log("AuthContext - Silent logout due to refresh error");
         logout();
-      });
+      }
       return false;
     } finally {
       setIsRefreshing(false);
@@ -353,7 +369,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
             if (result.isConfirmed) {
               console.log("AuthContext - User clicked 'Renovar'");
-              const success = await refreshToken();
+              const success = await refreshToken(true); // Mostrar error si falla
               if (!success) {
                 console.log("AuthContext - Refresh failed, logging out");
                 logout();
@@ -363,8 +379,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               logout();
             } else if (result.isDismissed && result.dismiss === Swal.DismissReason.timer) {
               console.log("AuthContext - Session expiration warning timed out");
-              // Intentar renovación automática
-              const success = await refreshToken();
+              // Verificar si el token ya expiró antes de intentar renovar
+              const currentToken = localStorage.getItem("token");
+              if (currentToken) {
+                try {
+                  const decoded: { exp: number } = jwtDecode(currentToken);
+                  const currentTime = Date.now() / 1000;
+                  if (decoded.exp <= currentTime) {
+                    console.log("AuthContext - Token already expired, logging out silently");
+                    logout();
+                    return;
+                  }
+                } catch (error) {
+                  console.error("AuthContext - Error decoding token during refresh check:", error);
+                  logout();
+                  return;
+                }
+              }
+              // Intentar renovación automática sin mostrar error
+              const success = await refreshToken(false); // No mostrar error si falla
               if (!success) {
                 console.log("AuthContext - Auto-refresh failed, logging out");
                 logout();
