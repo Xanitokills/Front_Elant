@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FaTimes, FaCheck, FaEye } from "react-icons/fa";
+import { FaTimes } from "react-icons/fa";
 import styled from "styled-components";
 
 const NotificationsPanel = styled.div.withConfig({
@@ -51,6 +51,7 @@ const FilterBar = styled.div`
   border-bottom: 1px solid #2d3748;
   display: flex;
   gap: 0.5rem;
+  align-items: center;
 `;
 
 const FilterButton = styled.button<{ active: boolean }>`
@@ -76,6 +77,18 @@ const SearchInput = styled.input`
   font-size: 0.875rem;
   &::placeholder {
     color: #a0aec0;
+  }
+`;
+
+const MarkAllReadButton = styled.button`
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.5rem;
+  background-color: #3b82f6;
+  color: #ffffff;
+  font-size: 0.875rem;
+  transition: background-color 0.2s ease;
+  &:hover {
+    background-color: #60a5fa;
   }
 `;
 
@@ -143,15 +156,15 @@ const ActionButton = styled.button`
 const ReadToggle = styled.button`
   background: none;
   border: none;
-  color: #ffffff;
-  font-size: 1rem;
+  color: #93c5fd;
+  font-size: 0.875rem;
   cursor: pointer;
   position: absolute;
   top: 0.75rem;
   right: 0.75rem;
   transition: color 0.2s ease;
   &:hover {
-    color: #93c5fd;
+    color: #bfdbfe;
   }
 `;
 
@@ -242,6 +255,12 @@ const Notifications = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     );
   };
 
+  const markAllAsRead = () => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.isRead ? n : { ...n, isRead: true }))
+    );
+  };
+
   return (
     <>
       {isOpen && <Overlay onClick={onClose} />}
@@ -268,6 +287,9 @@ const Notifications = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          <MarkAllReadButton onClick={markAllAsRead}>
+            Marcar todos como leídos
+          </MarkAllReadButton>
         </FilterBar>
         <NotificationList>
           {filteredNotifications.length === 0 ? (
@@ -285,11 +307,11 @@ const Notifications = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                 </NotificationTitle>
                 <NotificationDescription>{notification.description}</NotificationDescription>
                 <TimeAgo>{getTimeAgo(notification.timestamp)}</TimeAgo>
-                <ActionButton onClick={() => alert(`Detalles de ${notification.title}`)}>
+                <ActionButton onClick={() => alert(`Detalles de ${notification.title}. Aquí podrías abrir un modal o redirigir a una página con más información.`)}>
                   Ver detalles
                 </ActionButton>
                 <ReadToggle onClick={() => toggleRead(notification.id)}>
-                  <FaCheck />
+                  Marcar como leído
                 </ReadToggle>
               </NotificationItem>
             ))
