@@ -188,6 +188,7 @@ const NotificationsButton = styled.button`
   border-radius: 0.75rem;
   width: 100%;
   font-size: 0.875rem;
+  font-weight: 700;
   transition: background-color 0.2s ease;
   &:hover {
     background-color: #2d3748;
