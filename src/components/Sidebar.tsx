@@ -208,15 +208,19 @@ interface SidebarStructure {
   submenus: { id: number; nombre: string; url: string; icono: string }[];
 }
 
+interface SidebarProps {
+  closeSidebar: () => void;
+  sidebarOpen: boolean;
+  setNotificationsOpen: (open: boolean) => void;
+  unreadCount: number;
+}
+
 const Sidebar = ({
   closeSidebar,
   sidebarOpen,
   setNotificationsOpen,
-}: {
-  closeSidebar: () => void;
-  sidebarOpen: boolean;
-  setNotificationsOpen: (open: boolean) => void;
-}) => {
+  unreadCount,
+}: SidebarProps) => {
   const { logout, userName, roles, isAuthenticated, isLoading, sidebarData } =
     useAuth();
   const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({});
@@ -354,9 +358,11 @@ const Sidebar = ({
           <NotificationsButton onClick={() => setNotificationsOpen(true)}>
             <FaBell className="mr-3" />
             Notificaciones
-            <span className="ml-auto inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
-              3
-            </span>
+            {unreadCount > 0 && (
+              <span className="ml-auto inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                {unreadCount}
+              </span>
+            )}
           </NotificationsButton>
         </MenuItem>
         {sidebarStructure.length === 0 ? (

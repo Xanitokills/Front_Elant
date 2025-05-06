@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FaTimes } from "react-icons/fa";
+import { FaTimes, FaCheck } from "react-icons/fa";
 import styled from "styled-components";
 
 const NotificationsPanel = styled.div.withConfig({
@@ -50,6 +50,7 @@ const FilterBar = styled.div`
   padding: 0.5rem 1rem;
   border-bottom: 1px solid #2d3748;
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
 `;
@@ -108,13 +109,20 @@ const NotificationItem = styled.div<{ isRead: boolean }>`
     background-color: ${({ isRead }) => (isRead ? "#4a5568" : "#60a5fa")};
     transform: translateX(5px);
   }
-  position: relative;
+  display: flex;
+  flex-direction: column;
+`;
+
+const NotificationHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
 `;
 
 const NotificationTitle = styled.h3`
   font-size: 1rem;
   font-weight: bold;
-  margin-bottom: 0.25rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -156,15 +164,12 @@ const ActionButton = styled.button`
 const ReadToggle = styled.button`
   background: none;
   border: none;
-  color: #93c5fd;
-  font-size: 0.875rem;
+  color: #ffffff;
+  font-size: 1rem;
   cursor: pointer;
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
   transition: color 0.2s ease;
   &:hover {
-    color: #bfdbfe;
+    color: #93c5fd;
   }
 `;
 
@@ -178,6 +183,76 @@ const Overlay = styled.div`
   z-index: 50;
 `;
 
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 70;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+`;
+
+const ModalContent = styled.div`
+  background-color: #1a202c;
+  color: #ffffff;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  width: 100%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+`;
+
+const ModalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+`;
+
+const ModalTitle = styled.h3`
+  font-size: 1.25rem;
+  font-weight: bold;
+`;
+
+const ModalCloseButton = styled.button`
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  &:hover {
+    color: #93c5fd;
+  }
+`;
+
+const ModalBody = styled.div`
+  margin-bottom: 1rem;
+`;
+
+const ModalFooter = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+`;
+
+const ArchiveButton = styled.button`
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  background-color: #ef4444;
+  color: #ffffff;
+  font-size: 0.875rem;
+  transition: background-color 0.2s ease;
+  &:hover {
+    background-color: #f87171;
+  }
+`;
+
 interface Notification {
   id: number;
   title: string;
@@ -185,6 +260,7 @@ interface Notification {
   timestamp: string;
   isRead: boolean;
   status?: string;
+  additionalInfo?: string;
 }
 
 const mockNotifications: Notification[] = [
@@ -195,6 +271,7 @@ const mockNotifications: Notification[] = [
     timestamp: "2025-05-06 10:30",
     isRead: false,
     status: "Nuevo",
+    additionalInfo: "Acción completada por el usuario Juan Pérez.",
   },
   {
     id: 2,
@@ -202,6 +279,7 @@ const mockNotifications: Notification[] = [
     description: "Se han actualizado los permisos de un usuario.",
     timestamp: "2025-05-06 09:15",
     isRead: true,
+    additionalInfo: "Acción completada por el administrador María Gómez.",
   },
   {
     id: 3,
@@ -210,6 +288,7 @@ const mockNotifications: Notification[] = [
     timestamp: "2025-05-05 14:20",
     isRead: false,
     status: "Urgente",
+    additionalInfo: "Acción completada por el sistema automáticamente.",
   },
 ];
 
@@ -226,10 +305,18 @@ const getTimeAgo = (timestamp: string): string => {
   return `${diffMin} minuto${diffMin > 1 ? "s" : ""} atrás`;
 };
 
-const Notifications = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+interface NotificationsProps {
+  isOpen: boolean;
+  onClose: () => void;
+  setUnreadCount: (count: number) => void;
+}
+
+const Notifications = ({ isOpen, onClose, setUnreadCount }: NotificationsProps) => {
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
   const [filter, setFilter] = useState<"Todas" | "Nuevas" | "Leídas">("Todas");
   const [searchTerm, setSearchTerm] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -238,6 +325,11 @@ const Notifications = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [isOpen, onClose]);
+
+  useEffect(() => {
+    const unreadCount = notifications.filter((n) => !n.isRead).length;
+    setUnreadCount(unreadCount);
+  }, [notifications, setUnreadCount]);
 
   const filteredNotifications = notifications.filter((n) => {
     const matchesFilter =
@@ -251,14 +343,35 @@ const Notifications = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
   const toggleRead = (id: number) => {
     setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: !n.isRead } : n))
+      prev.map((n) =>
+        n.id === id
+          ? { ...n, isRead: !n.isRead, status: !n.isRead && n.status === "Nuevo" ? undefined : n.status }
+          : n
+      )
     );
   };
 
   const markAllAsRead = () => {
     setNotifications((prev) =>
-      prev.map((n) => (n.isRead ? n : { ...n, isRead: true }))
+      prev.map((n) =>
+        n.isRead ? n : { ...n, isRead: true, status: n.status === "Nuevo" ? undefined : n.status }
+      )
     );
+  };
+
+  const openModal = (notification: Notification) => {
+    setSelectedNotification(notification);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setSelectedNotification(null);
+  };
+
+  const archiveNotification = (id: number) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    closeModal();
   };
 
   return (
@@ -297,27 +410,58 @@ const Notifications = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
           ) : (
             filteredNotifications.map((notification) => (
               <NotificationItem key={notification.id} isRead={notification.isRead}>
-                <NotificationTitle>
-                  {notification.status && (
-                    <NotificationStatus status={notification.status}>
-                      {notification.status}
-                    </NotificationStatus>
+                <NotificationHeader>
+                  <NotificationTitle>
+                    {notification.status && (
+                      <NotificationStatus status={notification.status}>
+                        {notification.status}
+                      </NotificationStatus>
+                    )}
+                    {notification.title}
+                  </NotificationTitle>
+                  {!notification.isRead && (
+                    <ReadToggle onClick={() => toggleRead(notification.id)}>
+                      <FaCheck />
+                    </ReadToggle>
                   )}
-                  {notification.title}
-                </NotificationTitle>
+                </NotificationHeader>
                 <NotificationDescription>{notification.description}</NotificationDescription>
                 <TimeAgo>{getTimeAgo(notification.timestamp)}</TimeAgo>
-                <ActionButton onClick={() => alert(`Detalles de ${notification.title}. Aquí podrías abrir un modal o redirigir a una página con más información.`)}>
+                <ActionButton onClick={() => openModal(notification)}>
                   Ver detalles
                 </ActionButton>
-                <ReadToggle onClick={() => toggleRead(notification.id)}>
-                  Marcar como leído
-                </ReadToggle>
               </NotificationItem>
             ))
           )}
         </NotificationList>
       </NotificationsPanel>
+
+      {modalOpen && selectedNotification && (
+        <ModalOverlay onClick={closeModal}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>{selectedNotification.title}</ModalTitle>
+              <ModalCloseButton onClick={closeModal}>
+                <FaTimes />
+              </ModalCloseButton>
+            </ModalHeader>
+            <ModalBody>
+              <p className="text-sm mb-2">{selectedNotification.description}</p>
+              <p className="text-sm mb-2">Fecha: {selectedNotification.timestamp}</p>
+              <p className="text-sm mb-2">Estado: {selectedNotification.isRead ? "Leído" : "No leído"}</p>
+              {selectedNotification.status && (
+                <p className="text-sm mb-2">Prioridad: {selectedNotification.status}</p>
+              )}
+              <p className="text-sm">{selectedNotification.additionalInfo}</p>
+            </ModalBody>
+            <ModalFooter>
+              <ArchiveButton onClick={() => archiveNotification(selectedNotification.id)}>
+                Archivar
+              </ArchiveButton>
+            </ModalFooter>
+          </ModalContent>
+        </ModalOverlay>
+      )}
     </>
   );
 };

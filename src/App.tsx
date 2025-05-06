@@ -30,6 +30,7 @@ const App = () => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(3); // Inicialmente 3 no leídas
   const { isAuthenticated, isLoading, userPermissions } = useAuth();
 
   if (isLoading && location.pathname !== "/login") {
@@ -76,6 +77,7 @@ const App = () => {
             closeSidebar={() => setSidebarOpen(false)}
             sidebarOpen={true}
             setNotificationsOpen={setNotificationsOpen}
+            unreadCount={unreadCount}
           />
         </div>
       )}
@@ -91,6 +93,7 @@ const App = () => {
               closeSidebar={() => setSidebarOpen(false)}
               sidebarOpen={sidebarOpen}
               setNotificationsOpen={setNotificationsOpen}
+              unreadCount={unreadCount}
             />
           </div>
         </>
@@ -104,15 +107,17 @@ const App = () => {
           >
             <FaBars />
           </button>
-          <button
-            onClick={() => setNotificationsOpen(true)}
-            className="relative text-white text-2xl"
-          >
-            <FaBell />
-            <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full transform translate-x-1/2 -translate-y-1/2">
-              3
-            </span>
-          </button>
+          {unreadCount > 0 && (
+            <button
+              onClick={() => setNotificationsOpen(true)}
+              className="relative text-white text-2xl"
+            >
+              <FaBell />
+              <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full transform translate-x-1/2 -translate-y-1/2">
+                {unreadCount}
+              </span>
+            </button>
+          )}
         </div>
       )}
 
@@ -120,6 +125,7 @@ const App = () => {
         <Notifications
           isOpen={notificationsOpen}
           onClose={() => setNotificationsOpen(false)}
+          setUnreadCount={setUnreadCount}
         />
       )}
 
