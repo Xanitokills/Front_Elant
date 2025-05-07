@@ -55,9 +55,10 @@ interface PersonDetails {
 interface ProfileModalProps {
   onClose: () => void;
   setFotoUrl: (url: string) => void;
+  onDataLoaded?: () => void; // Nuevo prop para notificar cuando los datos estén listos
 }
 
-const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
+const ProfileModal = ({ onClose, setFotoUrl, onDataLoaded }: ProfileModalProps) => {
   const token = localStorage.getItem("token");
   const personaId = localStorage.getItem("personaId");
   const [personDetails, setPersonDetails] = useState<PersonDetails | null>(null);
@@ -343,8 +344,14 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
   };
 
   useEffect(() => {
-    fetchPersonDetails();
-    fetchSexes();
+    const loadData = async () => {
+      await fetchPersonDetails();
+      await fetchSexes();
+      if (onDataLoaded) {
+        onDataLoaded(); // Notificar a Sidebar que los datos están listos
+      }
+    };
+    loadData();
   }, []);
 
   if (!personDetails) return null;

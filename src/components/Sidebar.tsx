@@ -342,24 +342,27 @@ const Sidebar = ({
 
   const handleOpenProfileModal = async () => {
     setIsLoadingProfile(true);
-    try {
-      // Simular un retraso para asegurarnos de que el spinner sea visible
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Retraso de 1 segundo para pruebas
+    console.log("Spinner activado, isLoadingProfile:", true);
+    // Usar foto en caché primero para abrir el modal rápidamente
+    const storedFoto = localStorage.getItem("foto");
+    if (!fotoUrl && storedFoto) {
+      setFotoUrl(storedFoto);
+    }
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
+    if (!isMobile) {
+      closeSidebar();
+    }
+    setIsProfileModalOpen(true);
+    // Llamada a la API en segundo plano
+    if (!storedFoto) {
       await fetchFoto();
-      const isMobile = window.matchMedia("(max-width: 767px)").matches;
-      if (!isMobile) {
-        closeSidebar();
-      }
-      setIsProfileModalOpen(true);
-    } catch (error) {
-      console.error("Error al cargar el perfil:", error);
-    } finally {
-      setIsLoadingProfile(false);
     }
   };
 
   const handleModalOpened = () => {
+    console.log("Modal abierto, isLoadingProfile antes de cambiar:", isLoadingProfile);
     setIsLoadingProfile(false);
+    console.log("Modal abierto, isLoadingProfile después de cambiar:", false);
   };
 
   return (
@@ -486,7 +489,7 @@ const Sidebar = ({
       </SidebarContainer>
 
       {isLoadingProfile && (
-        <SpinnerOverlay style={{ zIndex: 3000 }}>
+        <SpinnerOverlay style={{ zIndex: 3001 }}>
           <Spinner />
           <SpinnerText>Procesando...</SpinnerText>
         </SpinnerOverlay>
@@ -503,6 +506,7 @@ const Sidebar = ({
             zIndex: 1000,
             overflowY: "auto",
             padding: "1rem",
+            transition: "opacity 0.2s ease-in-out", // Suavizar la transición del overlay
           },
           content: {
             position: "relative",
@@ -524,6 +528,7 @@ const Sidebar = ({
         <ProfileModal
           onClose={() => setIsProfileModalOpen(false)}
           setFotoUrl={setFotoUrl}
+          onDataLoaded={() => setIsLoadingProfile(false)}
         />
       </Modal>
     </>
