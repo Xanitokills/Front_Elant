@@ -335,6 +335,10 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
                   <p className="mt-1 text-gray-800 text-base">{personDetails.basicInfo.APELLIDOS}</p>
                 </InfoItem>
                 <InfoItem>
+                  <label className="block text-sm font-semibold text-gray-700">DNI</label>
+                  <p className="mt-1 text-gray-800 text-base">{personDetails.basicInfo.DNI}</p>
+                </InfoItem>
+                <InfoItem>
                   <label className="block text-sm font-semibold text-gray-700">Correo</label>
                   <p className="mt-1 text-gray-800 text-base">{personDetails.basicInfo.CORREO || "N/A"}</p>
                 </InfoItem>
