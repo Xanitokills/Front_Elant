@@ -10,7 +10,7 @@ import {
   SpinnerOverlay,
   Spinner,
   SpinnerText,
-} from "../Styles/UserListStyles";
+} from "../Styles/SidebarStyles";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -342,18 +342,14 @@ const Sidebar = ({
 
   const handleOpenProfileModal = async () => {
     setIsLoadingProfile(true);
-    closeSidebar(); // Cerrar el Sidebar al abrir el modal
     try {
-      const startTime = Date.now();
-      await fetchFoto(); // Carga real
-      const elapsedTime = Date.now() - startTime;
-      // Asegurar un tiempo mínimo de 500ms para que la animación sea visible
-      const minimumLoadingTime = 500;
-      if (elapsedTime < minimumLoadingTime) {
-        await new Promise((resolve) => setTimeout(resolve, minimumLoadingTime - elapsedTime));
-      }
-      setIsProfileModalOpen(true); // Abrir el modal después de completar fetchFoto
-      console.log("Modal should open now");
+      await fetchFoto();
+      closeSidebar();
+      // Retraso para asegurar que la transición del sidebar termine
+      setTimeout(() => {
+        setIsProfileModalOpen(true);
+        console.log("Modal abierto");
+      }, 400); // Ajustado a 400ms para mayor compatibilidad
     } catch (error) {
       console.error("Error al cargar el perfil:", error);
     } finally {
@@ -385,6 +381,7 @@ const Sidebar = ({
               <SearchInput
                 type="search"
                 name="search_sidebar"
+                autoFocus
                 autoComplete="off"
                 placeholder="Buscar..."
                 onChange={handleSearch}
@@ -483,7 +480,6 @@ const Sidebar = ({
         </Footer>
       </SidebarContainer>
 
-      {/* Animación de carga mientras se ejecuta fetchFoto */}
       {isLoadingProfile && (
         <SpinnerOverlay>
           <Spinner />
@@ -495,7 +491,7 @@ const Sidebar = ({
         isOpen={isProfileModalOpen}
         onRequestClose={() => setIsProfileModalOpen(false)}
         className="mx-4 sm:mx-auto mt-10 w-full max-w-4xl"
-        overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50"
+        overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-60"
         ariaHideApp={false}
       >
         <ProfileModal
