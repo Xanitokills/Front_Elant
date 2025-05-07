@@ -344,7 +344,11 @@ const Sidebar = ({
     setIsLoadingProfile(true);
     try {
       await fetchFoto();
-      closeSidebar();
+      // Solo cerrar el sidebar en pantallas grandes (mayores a 768px)
+      const isMobile = window.matchMedia("(max-width: 767px)").matches;
+      if (!isMobile) {
+        closeSidebar();
+      }
       setIsProfileModalOpen(true);
     } catch (error) {
       console.error("Error al cargar el perfil:", error);
@@ -481,7 +485,7 @@ const Sidebar = ({
       </SidebarContainer>
 
       {isLoadingProfile && (
-        <SpinnerOverlay>
+        <SpinnerOverlay style={{ zIndex: 3000 }}>
           <Spinner />
           <SpinnerText>Procesando...</SpinnerText>
         </SpinnerOverlay>
@@ -511,6 +515,7 @@ const Sidebar = ({
             padding: "0",
             border: "none",
             background: "transparent",
+            zIndex: 1001,
           },
         }}
         ariaHideApp={false}
