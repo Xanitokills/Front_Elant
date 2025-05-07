@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
-import { FaCamera, FaEdit } from "react-icons/fa";
+import { FaCamera, FaEdit, FaLock } from "react-icons/fa";
 import {
   Card,
   ProfileImage,
@@ -62,10 +62,13 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
   const personaId = localStorage.getItem("personaId");
   const [personDetails, setPersonDetails] = useState<PersonDetails | null>(null);
   const [editingPerson, setEditingPerson] = useState<PersonDetails | null>(null);
-  const [viewMode, setViewMode] = useState<"view" | "edit">("view");
+  const [viewMode, setViewMode] = useState<"view" | "edit" | "changePassword">("view");
   const [isLoading, setIsLoading] = useState(false);
   const [newPhoto, setNewPhoto] = useState<File | null>(null);
   const [sexes, setSexes] = useState<{ ID_SEXO: number; DESCRIPCION: string }[]>([]);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const fetchPersonDetails = async () => {
     if (!token || !personaId) {
@@ -226,7 +229,6 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
         timer: 2000,
         showConfirmButton: false,
       });
-      // Actualizar personDetails con los datos editados
       setPersonDetails((prev) => {
         if (!prev) return editingPerson;
         return {
@@ -251,6 +253,73 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
         icon: "error",
         title: "Error",
         text: error.message,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return Swal.fire({
+        icon: "warning",
+        title: "Campos incompletos",
+        text: "Todos los campos son obligatorios.",
+        timer: 2500,
+        showConfirmButton: false,
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Las contraseñas no coinciden.",
+        timer: 2500,
+        showConfirmButton: false,
+      });
+    }
+
+    try {
+      setIsLoading(true);
+      const response = await fetch(`${API_URL}/auth/change-password`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        Swal.fire({
+          icon: "success",
+          title: "Contraseña actualizada",
+          text: "Tu contraseña fue cambiada con éxito.",
+          timer: 2500,
+          showConfirmButton: false,
+        });
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setViewMode("view");
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: data.message || "No se pudo actualizar la contraseña.",
+        });
+      }
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Error al conectar con el servidor.",
       });
     } finally {
       setIsLoading(false);
@@ -359,10 +428,14 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
                   <p className="mt-1 text-gray-800 text-base">{personDetails.basicInfo.SEXO}</p>
                 </InfoItem>
               </InfoGrid>
-              <div className="col-span-1 lg:col-span-4 flex justify-end mt-4">
+              <div className="col-span-1 lg:col-span-4 flex justify-end gap-4 mt-4">
                 <PrimaryButton onClick={() => setViewMode("edit")} className="bg-blue-600 text-white text-base py-2 px-4">
                   <FaEdit className="mr-2" />
                   Editar Perfil
+                </PrimaryButton>
+                <PrimaryButton onClick={() => setViewMode("changePassword")} className="bg-green-600 text-white text-base py-2 px-4">
+                  <FaLock className="mr-2" />
+                  Cambiar Contraseña
                 </PrimaryButton>
               </div>
               {(personDetails.residentInfo.length > 0 || personDetails.workerInfo.length > 0) && (
@@ -550,6 +623,70 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
                 >
                   Guardar
                 </PrimaryButton>
+              </div>
+            </div>
+          )}
+          {viewMode === "changePassword" && (
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+              <SectionTitle className="col-span-1 lg:col-span-4 text-center text-gray-700 text-lg">
+                Cambiar Contraseña
+              </SectionTitle>
+              <div className="col-span-1 lg:col-span-4">
+                <InfoGrid className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700">Contraseña Actual *</label>
+                    <Input
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Ingresa tu contraseña actual"
+                      className="text-base p-2"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700">Nueva Contraseña *</label>
+                    <Input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Ingresa tu nueva contraseña"
+                      className="text-base p-2"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700">Confirmar Contraseña *</label>
+                    <Input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirma tu nueva contraseña"
+                      className="text-base p-2"
+                      required
+                    />
+                  </div>
+                </InfoGrid>
+                <div className="flex justify-end gap-4 mt-4">
+                  <SecondaryButton
+                    onClick={() => {
+                      setViewMode("view");
+                      setCurrentPassword("");
+                      setNewPassword("");
+                      setConfirmPassword("");
+                    }}
+                    className="text-base bg-gray-200 text-gray-700 py-2 px-4"
+                  >
+                    Cancelar
+                  </SecondaryButton>
+                  <PrimaryButton
+                    onClick={handleChangePassword}
+                    disabled={isLoading || !currentPassword || !newPassword || !confirmPassword}
+                    className={`text-base py-2 px-4 ${isLoading || !currentPassword || !newPassword || !confirmPassword ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 text-white"}`}
+                  >
+                    Guardar
+                  </PrimaryButton>
+                </div>
               </div>
             </div>
           )}
