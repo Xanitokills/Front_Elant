@@ -343,8 +343,9 @@ const Sidebar = ({
   const handleOpenProfileModal = async () => {
     setIsLoadingProfile(true);
     try {
+      // Simular un retraso para asegurarnos de que el spinner sea visible
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Retraso de 1 segundo para pruebas
       await fetchFoto();
-      // Solo cerrar el sidebar en pantallas grandes (mayores a 768px)
       const isMobile = window.matchMedia("(max-width: 767px)").matches;
       if (!isMobile) {
         closeSidebar();

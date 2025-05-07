@@ -11,26 +11,47 @@ export const SpinnerOverlay = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 3000;
 `;
 
 export const Spinner = styled.div`
-  border: 4px solid rgba(255, 255, 255, 0.3);
-  border-top: 4px solid #ffffff;
+  border: 2px solid #e5e7eb; /* Fondo gris claro del círculo */
+  border-top: 2px solid #3b82f6; /* Borde superior azul para el llenado */
+  border-left: 2px solid transparent; /* Borde izquierdo transparente */
+  border-right: 2px solid transparent; /* Borde derecho transparente */
+  border-bottom: 2px solid transparent; /* Borde inferior transparente */
   border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
+  width: 32px; /* Tamaño más pequeño */
+  height: 32px;
+  animation: fill 0.7s linear infinite; /* Animación más rápida y fluida */
 
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+  @keyframes fill {
+    0% {
+      transform: rotate(0deg);
+      border-top-color: #3b82f6;
+    }
+    25% {
+      transform: rotate(90deg);
+      border-right-color: #3b82f6;
+    }
+    50% {
+      transform: rotate(180deg);
+      border-bottom-color: #3b82f6;
+    }
+    75% {
+      transform: rotate(270deg);
+      border-left-color: #3b82f6;
+    }
+    100% {
+      transform: rotate(360deg);
+      border-top-color: #3b82f6;
+    }
   }
 `;
 
 export const SpinnerText = styled.p`
   color: #ffffff;
-  margin-top: 10px;
-  font-size: 1rem;
+  margin-top: 8px; /* Espaciado reducido */
+  font-size: 0.9rem; /* Texto más pequeño */
   font-weight: 500;
 `;
