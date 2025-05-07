@@ -4,6 +4,8 @@ import * as FaIcons from "react-icons/fa";
 import { FaChevronDown, FaSearch, FaSignOutAlt, FaBell } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 import styled from "styled-components";
+import Modal from "react-modal";
+import ProfileModal from "./ProfileModal";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -195,6 +197,14 @@ const NotificationsButton = styled.button`
   }
 `;
 
+const ProfileImage = styled.img`
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  &:hover {
+    transform: scale(1.1);
+  }
+`;
+
 const getIconComponent = (iconName: string) => {
   const Icon = FaIcons[iconName as keyof typeof FaIcons];
   return Icon ? <Icon /> : null;
@@ -227,6 +237,7 @@ const Sidebar = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [sidebarStructure, setSidebarStructure] = useState<SidebarStructure[]>([]);
   const [fotoUrl, setFotoUrl] = useState<string>("");
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const toggleSection = (id: number) => {
     setOpenSections((prev) => {
@@ -324,124 +335,140 @@ const Sidebar = ({
   }
 
   return (
-    <SidebarContainer sidebarOpen={sidebarOpen}>
-      <FixedHeader>
-        <div className="flex items-center mb-4">
-          <img
-            src={fotoUrl}
-            alt="Usuario"
-            className="w-12 h-12 rounded-full mr-3 object-cover"
-          />
-          <div>
-            <p className="font-semibold">{userName || "Usuario"}</p>
-            <p className="text-sm text-gray-400">
-              {roles.length > 0 ? roles.join(", ") : "Invitado"}
-            </p>
-          </div>
-        </div>
-        <form autoComplete="off">
-          <div className="flex items-center gap-3 mb-4">
-            <FaSearch className="text-gray-400" />
-            <SearchInput
-              type="search"
-              name="search_sidebar"
-              autoComplete="off"
-              placeholder="Buscar..."
-              onChange={handleSearch}
+    <>
+      <SidebarContainer sidebarOpen={sidebarOpen}>
+        <FixedHeader>
+          <div className="flex items-center mb-4">
+            <ProfileImage
+              src={fotoUrl}
+              alt="Usuario"
+              className="w-12 h-12 rounded-full mr-3 object-cover"
+              onClick={() => setIsProfileModalOpen(true)}
             />
+            <div>
+              <p className="font-semibold">{userName || "Usuario"}</p>
+              <p className="text-sm text-gray-400">
+                {roles.length > 0 ? roles.join(", ") : "Invitado"}
+              </p>
+            </div>
           </div>
-        </form>
-      </FixedHeader>
+          <form autoComplete="off">
+            <div className="flex items-center gap-3 mb-4">
+              <FaSearch className="text-gray-400" />
+              <SearchInput
+                type="search"
+                name="search_sidebar"
+                autoComplete="off"
+                placeholder="Buscar..."
+                onChange={handleSearch}
+              />
+            </div>
+          </form>
+        </FixedHeader>
 
-      <ScrollableContent>
-        <MenuItem>
-          <NotificationsButton onClick={() => setNotificationsOpen(true)}>
-            <FaBell className="mr-3" />
-            Notificaciones
-            {unreadCount > 0 && (
-              <span className="ml-auto inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
-                {unreadCount}
-              </span>
-            )}
-          </NotificationsButton>
-        </MenuItem>
-        {sidebarStructure.length === 0 ? (
-          <p className="text-gray-400 text-sm">No hay menús disponibles</p>
-        ) : (
-          <MenuList>
-            {sidebarStructure.map((section) => {
-              const filteredSubmenus = section.submenus.filter((submenu) =>
-                submenu.nombre.toLowerCase().includes(searchTerm)
-              );
-
-              if (section.submenus.length === 0 && section.url) {
-                return (
-                  <MenuItem key={section.id}>
-                    <SubmenuItem
-                      to={section.url}
-                      onClick={closeSidebar}
-                      className="font-bold"
-                    >
-                      {getIconComponent(section.icono)}
-                      {section.nombre}
-                    </SubmenuItem>
-                  </MenuItem>
+        <ScrollableContent>
+          <MenuItem>
+            <NotificationsButton onClick={() => setNotificationsOpen(true)}>
+              <FaBell className="mr-3" />
+              Notificaciones
+              {unreadCount > 0 && (
+                <span className="ml-auto inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                  {unreadCount}
+                </span>
+              )}
+            </NotificationsButton>
+          </MenuItem>
+          {sidebarStructure.length === 0 ? (
+            <p className="text-gray-400 text-sm">No hay menús disponibles</p>
+          ) : (
+            <MenuList>
+              {sidebarStructure.map((section) => {
+                const filteredSubmenus = section.submenus.filter((submenu) =>
+                  submenu.nombre.toLowerCase().includes(searchTerm)
                 );
-              }
 
-              if (filteredSubmenus.length === 0) return null;
-
-              return (
-                <MenuItem key={section.id}>
-                  <MenuButtonWrapper>
-                    <MenuButton
-                      isOpen={openSections[section.id]}
-                      onClick={() => toggleSection(section.id)}
-                    >
-                      <span className="flex items-center gap-2">
+                if (section.submenus.length === 0 && section.url) {
+                  return (
+                    <MenuItem key={section.id}>
+                      <SubmenuItem
+                        to={section.url}
+                        onClick={closeSidebar}
+                        className="font-bold"
+                      >
                         {getIconComponent(section.icono)}
                         {section.nombre}
-                      </span>
-                      <FaChevronDown
-                        className={`transform transition-transform duration-300 ${
-                          openSections[section.id] ? "rotate-180" : "rotate-0"
-                        }`}
-                      />
-                    </MenuButton>
-                  </MenuButtonWrapper>
-                  <SubmenuList
-                    className={openSections[section.id] ? "open" : ""}
-                  >
-                    {filteredSubmenus.map((submenu) => (
-                      <SubmenuItem
-                        key={submenu.id}
-                        to={submenu.url}
-                        onClick={closeSidebar}
-                      >
-                        {getIconComponent(submenu.icono)}
-                        {submenu.nombre}
                       </SubmenuItem>
-                    ))}
-                  </SubmenuList>
-                </MenuItem>
-              );
-            })}
-          </MenuList>
-        )}
-      </ScrollableContent>
+                    </MenuItem>
+                  );
+                }
 
-      <Footer>
-        <LogoutButton
-          onClick={() => {
-            logout();
-            closeSidebar();
-          }}
-        >
-          <FaSignOutAlt className="mr-3" />
-          Cerrar Sesión
-        </LogoutButton>
-      </Footer>
-    </SidebarContainer>
+                if (filteredSubmenus.length === 0) return null;
+
+                return (
+                  <MenuItem key={section.id}>
+                    <MenuButtonWrapper>
+                      <MenuButton
+                        isOpen={openSections[section.id]}
+                        onClick={() => toggleSection(section.id)}
+                      >
+                        <span className="flex items-center gap-2">
+                          {getIconComponent(section.icono)}
+                          {section.nombre}
+                        </span>
+                        <FaChevronDown
+                          className={`transform transition-transform duration-300 ${
+                            openSections[section.id] ? "rotate-180" : "rotate-0"
+                          }`}
+                        />
+                      </MenuButton>
+                    </MenuButtonWrapper>
+                    <SubmenuList
+                      className={openSections[section.id] ? "open" : ""}
+                    >
+                      {filteredSubmenus.map((submenu) => (
+                        <SubmenuItem
+                          key={submenu.id}
+                          to={submenu.url}
+                          onClick={closeSidebar}
+                        >
+                          {getIconComponent(submenu.icono)}
+                          {submenu.nombre}
+                        </SubmenuItem>
+                      ))}
+                    </SubmenuList>
+                  </MenuItem>
+                );
+              })}
+            </MenuList>
+          )}
+        </ScrollableContent>
+
+        <Footer>
+          <LogoutButton
+            onClick={() => {
+              logout();
+              closeSidebar();
+            }}
+          >
+            <FaSignOutAlt className="mr-3" />
+            Cerrar Sesión
+          </LogoutButton>
+        </Footer>
+      </SidebarContainer>
+
+      <Modal
+        isOpen={isProfileModalOpen}
+        onRequestClose={() => setIsProfileModalOpen(false)}
+        className="mx-4 sm:mx-auto mt-10"
+        overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+        ariaHideApp={false}
+      >
+        <ProfileModal
+          onClose={() => setIsProfileModalOpen(false)}
+          setFotoUrl={setFotoUrl}
+        />
+      </Modal>
+    </>
   );
 };
 
