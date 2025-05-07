@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import Modal from "react-modal";
 import Swal from "sweetalert2";
 import { FaCamera, FaEdit } from "react-icons/fa";
 import {
@@ -33,6 +32,7 @@ interface PersonDetails {
     ID_SEXO: number;
     FOTO?: string;
     FORMATO?: string;
+    ID_PERFIL?: string;
   };
   residentInfo: {
     ID_RESIDENTE: number;
@@ -245,261 +245,265 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
   if (!personDetails) return null;
 
   return (
-    <Card className="relative overflow-y-auto p-3 bg-white rounded-lg shadow-lg">
+    <>
       {isLoading && (
         <SpinnerOverlay>
           <Spinner />
           <SpinnerText>Procesando...</SpinnerText>
         </SpinnerOverlay>
       )}
-      <CloseButton onClick={onClose}>
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M6 18L18 6M6 6l12 12"
-          />
-        </svg>
-      </CloseButton>
-      {viewMode === "view" && (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-2">
-          <SectionTitle className="col-span-1 lg:col-span-4 text-center text-gray-700 text-sm">
-            Mi Perfil
-          </SectionTitle>
-          <div className="flex justify-center lg:col-span-1">
-            <ProfileImage
-              src={
-                personDetails.basicInfo.FOTO
-                  ? `data:image/${personDetails.basicInfo.FORMATO};base64,${personDetails.basicInfo.FOTO}`
-                  : getDefaultPhoto(personDetails.basicInfo.SEXO)
-              }
-              alt="Foto de perfil"
-              onError={(e) => {
-                e.currentTarget.src = getDefaultPhoto(personDetails.basicInfo.SEXO);
-              }}
-              className="w-20 h-20 rounded-full object-cover border border-gray-300"
-            />
-          </div>
-          <InfoGrid className="col-span-1 lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-1">
-            <InfoItem>
-              <label className="block text-xs font-semibold text-gray-700">Nombres</label>
-              <p className="mt-0.5 text-gray-800 text-sm">{personDetails.basicInfo.NOMBRES}</p>
-            </InfoItem>
-            <InfoItem>
-              <label className="block text-xs font-semibold text-gray-700">Apellidos</label>
-              <p className="mt-0.5 text-gray-800 text-sm">{personDetails.basicInfo.APELLIDOS}</p>
-            </InfoItem>
-            <InfoItem>
-              <label className="block text-xs font-semibold text-gray-700">Correo</label>
-              <p className="mt-0.5 text-gray-800 text-sm">{personDetails.basicInfo.CORREO || "N/A"}</p>
-            </InfoItem>
-            <InfoItem>
-              <label className="block text-xs font-semibold text-gray-700">Celular</label>
-              <p className="mt-0.5 text-gray-800 text-sm">{personDetails.basicInfo.CELULAR || "N/A"}</p>
-            </InfoItem>
-            <InfoItem>
-              <label className="block text-xs font-semibold text-gray-700">Contacto de Emergencia</label>
-              <p className="mt-0.5 text-gray-800 text-sm">{personDetails.basicInfo.CONTACTO_EMERGENCIA || "N/A"}</p>
-            </InfoItem>
-            <InfoItem>
-              <label className="block text-xs font-semibold text-gray-700">Fecha de Nacimiento</label>
-              <p className="mt-0.5 text-gray-800 text-sm">{formatDate(personDetails.basicInfo.FECHA_NACIMIENTO)}</p>
-            </InfoItem>
-            <InfoItem>
-              <label className="block text-xs font-semibold text-gray-700">Sexo</label>
-              <p className="mt-0.5 text-gray-800 text-sm">{personDetails.basicInfo.SEXO}</p>
-            </InfoItem>
-          </InfoGrid>
-          {(personDetails.residentInfo.length > 0 || personDetails.workerInfo.length > 0) && (
-            <div className="col-span-1 lg:col-span-4 mt-2">
-              <SectionTitle className="text-gray-700 text-sm">Información Adicional</SectionTitle>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 max-h-20 overflow-y-auto">
-                {personDetails.residentInfo.map((info, index) => (
-                  <Card key={index} className="p-1 text-xs bg-gray-50">
-                    <p><strong>Dept.:</strong> Nº {info.NRO_DPTO}</p>
-                    <p><strong>Fase:</strong> {info.FASE}</p>
-                  </Card>
-                ))}
-                {personDetails.workerInfo.map((info, index) => (
-                  <Card key={index} className="p-1 text-xs bg-gray-50">
-                    <p><strong>Fase:</strong> {info.FASE}</p>
-                  </Card>
-                ))}
+      <div className="relative w-full max-w-4xl mx-auto bg-white rounded-lg shadow-lg max-h-[90vh] overflow-y-auto">
+        <Card className="p-4 relative">
+          <CloseButton onClick={onClose}>
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </CloseButton>
+          {viewMode === "view" && (
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+              <SectionTitle className="col-span-1 lg:col-span-4 text-center text-gray-700 text-lg">
+                Mi Perfil
+              </SectionTitle>
+              <div className="flex justify-center lg:col-span-1">
+                <ProfileImage
+                  src={
+                    personDetails.basicInfo.FOTO
+                      ? `data:image/${personDetails.basicInfo.FORMATO};base64,${personDetails.basicInfo.FOTO}`
+                      : getDefaultPhoto(personDetails.basicInfo.SEXO)
+                  }
+                  alt="Foto de perfil"
+                  onError={(e) => {
+                    e.currentTarget.src = getDefaultPhoto(personDetails.basicInfo.SEXO);
+                  }}
+                  className="w-24 h-24 rounded-full object-cover border border-gray-300"
+                />
+              </div>
+              <InfoGrid className="col-span-1 lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <InfoItem>
+                  <label className="block text-sm font-semibold text-gray-700">Nombres</label>
+                  <p className="mt-1 text-gray-800 text-base">{personDetails.basicInfo.NOMBRES}</p>
+                </InfoItem>
+                <InfoItem>
+                  <label className="block text-sm font-semibold text-gray-700">Apellidos</label>
+                  <p className="mt-1 text-gray-800 text-base">{personDetails.basicInfo.APELLIDOS}</p>
+                </InfoItem>
+                <InfoItem>
+                  <label className="block text-sm font-semibold text-gray-700">Correo</label>
+                  <p className="mt-1 text-gray-800 text-base">{personDetails.basicInfo.CORREO || "N/A"}</p>
+                </InfoItem>
+                <InfoItem>
+                  <label className="block text-sm font-semibold text-gray-700">Celular</label>
+                  <p className="mt-1 text-gray-800 text-base">{personDetails.basicInfo.CELULAR || "N/A"}</p>
+                </InfoItem>
+                <InfoItem>
+                  <label className="block text-sm font-semibold text-gray-700">Contacto de Emergencia</label>
+                  <p className="mt-1 text-gray-800 text-base">{personDetails.basicInfo.CONTACTO_EMERGENCIA || "N/A"}</p>
+                </InfoItem>
+                <InfoItem>
+                  <label className="block text-sm font-semibold text-gray-700">Fecha de Nacimiento</label>
+                  <p className="mt-1 text-gray-800 text-base">{formatDate(personDetails.basicInfo.FECHA_NACIMIENTO)}</p>
+                </InfoItem>
+                <InfoItem>
+                  <label className="block text-sm font-semibold text-gray-700">Sexo</label>
+                  <p className="mt-1 text-gray-800 text-base">{personDetails.basicInfo.SEXO}</p>
+                </InfoItem>
+              </InfoGrid>
+              {(personDetails.residentInfo.length > 0 || personDetails.workerInfo.length > 0) && (
+                <div className="col-span-1 lg:col-span-4 mt-4">
+                  <SectionTitle className="text-gray-700 text-lg">Información Adicional</SectionTitle>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {personDetails.residentInfo.map((info, index) => (
+                      <Card key={index} className="p-2 text-sm bg-gray-50">
+                        <p><strong>Dept.:</strong> Nº {info.NRO_DPTO}</p>
+                        <p><strong>Fase:</strong> {info.FASE}</p>
+                      </Card>
+                    ))}
+                    {personDetails.workerInfo.map((info, index) => (
+                      <Card key={index} className="p-2 text-sm bg-gray-50">
+                        <p><strong>Fase:</strong> {info.FASE}</p>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="col-span-1 lg:col-span-4 flex justify-end mt-4">
+                <PrimaryButton onClick={() => setViewMode("edit")} className="bg-blue-600 text-white text-base py-2 px-4">
+                  <FaEdit className="mr-2" />
+                  Editar Perfil
+                </PrimaryButton>
               </div>
             </div>
           )}
-          <div className="col-span-1 lg:col-span-4 flex justify-end mt-2">
-            <PrimaryButton onClick={() => setViewMode("edit")} className="bg-blue-600 text-white text-sm">
-              <FaEdit className="mr-1" />
-              Editar Perfil
-            </PrimaryButton>
-          </div>
-        </div>
-      )}
-      {viewMode === "edit" && editingPerson && (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-2">
-          <SectionTitle className="col-span-1 lg:col-span-4 text-center text-gray-700 text-sm">
-            Editar Perfil
-          </SectionTitle>
-          <div className="flex flex-col items-center lg:col-span-1">
-            <ProfileImage
-              src={
-                newPhoto
-                  ? URL.createObjectURL(newPhoto)
-                  : editingPerson.basicInfo.FOTO
-                  ? `data:image/${editingPerson.basicInfo.FORMATO};base64,${editingPerson.basicInfo.FOTO}`
-                  : getDefaultPhoto(editingPerson.basicInfo.SEXO)
-              }
-              alt="Foto de perfil"
-              onError={(e) => {
-                e.currentTarget.src = getDefaultPhoto(editingPerson.basicInfo.SEXO);
-              }}
-              className="w-20 h-20 rounded-full object-cover border border-gray-300"
-            />
-            <label className="mt-1 flex items-center gap-1 bg-blue-600 text-white px-2 py-1 rounded-lg cursor-pointer hover:bg-blue-700 transition-colors text-xs">
-              <FaCamera />
-              <span>Cambiar Foto</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setNewPhoto(e.target.files?.[0] || null)}
-                className="hidden"
-              />
-            </label>
-          </div>
-          <InfoGrid className="col-span-1 lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-1">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700">Nombres</label>
-              <Input
-                type="text"
-                value={editingPerson.basicInfo.NOMBRES}
-                onChange={(e) =>
-                  setEditingPerson({
-                    ...editingPerson,
-                    basicInfo: { ...editingPerson.basicInfo, NOMBRES: e.target.value },
-                  })
-                }
-                className="text-sm p-1"
-              />
+          {viewMode === "edit" && editingPerson && (
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+              <SectionTitle className="col-span-1 lg:col-span-4 text-center text-gray-700 text-lg">
+                Editar Perfil
+              </SectionTitle>
+              <div className="flex flex-col items-center lg:col-span-1">
+                <ProfileImage
+                  src={
+                    newPhoto
+                      ? URL.createObjectURL(newPhoto)
+                      : editingPerson.basicInfo.FOTO
+                      ? `data:image/${editingPerson.basicInfo.FORMATO};base64,${editingPerson.basicInfo.FOTO}`
+                      : getDefaultPhoto(editingPerson.basicInfo.SEXO)
+                  }
+                  alt="Foto de perfil"
+                  onError={(e) => {
+                    e.currentTarget.src = getDefaultPhoto(editingPerson.basicInfo.SEXO);
+                  }}
+                  className="w-24 h-24 rounded-full object-cover border border-gray-300"
+                />
+                <label className="mt-2 flex items-center gap-2 bg-blue-600 text-white px-3 py-1 rounded-lg cursor-pointer hover:bg-blue-700 transition-colors text-sm">
+                  <FaCamera />
+                  <span>Cambiar Foto</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setNewPhoto(e.target.files?.[0] || null)}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+              <InfoGrid className="col-span-1 lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">Nombres</label>
+                  <Input
+                    type="text"
+                    value={editingPerson.basicInfo.NOMBRES}
+                    onChange={(e) =>
+                      setEditingPerson({
+                        ...editingPerson,
+                        basicInfo: { ...editingPerson.basicInfo, NOMBRES: e.target.value },
+                      })
+                    }
+                    className="text-base p-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">Apellidos</label>
+                  <Input
+                    type="text"
+                    value={editingPerson.basicInfo.APELLIDOS}
+                    onChange={(e) =>
+                      setEditingPerson({
+                        ...editingPerson,
+                        basicInfo: { ...editingPerson.basicInfo, APELLIDOS: e.target.value },
+                      })
+                    }
+                    className="text-base p-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">Correo</label>
+                  <Input
+                    type="email"
+                    value={editingPerson.basicInfo.CORREO}
+                    onChange={(e) =>
+                      setEditingPerson({
+                        ...editingPerson,
+                        basicInfo: { ...editingPerson.basicInfo, CORREO: e.target.value },
+                      })
+                    }
+                    className="text-base p-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">Celular</label>
+                  <Input
+                    type="text"
+                    value={editingPerson.basicInfo.CELULAR}
+                    onChange={(e) =>
+                      setEditingPerson({
+                        ...editingPerson,
+                        basicInfo: { ...editingPerson.basicInfo, CELULAR: e.target.value },
+                      })
+                    }
+                    className="text-base p-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">Contacto de Emergencia</label>
+                  <Input
+                    type="text"
+                    value={editingPerson.basicInfo.CONTACTO_EMERGENCIA}
+                    onChange={(e) =>
+                      setEditingPerson({
+                        ...editingPerson,
+                        basicInfo: { ...editingPerson.basicInfo, CONTACTO_EMERGENCIA: e.target.value },
+                      })
+                    }
+                    className="text-base p-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">Fecha de Nacimiento</label>
+                  <Input
+                    type="date"
+                    value={formatDateForInput(editingPerson.basicInfo.FECHA_NACIMIENTO)}
+                    onChange={(e) =>
+                      setEditingPerson({
+                        ...editingPerson,
+                        basicInfo: { ...editingPerson.basicInfo, FECHA_NACIMIENTO: e.target.value },
+                      })
+                    }
+                    className="text-base p-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">Sexo</label>
+                  <select
+                    value={editingPerson.basicInfo.ID_SEXO}
+                    onChange={(e) =>
+                      setEditingPerson({
+                        ...editingPerson,
+                        basicInfo: {
+                          ...editingPerson.basicInfo,
+                          ID_SEXO: Number(e.target.value),
+                          SEXO: sexes.find((s) => s.ID_SEXO === Number(e.target.value))?.DESCRIPCION || "",
+                        },
+                      })
+                    }
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring focus:ring-blue-200 text-base"
+                  >
+                    {sexes.map((sex) => (
+                      <option key={sex.ID_SEXO} value={sex.ID_SEXO}>
+                        {sex.DESCRIPCION}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </InfoGrid>
+              <div className="col-span-1 lg:col-span-4 flex justify-end gap-4 mt-4">
+                <SecondaryButton
+                  onClick={() => {
+                    setViewMode("view");
+                    setNewPhoto(null);
+                  }}
+                  className="text-base bg-gray-200 text-gray-700 py-2 px-4"
+                >
+                  Cancelar
+                </SecondaryButton>
+                <PrimaryButton onClick={handleUpdatePerson} disabled={isLoading} className="text-base bg-blue-600 text-white py-2 px-4">
+                  Guardar
+                </PrimaryButton>
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700">Apellidos</label>
-              <Input
-                type="text"
-                value={editingPerson.basicInfo.APELLIDOS}
-                onChange={(e) =>
-                  setEditingPerson({
-                    ...editingPerson,
-                    basicInfo: { ...editingPerson.basicInfo, APELLIDOS: e.target.value },
-                  })
-                }
-                className="text-sm p-1"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700">Correo</label>
-              <Input
-                type="email"
-                value={editingPerson.basicInfo.CORREO}
-                onChange={(e) =>
-                  setEditingPerson({
-                    ...editingPerson,
-                    basicInfo: { ...editingPerson.basicInfo, CORREO: e.target.value },
-                  })
-                }
-                className="text-sm p-1"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700">Celular</label>
-              <Input
-                type="text"
-                value={editingPerson.basicInfo.CELULAR}
-                onChange={(e) =>
-                  setEditingPerson({
-                    ...editingPerson,
-                    basicInfo: { ...editingPerson.basicInfo, CELULAR: e.target.value },
-                  })
-                }
-                className="text-sm p-1"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700">Contacto de Emergencia</label>
-              <Input
-                type="text"
-                value={editingPerson.basicInfo.CONTACTO_EMERGENCIA}
-                onChange={(e) =>
-                  setEditingPerson({
-                    ...editingPerson,
-                    basicInfo: { ...editingPerson.basicInfo, CONTACTO_EMERGENCIA: e.target.value },
-                  })
-                }
-                className="text-sm p-1"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700">Fecha de Nacimiento</label>
-              <Input
-                type="date"
-                value={formatDateForInput(editingPerson.basicInfo.FECHA_NACIMIENTO)}
-                onChange={(e) =>
-                  setEditingPerson({
-                    ...editingPerson,
-                    basicInfo: { ...editingPerson.basicInfo, FECHA_NACIMIENTO: e.target.value },
-                  })
-                }
-                className="text-sm p-1"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700">Sexo</label>
-              <select
-                value={editingPerson.basicInfo.ID_SEXO}
-                onChange={(e) =>
-                  setEditingPerson({
-                    ...editingPerson,
-                    basicInfo: {
-                      ...editingPerson.basicInfo,
-                      ID_SEXO: Number(e.target.value),
-                      SEXO: sexes.find((s) => s.ID_SEXO === Number(e.target.value))?.DESCRIPCION || "",
-                    },
-                  })
-                }
-                className="w-full p-1 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring focus:ring-blue-200 text-sm"
-              >
-                {sexes.map((sex) => (
-                  <option key={sex.ID_SEXO} value={sex.ID_SEXO}>
-                    {sex.DESCRIPCION}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </InfoGrid>
-          <div className="col-span-1 lg:col-span-4 flex justify-end gap-2 mt-2">
-            <SecondaryButton
-              onClick={() => {
-                setViewMode("view");
-                setNewPhoto(null);
-              }}
-              className="text-sm bg-gray-200 text-gray-700"
-            >
-              Cancelar
-            </SecondaryButton>
-            <PrimaryButton onClick={handleUpdatePerson} disabled={isLoading} className="text-sm bg-blue-600 text-white">
-              Guardar
-            </PrimaryButton>
-          </div>
-        </div>
-      )}
-    </Card>
+          )}
+        </Card>
+      </div>
+    </>
   );
 };
 

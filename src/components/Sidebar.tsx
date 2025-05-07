@@ -6,6 +6,11 @@ import { useAuth } from "../context/AuthContext";
 import styled from "styled-components";
 import Modal from "react-modal";
 import ProfileModal from "./ProfileModal";
+import {
+  SpinnerOverlay,
+  Spinner,
+  SpinnerText,
+} from "../Styles/UserListStyles";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -337,9 +342,20 @@ const Sidebar = ({
 
   const handleOpenProfileModal = async () => {
     setIsLoadingProfile(true);
+    closeSidebar(); // Cerrar el Sidebar al abrir el modal
     try {
-      await fetchFoto();
-      setIsProfileModalOpen(true);
+      const startTime = Date.now();
+      await fetchFoto(); // Carga real
+      const elapsedTime = Date.now() - startTime;
+      // Asegurar un tiempo mínimo de 500ms para que la animación sea visible
+      const minimumLoadingTime = 500;
+      if (elapsedTime < minimumLoadingTime) {
+        await new Promise((resolve) => setTimeout(resolve, minimumLoadingTime - elapsedTime));
+      }
+      setIsProfileModalOpen(true); // Abrir el modal después de completar fetchFoto
+      console.log("Modal should open now");
+    } catch (error) {
+      console.error("Error al cargar el perfil:", error);
     } finally {
       setIsLoadingProfile(false);
     }
@@ -467,17 +483,19 @@ const Sidebar = ({
         </Footer>
       </SidebarContainer>
 
+      {/* Animación de carga mientras se ejecuta fetchFoto */}
       {isLoadingProfile && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="text-white text-lg">Cargando...</div>
-        </div>
+        <SpinnerOverlay>
+          <Spinner />
+          <SpinnerText>Procesando...</SpinnerText>
+        </SpinnerOverlay>
       )}
 
       <Modal
         isOpen={isProfileModalOpen}
         onRequestClose={() => setIsProfileModalOpen(false)}
-        className="mx-4 sm:mx-auto mt-10"
-        overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+        className="mx-4 sm:mx-auto mt-10 w-full max-w-4xl"
+        overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50"
         ariaHideApp={false}
       >
         <ProfileModal
