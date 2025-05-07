@@ -344,14 +344,11 @@ const Sidebar = ({
     setIsLoadingProfile(true);
     try {
       await fetchFoto();
-      // Añadimos un pequeño retraso para asegurar que el sidebar se cierre antes de abrir el modal
-      setTimeout(() => {
-        closeSidebar();
-        setIsProfileModalOpen(true);
-        setIsLoadingProfile(false);
-      }, 300); // Retraso de 300ms para coincidir con la transición del sidebar
+      closeSidebar();
+      setIsProfileModalOpen(true);
     } catch (error) {
       console.error("Error al cargar el perfil:", error);
+    } finally {
       setIsLoadingProfile(false);
     }
   };
@@ -484,7 +481,7 @@ const Sidebar = ({
       </SidebarContainer>
 
       {isLoadingProfile && (
-        < SpinnerOverlay>
+        <SpinnerOverlay>
           <Spinner />
           <SpinnerText>Procesando...</SpinnerText>
         </SpinnerOverlay>

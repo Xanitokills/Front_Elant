@@ -135,8 +135,32 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
     });
   };
 
+  const validateFields = () => {
+    if (!editingPerson) return false;
+    const { basicInfo } = editingPerson;
+    return (
+      basicInfo.NOMBRES.trim() !== "" &&
+      basicInfo.APELLIDOS.trim() !== "" &&
+      basicInfo.CORREO.trim() !== "" &&
+      basicInfo.CELULAR.trim() !== "" &&
+      basicInfo.CONTACTO_EMERGENCIA.trim() !== "" &&
+      basicInfo.FECHA_NACIMIENTO.trim() !== "" &&
+      basicInfo.ID_SEXO !== 0
+    );
+  };
+
   const handleUpdatePerson = async () => {
     if (!editingPerson) return;
+
+    if (!validateFields()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Campos incompletos",
+        text: "Por favor, completa todos los campos obligatorios.",
+      });
+      return;
+    }
+
     try {
       setIsLoading(true);
       let photoData = null;
@@ -202,9 +226,21 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
         timer: 2000,
         showConfirmButton: false,
       });
+      // Actualizar personDetails con los datos editados
+      setPersonDetails((prev) => {
+        if (!prev) return editingPerson;
+        return {
+          ...prev,
+          basicInfo: {
+            ...prev.basicInfo,
+            ...editingPerson.basicInfo,
+            FOTO: photoData ? photoData.foto : prev.basicInfo.FOTO,
+            FORMATO: photoData ? photoData.formato : prev.basicInfo.FORMATO,
+          },
+        };
+      });
       if (photoData) {
         const fotoBase64 = `data:image/jpg;base64,${photoData.foto}`;
-        setPersonDetails((prev) => prev ? { ...prev, basicInfo: { ...prev.basicInfo, FOTO: photoData.foto, FORMATO: photoData.formato } } : prev);
         localStorage.setItem("foto", fotoBase64);
         setFotoUrl(fotoBase64);
       }
@@ -378,7 +414,7 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
               </div>
               <InfoGrid className="col-span-1 lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700">Nombres</label>
+                  <label className="block text-sm font-semibold text-gray-700">Nombres *</label>
                   <Input
                     type="text"
                     value={editingPerson.basicInfo.NOMBRES}
@@ -389,10 +425,11 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
                       })
                     }
                     className="text-base p-2"
+                    required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700">Apellidos</label>
+                  <label className="block text-sm font-semibold text-gray-700">Apellidos *</label>
                   <Input
                     type="text"
                     value={editingPerson.basicInfo.APELLIDOS}
@@ -403,10 +440,11 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
                       })
                     }
                     className="text-base p-2"
+                    required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700">Correo</label>
+                  <label className="block text-sm font-semibold text-gray-700">Correo *</label>
                   <Input
                     type="email"
                     value={editingPerson.basicInfo.CORREO}
@@ -417,10 +455,11 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
                       })
                     }
                     className="text-base p-2"
+                    required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700">Celular</label>
+                  <label className="block text-sm font-semibold text-gray-700">Celular *</label>
                   <Input
                     type="text"
                     value={editingPerson.basicInfo.CELULAR}
@@ -431,10 +470,11 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
                       })
                     }
                     className="text-base p-2"
+                    required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700">Contacto de Emergencia</label>
+                  <label className="block text-sm font-semibold text-gray-700">Contacto de Emergencia *</label>
                   <Input
                     type="text"
                     value={editingPerson.basicInfo.CONTACTO_EMERGENCIA}
@@ -445,10 +485,11 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
                       })
                     }
                     className="text-base p-2"
+                    required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700">Fecha de Nacimiento</label>
+                  <label className="block text-sm font-semibold text-gray-700">Fecha de Nacimiento *</label>
                   <Input
                     type="date"
                     value={formatDateForInput(editingPerson.basicInfo.FECHA_NACIMIENTO)}
@@ -459,10 +500,11 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
                       })
                     }
                     className="text-base p-2"
+                    required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700">Sexo</label>
+                  <label className="block text-sm font-semibold text-gray-700">Sexo *</label>
                   <select
                     value={editingPerson.basicInfo.ID_SEXO}
                     onChange={(e) =>
@@ -476,7 +518,9 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
                       })
                     }
                     className="w-full p-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring focus:ring-blue-200 text-base"
+                    required
                   >
+                    <option value={0} disabled>Seleccione</option>
                     {sexes.map((sex) => (
                       <option key={sex.ID_SEXO} value={sex.ID_SEXO}>
                         {sex.DESCRIPCION}
@@ -495,7 +539,11 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
                 >
                   Cancelar
                 </SecondaryButton>
-                <PrimaryButton onClick={handleUpdatePerson} disabled={isLoading} className="text-base bg-blue-600 text-white py-2 px-4">
+                <PrimaryButton
+                  onClick={handleUpdatePerson}
+                  disabled={isLoading || !validateFields()}
+                  className={`text-base py-2 px-4 ${isLoading || !validateFields() ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 text-white"}`}
+                >
                   Guardar
                 </PrimaryButton>
               </div>

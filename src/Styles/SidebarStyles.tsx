@@ -11,7 +11,7 @@ export const SpinnerOverlay = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  z-index: 2000; /* Incrementado para asegurar visibilidad */
+  z-index: 2000;
 `;
 
 export const Spinner = styled.div`
