@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import Modal from "react-modal";
 import Swal from "sweetalert2";
 import { FaCamera, FaEdit } from "react-icons/fa";
 import {
@@ -246,14 +245,14 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
   if (!personDetails) return null;
 
   return (
-    <Container className="w-full max-w-4xl mx-auto px-4 sm:px-6">
+    <Container className="max-w-4xl mx-auto p-4 min-h-0">
       {isLoading && (
         <SpinnerOverlay>
           <Spinner />
           <SpinnerText>Procesando...</SpinnerText>
         </SpinnerOverlay>
       )}
-      <Card className="relative max-h-[65vh] overflow-y-auto p-6 bg-white rounded-lg shadow-lg">
+      <Card className="relative overflow-y-auto p-6 bg-white rounded-lg shadow-lg">
         <CloseButton onClick={onClose}>
           <svg
             className="w-6 h-6"
