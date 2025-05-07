@@ -319,6 +319,12 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
                   <p className="mt-1 text-gray-800 text-base">{personDetails.basicInfo.SEXO}</p>
                 </InfoItem>
               </InfoGrid>
+              <div className="col-span-1 lg:col-span-4 flex justify-end mt-4">
+                <PrimaryButton onClick={() => setViewMode("edit")} className="bg-blue-600 text-white text-base py-2 px-4">
+                  <FaEdit className="mr-2" />
+                  Editar Perfil
+                </PrimaryButton>
+              </div>
               {(personDetails.residentInfo.length > 0 || personDetails.workerInfo.length > 0) && (
                 <div className="col-span-1 lg:col-span-4 mt-4">
                   <SectionTitle className="text-gray-700 text-lg">Información Adicional</SectionTitle>
@@ -337,12 +343,6 @@ const ProfileModal = ({ onClose, setFotoUrl }: ProfileModalProps) => {
                   </div>
                 </div>
               )}
-              <div className="col-span-1 lg:col-span-4 flex justify-end mt-4">
-                <PrimaryButton onClick={() => setViewMode("edit")} className="bg-blue-600 text-white text-base py-2 px-4">
-                  <FaEdit className="mr-2" />
-                  Editar Perfil
-                </PrimaryButton>
-              </div>
             </div>
           )}
           {viewMode === "edit" && editingPerson && (

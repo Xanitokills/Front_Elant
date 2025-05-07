@@ -6,12 +6,12 @@ export const SpinnerOverlay = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.7);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: 2000; /* Incrementado para asegurar visibilidad */
 `;
 
 export const Spinner = styled.div`

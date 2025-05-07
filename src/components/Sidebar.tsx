@@ -345,16 +345,14 @@ const Sidebar = ({
     try {
       await fetchFoto();
       closeSidebar();
-      // Retraso para asegurar que la transición del sidebar termine
-      setTimeout(() => {
-        setIsProfileModalOpen(true);
-        console.log("Modal abierto");
-      }, 400); // Ajustado a 400ms para mayor compatibilidad
+      setIsProfileModalOpen(true);
     } catch (error) {
       console.error("Error al cargar el perfil:", error);
-    } finally {
-      setIsLoadingProfile(false);
     }
+  };
+
+  const handleModalOpened = () => {
+    setIsLoadingProfile(false);
   };
 
   return (
@@ -490,8 +488,9 @@ const Sidebar = ({
       <Modal
         isOpen={isProfileModalOpen}
         onRequestClose={() => setIsProfileModalOpen(false)}
-        className="mx-4 sm:mx-auto mt-10 w-full max-w-4xl"
-        overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-60"
+        onAfterOpen={handleModalOpened}
+        className="w-[95%] max-w-4xl mx-auto mt-4 rounded-lg sm:mt-8 sm:w-[90%]"
+        overlayClassName="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[1000]"
         ariaHideApp={false}
       >
         <ProfileModal
