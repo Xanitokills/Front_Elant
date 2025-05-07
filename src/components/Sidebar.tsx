@@ -238,6 +238,7 @@ const Sidebar = ({
   const [sidebarStructure, setSidebarStructure] = useState<SidebarStructure[]>([]);
   const [fotoUrl, setFotoUrl] = useState<string>("");
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
 
   const toggleSection = (id: number) => {
     setOpenSections((prev) => {
@@ -252,6 +253,54 @@ const Sidebar = ({
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value.toLowerCase());
+  };
+
+  const fetchFoto = async () => {
+    let personaId = localStorage.getItem("personaId");
+    let sexo = localStorage.getItem("sexo");
+    let storedFoto = localStorage.getItem("foto");
+
+    if (!sexo || (sexo !== "Femenino" && sexo !== "Masculino")) {
+      sexo = "Masculino";
+    }
+
+    if (storedFoto && storedFoto !== "") {
+      setFotoUrl(storedFoto);
+      return;
+    }
+
+    if (!personaId) {
+      const defaultFoto = sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
+      setFotoUrl(defaultFoto);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_URL}/users/foto/${personaId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.fotoBase64) {
+          setFotoUrl(data.fotoBase64);
+          localStorage.setItem("foto", data.fotoBase64);
+        } else {
+          const defaultFoto = sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
+          setFotoUrl(defaultFoto);
+        }
+      } else {
+        const defaultFoto = sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
+        setFotoUrl(defaultFoto);
+      }
+    } catch (error) {
+      console.error("Error cargando la foto desde el backend:", error);
+      const defaultFoto = sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
+      setFotoUrl(defaultFoto);
+    }
   };
 
   useEffect(() => {
@@ -279,60 +328,22 @@ const Sidebar = ({
   }, [sidebarData]);
 
   useEffect(() => {
-    const fetchFoto = async () => {
-      let personaId = localStorage.getItem("personaId");
-      let sexo = localStorage.getItem("sexo");
-      let storedFoto = localStorage.getItem("foto");
-
-      if (!sexo || (sexo !== "Femenino" && sexo !== "Masculino")) {
-        sexo = "Masculino";
-      }
-
-      if (storedFoto && storedFoto !== "") {
-        setFotoUrl(storedFoto);
-        return;
-      }
-
-      if (!personaId) {
-        const defaultFoto = sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
-        setFotoUrl(defaultFoto);
-        return;
-      }
-
-      try {
-        const token = localStorage.getItem("token");
-        const response = await fetch(`${API_URL}/users/foto/${personaId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.fotoBase64) {
-            setFotoUrl(data.fotoBase64);
-            localStorage.setItem("foto", data.fotoBase64);
-          } else {
-            const defaultFoto = sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
-            setFotoUrl(defaultFoto);
-          }
-        } else {
-          const defaultFoto = sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
-          setFotoUrl(defaultFoto);
-        }
-      } catch (error) {
-        console.error("Error cargando la foto desde el backend:", error);
-        const defaultFoto = sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
-        setFotoUrl(defaultFoto);
-      }
-    };
-
     fetchFoto();
   }, []);
 
   if (isLoading || !isAuthenticated) {
     return null;
   }
+
+  const handleOpenProfileModal = async () => {
+    setIsLoadingProfile(true);
+    try {
+      await fetchFoto();
+      setIsProfileModalOpen(true);
+    } finally {
+      setIsLoadingProfile(false);
+    }
+  };
 
   return (
     <>
@@ -343,7 +354,7 @@ const Sidebar = ({
               src={fotoUrl}
               alt="Usuario"
               className="w-12 h-12 rounded-full mr-3 object-cover"
-              onClick={() => setIsProfileModalOpen(true)}
+              onClick={handleOpenProfileModal}
             />
             <div>
               <p className="font-semibold">{userName || "Usuario"}</p>
@@ -455,6 +466,12 @@ const Sidebar = ({
           </LogoutButton>
         </Footer>
       </SidebarContainer>
+
+      {isLoadingProfile && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="text-white text-lg">Cargando...</div>
+        </div>
+      )}
 
       <Modal
         isOpen={isProfileModalOpen}
