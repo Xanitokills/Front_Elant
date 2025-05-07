@@ -344,10 +344,15 @@ const Sidebar = ({
     setIsLoadingProfile(true);
     try {
       await fetchFoto();
-      closeSidebar();
-      setIsProfileModalOpen(true);
+      // Añadimos un pequeño retraso para asegurar que el sidebar se cierre antes de abrir el modal
+      setTimeout(() => {
+        closeSidebar();
+        setIsProfileModalOpen(true);
+        setIsLoadingProfile(false);
+      }, 300); // Retraso de 300ms para coincidir con la transición del sidebar
     } catch (error) {
       console.error("Error al cargar el perfil:", error);
+      setIsLoadingProfile(false);
     }
   };
 
@@ -479,7 +484,7 @@ const Sidebar = ({
       </SidebarContainer>
 
       {isLoadingProfile && (
-        <SpinnerOverlay>
+        < SpinnerOverlay>
           <Spinner />
           <SpinnerText>Procesando...</SpinnerText>
         </SpinnerOverlay>
@@ -489,8 +494,28 @@ const Sidebar = ({
         isOpen={isProfileModalOpen}
         onRequestClose={() => setIsProfileModalOpen(false)}
         onAfterOpen={handleModalOpened}
-        className="w-[95%] max-w-4xl mx-auto mt-4 rounded-lg sm:mt-8 sm:w-[90%]"
+        className="w-[95%] max-w-4xl mx-auto mt-4 rounded-lg sm:mt-8 sm:w-[90%] md:w-[80%] lg:w-[70%]"
         overlayClassName="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[1000]"
+        style={{
+          overlay: {
+            zIndex: 1000,
+            overflowY: "auto",
+            padding: "1rem",
+          },
+          content: {
+            position: "relative",
+            top: "auto",
+            left: "auto",
+            right: "auto",
+            bottom: "auto",
+            margin: "auto",
+            maxHeight: "90vh",
+            overflowY: "auto",
+            padding: "0",
+            border: "none",
+            background: "transparent",
+          },
+        }}
         ariaHideApp={false}
       >
         <ProfileModal
