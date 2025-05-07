@@ -268,12 +268,12 @@ const Dashboard = () => {
         }
       } catch (error) {
         console.error("Error al cargar datos:", error);
-        await Swal.fire({
+/*         await Swal.fire({
           icon: "error",
           title: "Error al cargar el dashboard",
           text: `No se pudieron cargar los datos. Error: ${error.message}. Por favor, contacta al administrador.`,
           confirmButtonText: "Entendido",
-        });
+        }); */
       } finally {
         setTimeout(() => setIsLoading(false), 300);
       }
