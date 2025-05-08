@@ -410,7 +410,7 @@ export const Select = styled.select`
 
 export const ModalContent = styled.div`
   background: white;
-  padding: 1rem;
+  padding: 2rem;
   border-radius: 0.75rem;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
   max-height: 90vh;
@@ -438,6 +438,20 @@ export const ModalContent = styled.div`
   & .grid-cols-2 {
     grid-template-columns: repeat(2, 1fr);
   }
+`;
+
+export const ChangePasswordModalContent = styled.div`
+  background: white;
+  padding: 2rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  max-height: 87vh;
+  overflow-y: auto;
+  width: 100%;
+  max-width: 80rem;
+  animation: ${fadeIn} 0.3s ease-out;
+  position: relative;
+  margin-top: -5em;
 `;
 
 export const RolesModalContent = styled.div`

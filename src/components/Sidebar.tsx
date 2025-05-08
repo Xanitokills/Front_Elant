@@ -243,6 +243,27 @@ const ModalContent = styled.div`
   margin-top: -5em;
 `;
 
+const ChangePasswordModalContent = styled.div`
+  background: white;
+  padding: 2rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  max-height: 87vh;
+  overflow-y: auto;
+  width: 100%;
+  max-width: 80rem;
+  animation: ${fadeIn} 0.3s ease-out;
+  position: relative;
+  margin-top: -5em;
+
+  & > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+`;
+
 const Select = styled.select`
   width: 100%;
   padding: 0.75rem;
@@ -761,423 +782,459 @@ const Sidebar = ({
     if (!personDetails) return null;
 
     return (
-      <ModalContent>
-        <CloseButton onClick={handleCloseProfileModal}>
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </CloseButton>
+      <>
         {viewMode === "view" && (
-          <div className="flex flex-col items-center sm:grid sm:grid-cols-3 sm:gap-6">
-            <SectionTitle className="col-span-3 text-center sm:text-left">
-              Mi Perfil
-            </SectionTitle>
-            <div className="flex justify-center mb-6 sm:mb-0">
-              <ProfileImage
-                src={
-                  personDetails.basicInfo.FOTO
-                    ? `data:image/${personDetails.basicInfo.FORMATO};base64,${personDetails.basicInfo.FOTO}`
-                    : getDefaultPhoto(personDetails.basicInfo.SEXO)
-                }
-                alt="Foto de perfil"
-                className="view-mode"
-                onError={(e) => {
-                  e.currentTarget.src = getDefaultPhoto(
-                    personDetails.basicInfo.SEXO
-                  );
-                }}
-              />
-            </div>
-            <InfoGrid className="col-span-2 grid-cols-2 sm:grid-cols-2">
-              <InfoItem>
-                <label className="block text-sm font-semibold text-gray-700">
-                  Nombres
-                </label>
-                <p className="mt-1 text-gray-800">
-                  {personDetails.basicInfo.NOMBRES}
-                </p>
-              </InfoItem>
-              <InfoItem>
-                <label className="block text-sm font-semibold text-gray-700">
-                  Apellidos
-                </label>
-                <p className="mt-1 text-gray-800">
-                  {personDetails.basicInfo.APELLIDOS}
-                </p>
-              </InfoItem>
-              <InfoItem>
-                <label className="block text-sm font-semibold text-gray-700">
-                  DNI
-                </label>
-                <p className="mt-1 text-gray-800">
-                  {personDetails.basicInfo.DNI}
-                </p>
-              </InfoItem>
-              <InfoItem>
-                <label className="block text-sm font-semibold text-gray-700">
-                  Correo
-                </label>
-                <p className="mt-1 text-gray-800">
-                  {personDetails.basicInfo.CORREO || "N/A"}
-                </p>
-              </InfoItem>
-              <InfoItem>
-                <label className="block text-sm font-semibold text-gray-700">
-                  Celular
-                </label>
-                <p className="mt-1 text-gray-800">
-                  {personDetails.basicInfo.CELULAR || "N/A"}
-                </p>
-              </InfoItem>
-              <InfoItem>
-                <label className="block text-sm font-semibold text-gray-700">
-                  Contacto de Emergencia
-                </label>
-                <p className="mt-1 text-gray-800">
-                  {personDetails.basicInfo.CONTACTO_EMERGENCIA || "N/A"}
-                </p>
-              </InfoItem>
-              <InfoItem>
-                <label className="block text-sm font-semibold text-gray-700">
-                  Fecha de Nacimiento
-                </label>
-                <p className="mt-1 text-gray-800">
-                  {formatDate(personDetails.basicInfo.FECHA_NACIMIENTO)}
-                </p>
-              </InfoItem>
-              <InfoItem>
-                <label className="block text-sm font-semibold text-gray-700">
-                  Sexo
-                </label>
-                <p className="mt-1 text-gray-800">
-                  {personDetails.basicInfo.SEXO}
-                </p>
-              </InfoItem>
-              <PrimaryButton onClick={() => setViewMode("edit")}>
-                <FaEdit className="mr-2" />
-                Editar Perfil
-              </PrimaryButton>
-              <PrimaryButton onClick={() => setViewMode("changePassword")}>
-                <FaLock className="mr-2" />
-                Cambiar Contraseña
-              </PrimaryButton>
-            </InfoGrid>
-            {(personDetails.residentInfo.length > 0 ||
-              personDetails.workerInfo.length > 0) && (
-              <div className="col-span-3 mt-6">
-                <SectionTitle className="text-center sm:text-left">
-                  Información Adicional
-                </SectionTitle>
-                <div className="grid grid-cols-2 gap-4">
-                  {personDetails.residentInfo.map((info, index) => (
-                    <AdditionalInfoCard key={index}>
-                      <p>
-                        <strong>Departamento:</strong> Nº {info.NRO_DPTO}
-                      </p>
-                      <p>
-                        <strong>Fase:</strong> {info.FASE}
-                      </p>
-                      <p>
-                        <strong>Clasificación:</strong>{" "}
-                        {info.DETALLE_CLASIFICACION}
-                      </p>
-                      <p>
-                        <strong>Inicio de Residencia:</strong>{" "}
-                        {formatDate(info.INICIO_RESIDENCIA)}
-                      </p>
-                    </AdditionalInfoCard>
-                  ))}
-                  {personDetails.workerInfo.map((info, index) => (
-                    <AdditionalInfoCard key={index}>
-                      <p>
-                        <strong>Fase:</strong> {info.FASE}
-                      </p>
-                      <p>
-                        <strong>Fecha de Asignación:</strong>{" "}
-                        {formatDate(info.FECHA_ASIGNACION)}
-                      </p>
-                    </AdditionalInfoCard>
-                  ))}
-                </div>
+          <ModalContent>
+            <CloseButton onClick={handleCloseProfileModal}>
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </CloseButton>
+            <div className="flex flex-col items-center sm:grid sm:grid-cols-3 sm:gap-6">
+              <SectionTitle className="col-span-3 text-center sm:text-left">
+                Mi Perfil
+              </SectionTitle>
+              <div className="flex justify-center mb-6 sm:mb-0">
+                <ProfileImage
+                  src={
+                    personDetails.basicInfo.FOTO
+                      ? `data:image/${personDetails.basicInfo.FORMATO};base64,${personDetails.basicInfo.FOTO}`
+                      : getDefaultPhoto(personDetails.basicInfo.SEXO)
+                  }
+                  alt="Foto de perfil"
+                  className="view-mode"
+                  onError={(e) => {
+                    e.currentTarget.src = getDefaultPhoto(
+                      personDetails.basicInfo.SEXO
+                    );
+                  }}
+                />
               </div>
-            )}
-          </div>
+              <InfoGrid className="col-span-2 grid-cols-2 sm:grid-cols-2">
+                <InfoItem>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Nombres
+                  </label>
+                  <p className="mt-1 text-gray-800">
+                    {personDetails.basicInfo.NOMBRES}
+                  </p>
+                </InfoItem>
+                <InfoItem>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Apellidos
+                  </label>
+                  <p className="mt-1 text-gray-800">
+                    {personDetails.basicInfo.APELLIDOS}
+                  </p>
+                </InfoItem>
+                <InfoItem>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    DNI
+                  </label>
+                  <p className="mt-1 text-gray-800">
+                    {personDetails.basicInfo.DNI}
+                  </p>
+                </InfoItem>
+                <InfoItem>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Correo
+                  </label>
+                  <p className="mt-1 text-gray-800">
+                    {personDetails.basicInfo.CORREO || "N/A"}
+                  </p>
+                </InfoItem>
+                <InfoItem>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Celular
+                  </label>
+                  <p className="mt-1 text-gray-800">
+                    {personDetails.basicInfo.CELULAR || "N/A"}
+                  </p>
+                </InfoItem>
+                <InfoItem>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Contacto de Emergencia
+                  </label>
+                  <p className="mt-1 text-gray-800">
+                    {personDetails.basicInfo.CONTACTO_EMERGENCIA || "N/A"}
+                  </p>
+                </InfoItem>
+                <InfoItem>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Fecha de Nacimiento
+                  </label>
+                  <p className="mt-1 text-gray-800">
+                    {formatDate(personDetails.basicInfo.FECHA_NACIMIENTO)}
+                  </p>
+                </InfoItem>
+                <InfoItem>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Sexo
+                  </label>
+                  <p className="mt-1 text-gray-800">
+                    {personDetails.basicInfo.SEXO}
+                  </p>
+                </InfoItem>
+                <PrimaryButton onClick={() => setViewMode("edit")}>
+                  <FaEdit className="mr-2" />
+                  Editar Perfil
+                </PrimaryButton>
+                <PrimaryButton onClick={() => setViewMode("changePassword")}>
+                  <FaLock className="mr-2" />
+                  Cambiar Contraseña
+                </PrimaryButton>
+              </InfoGrid>
+              {(personDetails.residentInfo.length > 0 ||
+                personDetails.workerInfo.length > 0) && (
+                <div className="col-span-3 mt-6">
+                  <SectionTitle className="text-center sm:text-left">
+                    Información Adicional
+                  </SectionTitle>
+                  <div className="grid grid-cols-2 gap-4">
+                    {personDetails.residentInfo.map((info, index) => (
+                      <AdditionalInfoCard key={index}>
+                        <p>
+                          <strong>Departamento:</strong> Nº {info.NRO_DPTO}
+                        </p>
+                        <p>
+                          <strong>Fase:</strong> {info.FASE}
+                        </p>
+                        <p>
+                          <strong>Clasificación:</strong>{" "}
+                          {info.DETALLE_CLASIFICACION}
+                        </p>
+                        <p>
+                          <strong>Inicio de Residencia:</strong>{" "}
+                          {formatDate(info.INICIO_RESIDENCIA)}
+                        </p>
+                      </AdditionalInfoCard>
+                    ))}
+                    {personDetails.workerInfo.map((info, index) => (
+                      <AdditionalInfoCard key={index}>
+                        <p>
+                          <strong>Fase:</strong> {info.FASE}
+                        </p>
+                        <p>
+                          <strong>Fecha de Asignación:</strong>{" "}
+                          {formatDate(info.FECHA_ASIGNACION)}
+                        </p>
+                      </AdditionalInfoCard>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </ModalContent>
         )}
         {viewMode === "edit" && editingPerson && (
-          <div className="flex flex-col items-center sm:grid sm:grid-cols-3 sm:gap-6">
-            <SectionTitle className="col-span-3 text-center sm:text-left">
-              Editar Perfil
-            </SectionTitle>
-            <div className="flex flex-col items-center mb-6 sm:mb-0">
-              <ProfileImage
-                src={
-                  newPhoto
-                    ? URL.createObjectURL(newPhoto)
-                    : editingPerson.basicInfo.FOTO
-                    ? `data:image/${editingPerson.basicInfo.FORMATO};base64,${editingPerson.basicInfo.FOTO}`
-                    : getDefaultPhoto(editingPerson.basicInfo.SEXO)
-                }
-                alt="Foto de perfil"
-                onError={(e) => {
-                  e.currentTarget.src = getDefaultPhoto(
-                    editingPerson.basicInfo.SEXO
-                  );
-                }}
-              />
-              <label className="mt-4 flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-blue-700 transition-colors">
-                <FaCamera />
-                <span>Cambiar Foto</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setNewPhoto(e.target.files?.[0] || null)}
-                  className="hidden"
+          <ModalContent>
+            <CloseButton onClick={handleCloseProfileModal}>
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
                 />
-              </label>
-              <DeletePhotoButtonContainer>
-                <button
-                  onClick={async () => {
-                    const confirm = await Swal.fire({
-                      title: "¿Eliminar foto?",
-                      text: "Esta acción eliminará la foto actual.",
-                      icon: "warning",
-                      showCancelButton: true,
-                      confirmButtonText: "Sí, eliminar",
-                      cancelButtonText: "Cancelar",
-                    });
-                    if (confirm.isConfirmed) {
-                      try {
-                        await fetch(
-                          `${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}/photo`,
-                          {
-                            method: "DELETE",
-                            headers: { Authorization: `Bearer ${token}` },
-                          }
-                        );
-                        setEditingPerson({
-                          ...editingPerson,
-                          basicInfo: {
-                            ...editingPerson.basicInfo,
-                            FOTO: null,
-                            FORMATO: null,
-                          },
-                        });
-                        setPersonDetails({
-                          ...personDetails,
-                          basicInfo: {
-                            ...personDetails.basicInfo,
-                            FOTO: null,
-                            FORMATO: null,
-                          },
-                        });
-                        localStorage.removeItem("foto");
-                        setFotoUrl(
-                          getDefaultPhoto(editingPerson.basicInfo.SEXO)
-                        );
-                        Swal.fire(
-                          "Eliminada",
-                          "La foto fue eliminada",
-                          "success"
-                        );
-                      } catch (error) {
-                        Swal.fire(
-                          "Error",
-                          "No se pudo eliminar la foto",
-                          "error"
-                        );
-                      }
-                    }
+              </svg>
+            </CloseButton>
+            <div className="flex flex-col items-center sm:grid sm:grid-cols-3 sm:gap-6">
+              <SectionTitle className="col-span-3 text-center sm:text-left">
+                Editar Perfil
+              </SectionTitle>
+              <div className="flex flex-col items-center mb-6 sm:mb-0">
+                <ProfileImage
+                  src={
+                    newPhoto
+                      ? URL.createObjectURL(newPhoto)
+                      : editingPerson.basicInfo.FOTO
+                      ? `data:image/${editingPerson.basicInfo.FORMATO};base64,${editingPerson.basicInfo.FOTO}`
+                      : getDefaultPhoto(editingPerson.basicInfo.SEXO)
+                  }
+                  alt="Foto de perfil"
+                  onError={(e) => {
+                    e.currentTarget.src = getDefaultPhoto(
+                      editingPerson.basicInfo.SEXO
+                    );
                   }}
-                  className="mt-2 text-red-500 hover:text-red-700 underline"
-                >
-                  Eliminar Foto
-                </button>
-              </DeletePhotoButtonContainer>
-            </div>
-            <InfoGrid className="col-span-2 grid-cols-2 sm:grid-cols-2">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700">
-                  Nombres *
-                </label>
-                <Input
-                  type="text"
-                  value={editingPerson.basicInfo.NOMBRES}
-                  onChange={(e) =>
-                    setEditingPerson({
-                      ...editingPerson,
-                      basicInfo: {
-                        ...editingPerson.basicInfo,
-                        NOMBRES: e.target.value,
-                      },
-                    })
-                  }
-                  required
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700">
-                  Apellidos *
+                <label className="mt-4 flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-blue-700 transition-colors">
+                  <FaCamera />
+                  <span>Cambiar Foto</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setNewPhoto(e.target.files?.[0] || null)}
+                    className="hidden"
+                  />
                 </label>
-                <Input
-                  type="text"
-                  value={editingPerson.basicInfo.APELLIDOS}
-                  onChange={(e) =>
-                    setEditingPerson({
-                      ...editingPerson,
-                      basicInfo: {
-                        ...editingPerson.basicInfo,
-                        APELLIDOS: e.target.value,
-                      },
-                    })
-                  }
-                  required
-                />
+                <DeletePhotoButtonContainer>
+                  <button
+                    onClick={async () => {
+                      const confirm = await Swal.fire({
+                        title: "¿Eliminar foto?",
+                        text: "Esta acción eliminará la foto actual.",
+                        icon: "warning",
+                        showCancelButton: true,
+                        confirmButtonText: "Sí, eliminar",
+                        cancelButtonText: "Cancelar",
+                      });
+                      if (confirm.isConfirmed) {
+                        try {
+                          await fetch(
+                            `${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}/photo`,
+                            {
+                              method: "DELETE",
+                              headers: { Authorization: `Bearer ${token}` },
+                            }
+                          );
+                          setEditingPerson({
+                            ...editingPerson,
+                            basicInfo: {
+                              ...editingPerson.basicInfo,
+                              FOTO: null,
+                              FORMATO: null,
+                            },
+                          });
+                          setPersonDetails({
+                            ...personDetails,
+                            basicInfo: {
+                              ...personDetails.basicInfo,
+                              FOTO: null,
+                              FORMATO: null,
+                            },
+                          });
+                          localStorage.removeItem("foto");
+                          setFotoUrl(
+                            getDefaultPhoto(editingPerson.basicInfo.SEXO)
+                          );
+                          Swal.fire(
+                            "Eliminada",
+                            "La foto fue eliminada",
+                            "success"
+                          );
+                        } catch (error) {
+                          Swal.fire(
+                            "Error",
+                            "No se pudo eliminar la foto",
+                            "error"
+                          );
+                        }
+                      }
+                    }}
+                    className="mt-2 text-red-500 hover:text-red-700 underline"
+                  >
+                    Eliminar Foto
+                  </button>
+                </DeletePhotoButtonContainer>
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700">
-                  Correo *
-                </label>
-                <Input
-                  type="email"
-                  value={editingPerson.basicInfo.CORREO}
-                  onChange={(e) =>
-                    setEditingPerson({
-                      ...editingPerson,
-                      basicInfo: {
-                        ...editingPerson.basicInfo,
-                        CORREO: e.target.value,
-                      },
-                    })
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700">
-                  Celular *
-                </label>
-                <Input
-                  type="text"
-                  value={editingPerson.basicInfo.CELULAR}
-                  onChange={(e) =>
-                    setEditingPerson({
-                      ...editingPerson,
-                      basicInfo: {
-                        ...editingPerson.basicInfo,
-                        CELULAR: e.target.value,
-                      },
-                    })
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700">
-                  Contacto de Emergencia *
-                </label>
-                <Input
-                  type="text"
-                  value={editingPerson.basicInfo.CONTACTO_EMERGENCIA}
-                  onChange={(e) =>
-                    setEditingPerson({
-                      ...editingPerson,
-                      basicInfo: {
-                        ...editingPerson.basicInfo,
-                        CONTACTO_EMERGENCIA: e.target.value,
-                      },
-                    })
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700">
-                  Fecha de Nacimiento *
-                </label>
-                <Input
-                  type="date"
-                  value={formatDateForInput(
-                    editingPerson.basicInfo.FECHA_NACIMIENTO
-                  )}
-                  onChange={(e) =>
-                    setEditingPerson({
-                      ...editingPerson,
-                      basicInfo: {
-                        ...editingPerson.basicInfo,
-                        FECHA_NACIMIENTO: e.target.value,
-                      },
-                    })
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700">
-                  Sexo *
-                </label>
-                <Select
-                  value={editingPerson.basicInfo.ID_SEXO}
-                  onChange={(e) =>
-                    setEditingPerson({
-                      ...editingPerson,
-                      basicInfo: {
-                        ...editingPerson.basicInfo,
-                        ID_SEXO: Number(e.target.value),
-                        SEXO:
-                          sexes.find(
-                            (s) => s.ID_SEXO === Number(e.target.value)
-                          )?.DESCRIPCION || "",
-                      },
-                    })
-                  }
-                  required
-                >
-                  <option value={0} disabled>
-                    Seleccione
-                  </option>
-                  {sexes.map((sex) => (
-                    <option key={sex.ID_SEXO} value={sex.ID_SEXO}>
-                      {sex.DESCRIPCION}
+              <InfoGrid className="col-span-2 grid-cols-2 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Nombres *
+                  </label>
+                  <Input
+                    type="text"
+                    value={editingPerson.basicInfo.NOMBRES}
+                    onChange={(e) =>
+                      setEditingPerson({
+                        ...editingPerson,
+                        basicInfo: {
+                          ...editingPerson.basicInfo,
+                          NOMBRES: e.target.value,
+                        },
+                      })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Apellidos *
+                  </label>
+                  <Input
+                    type="text"
+                    value={editingPerson.basicInfo.APELLIDOS}
+                    onChange={(e) =>
+                      setEditingPerson({
+                        ...editingPerson,
+                        basicInfo: {
+                          ...editingPerson.basicInfo,
+                          APELLIDOS: e.target.value,
+                        },
+                      })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Correo *
+                  </label>
+                  <Input
+                    type="email"
+                    value={editingPerson.basicInfo.CORREO}
+                    onChange={(e) =>
+                      setEditingPerson({
+                        ...editingPerson,
+                        basicInfo: {
+                          ...editingPerson.basicInfo,
+                          CORREO: e.target.value,
+                        },
+                      })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Celular *
+                  </label>
+                  <Input
+                    type="text"
+                    value={editingPerson.basicInfo.CELULAR}
+                    onChange={(e) =>
+                      setEditingPerson({
+                        ...editingPerson,
+                        basicInfo: {
+                          ...editingPerson.basicInfo,
+                          CELULAR: e.target.value,
+                        },
+                      })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Contacto de Emergencia *
+                  </label>
+                  <Input
+                    type="text"
+                    value={editingPerson.basicInfo.CONTACTO_EMERGENCIA}
+                    onChange={(e) =>
+                      setEditingPerson({
+                        ...editingPerson,
+                        basicInfo: {
+                          ...editingPerson.basicInfo,
+                          CONTACTO_EMERGENCIA: e.target.value,
+                        },
+                      })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Fecha de Nacimiento *
+                  </label>
+                  <Input
+                    type="date"
+                    value={formatDateForInput(
+                      editingPerson.basicInfo.FECHA_NACIMIENTO
+                    )}
+                    onChange={(e) =>
+                      setEditingPerson({
+                        ...editingPerson,
+                        basicInfo: {
+                          ...editingPerson.basicInfo,
+                          FECHA_NACIMIENTO: e.target.value,
+                        },
+                      })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Sexo *
+                  </label>
+                  <Select
+                    value={editingPerson.basicInfo.ID_SEXO}
+                    onChange={(e) =>
+                      setEditingPerson({
+                        ...editingPerson,
+                        basicInfo: {
+                          ...editingPerson.basicInfo,
+                          ID_SEXO: Number(e.target.value),
+                          SEXO:
+                            sexes.find(
+                              (s) => s.ID_SEXO === Number(e.target.value)
+                            )?.DESCRIPCION || "",
+                        },
+                      })
+                    }
+                    required
+                  >
+                    <option value={0} disabled>
+                      Seleccione
                     </option>
-                  ))}
-                </Select>
+                    {sexes.map((sex) => (
+                      <option key={sex.ID_SEXO} value={sex.ID_SEXO}>
+                        {sex.DESCRIPCION}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </InfoGrid>
+              <div className="col-span-3 flex justify-center sm:flex sm:justify-center gap-4 mt-6">
+                <SecondaryButton
+                  onClick={() => {
+                    setViewMode("view");
+                    setNewPhoto(null);
+                  }}
+                >
+                  Cancelar
+                </SecondaryButton>
+                <PrimaryButton
+                  onClick={handleUpdatePerson}
+                  disabled={isLoadingProfile || !validateFields()}
+                >
+                  Guardar
+                </PrimaryButton>
               </div>
-            </InfoGrid>
-            <div className="col-span-3 flex justify-center sm:flex sm:justify-center gap-4 mt-6">
-              <SecondaryButton
-                onClick={() => {
-                  setViewMode("view");
-                  setNewPhoto(null);
-                }}
-              >
-                Cancelar
-              </SecondaryButton>
-              <PrimaryButton
-                onClick={handleUpdatePerson}
-                disabled={isLoadingProfile || !validateFields()}
-              >
-                Guardar
-              </PrimaryButton>
             </div>
-          </div>
+          </ModalContent>
         )}
         {viewMode === "changePassword" && (
-          <div className="flex flex-col items-center sm:grid sm:grid-cols-1 sm:gap-6">
-            <SectionTitle className="text-center sm:text-left">
-              Cambiar Contraseña
-            </SectionTitle>
-            <InfoGrid className="grid-cols-2 sm:grid-cols-1 w-full max-w-md sm:max-w-full">
+          <ChangePasswordModalContent>
+            <CloseButton onClick={handleCloseProfileModal}>
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </CloseButton>
+            <div>
+              <SectionTitle className="text-center sm:text-left">
+                Cambiar Contraseña
+              </SectionTitle>
               <div>
                 <label className="block text-sm font-semibold text-gray-700">
                   Contraseña Actual *
@@ -1214,33 +1271,33 @@ const Sidebar = ({
                   required
                 />
               </div>
-            </InfoGrid>
-            <div className="flex justify-center sm:flex sm:justify-center gap-4 mt-6">
-              <SecondaryButton
-                onClick={() => {
-                  setViewMode("view");
-                  setCurrentPassword("");
-                  setNewPassword("");
-                  setConfirmPassword("");
-                }}
-              >
-                Cancelar
-              </SecondaryButton>
-              <PrimaryButton
-                onClick={handleChangePassword}
-                disabled={
-                  isLoadingProfile ||
-                  !currentPassword ||
-                  !newPassword ||
-                  !confirmPassword
-                }
-              >
-                Guardar
-              </PrimaryButton>
+              <div className="flex justify-center sm:flex sm:justify-center gap-4 mt-6">
+                <SecondaryButton
+                  onClick={() => {
+                    setViewMode("view");
+                    setCurrentPassword("");
+                    setNewPassword("");
+                    setConfirmPassword("");
+                  }}
+                >
+                  Cancelar
+                </SecondaryButton>
+                <PrimaryButton
+                  onClick={handleChangePassword}
+                  disabled={
+                    isLoadingProfile ||
+                    !currentPassword ||
+                    !newPassword ||
+                    !confirmPassword
+                  }
+                >
+                  Guardar
+                </PrimaryButton>
+              </div>
             </div>
-          </div>
+          </ChangePasswordModalContent>
         )}
-      </ModalContent>
+      </>
     );
   };
 
