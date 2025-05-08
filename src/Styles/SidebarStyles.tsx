@@ -55,6 +55,41 @@ export const Card = styled.div`
   }
 `;
 
+export const AdditionalInfoCard = styled.div`
+  background: linear-gradient(145deg, #fefce8 0%, #fef9c3 100%); /* Light yellow gradient for distinction */
+  padding: 0.75rem; /* Reduced padding for mobile */
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  margin-bottom: 0.75rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  animation: ${fadeIn} 0.5s ease-out;
+  border: 2px solid #fef08a; /* Slightly darker yellow border */
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(145deg, #fdfde7 0%, #fef9c3 100%);
+  }
+  @media (min-width: 768px) {
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  p {
+    font-size: 0.75rem; /* Smaller font for mobile */
+    color: #1f2937;
+    margin-bottom: 0.25rem;
+    @media (min-width: 640px) {
+      font-size: 0.875rem;
+      margin-bottom: 0.5rem;
+    }
+  }
+
+  strong {
+    color: #4b5563;
+    font-weight: 600;
+  }
+`;
+
 export const TableContainer = styled.div`
   overflow-x: auto;
   background-color: white;

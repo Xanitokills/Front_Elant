@@ -9,6 +9,7 @@ import Swal from "sweetalert2";
 import {
   Container,
   Card,
+  AdditionalInfoCard, // Imported the new styled component
   InfoGrid,
   InfoItem,
   SectionTitle,
@@ -799,18 +800,18 @@ const Sidebar = ({
                 <SectionTitle className="text-center sm:text-left">Información Adicional</SectionTitle>
                 <div className="additional-info-grid">
                   {personDetails.residentInfo.map((info, index) => (
-                    <Card key={index}>
+                    <AdditionalInfoCard key={index}>
                       <p><strong>Departamento:</strong> Nº {info.NRO_DPTO}</p>
                       <p><strong>Fase:</strong> {info.FASE}</p>
                       <p><strong>Clasificación:</strong> {info.DETALLE_CLASIFICACION}</p>
                       <p><strong>Inicio de Residencia:</strong> {formatDate(info.INICIO_RESIDENCIA)}</p>
-                    </Card>
+                    </AdditionalInfoCard>
                   ))}
                   {personDetails.workerInfo.map((info, index) => (
-                    <Card key={index}>
+                    <AdditionalInfoCard key={index}>
                       <p><strong>Fase:</strong> {info.FASE}</p>
                       <p><strong>Fecha de Asignación:</strong> {formatDate(info.FECHA_ASIGNACION)}</p>
-                    </Card>
+                    </AdditionalInfoCard>
                   ))}
                 </div>
               </div>
