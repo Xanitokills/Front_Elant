@@ -788,7 +788,7 @@ const Sidebar = ({
               <InfoItem>
                 <label className="block text-sm font-semibold text-gray-700">Fecha de Nacimiento</label>
                 <p className="mt-1 text-gray-800">{formatDate(personDetails.basicInfo.FECHA_NACIMIENTO)}</p>
-8              </InfoItem>
+              </InfoItem>
               <InfoItem>
                 <label className="block text-sm font-semibold text-gray-700">Sexo</label>
                 <p className="mt-1 text-gray-800">{personDetails.basicInfo.SEXO}</p>
@@ -797,7 +797,7 @@ const Sidebar = ({
             {(personDetails.residentInfo.length > 0 || personDetails.workerInfo.length > 0) && (
               <div className="col-span-3 mt-6">
                 <SectionTitle className="text-center sm:text-left">Información Adicional</SectionTitle>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="additional-info-grid">
                   {personDetails.residentInfo.map((info, index) => (
                     <Card key={index}>
                       <p><strong>Departamento:</strong> Nº {info.NRO_DPTO}</p>
@@ -1216,7 +1216,7 @@ const Sidebar = ({
       {isLoadingProfile && (
         <SpinnerOverlay>
           <Spinner />
-          <SpinnerText>Procesando...</ SpinnerText>
+          <SpinnerText>Procesando...</SpinnerText>
         </SpinnerOverlay>
       )}
 

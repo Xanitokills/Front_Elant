@@ -39,16 +39,16 @@ export const Title = styled.h1`
 
 export const Card = styled.div`
   background: linear-gradient(145deg, #ffffff 0%, #f9fafb 100%);
-  padding: 1rem;
-  border-radius: 0.75rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  margin-bottom: 1.5rem;
+  padding: 0.75rem; /* Reduced padding for mobile */
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-bottom: 1rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   animation: ${fadeIn} 0.5s ease-out;
   border: 1px solid #e5e7eb;
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
   @media (min-width: 768px) {
     padding: 1.25rem;
@@ -91,54 +91,86 @@ export const SpinnerText = styled.p`
 `;
 
 export const ProfileImage = styled.img`
-  width: 10rem;
-  height: 10rem;
+  width: 8rem; /* Slightly smaller for mobile */
+  height: 8rem;
   border-radius: 50%;
   object-fit: cover;
-  border: 4px solid #e5e7eb;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border: 3px solid #e5e7eb;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s ease;
   &:hover {
     transform: scale(1.05);
+  }
+  @media (min-width: 640px) {
+    width: 10rem;
+    height: 10rem;
+    border: 4px solid #e5e7eb;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   }
 `;
 
 export const InfoGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-  @media (min-width: 640px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem; /* Reduced gap for mobile */
   background: #ffffff;
-  padding: 1rem;
+  padding: 0.75rem;
   border-radius: 0.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  @media (min-width: 640px) {
+    gap: 1rem;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
 `;
 
 export const InfoItem = styled.div`
   background: #f9fafb;
-  padding: 1.25rem;
+  padding: 0.75rem; /* Reduced padding for mobile */
   border-radius: 0.375rem;
   animation: ${fadeIn} 0.4s ease-out;
   transition: background 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid #e5e7eb; /* Subtle border for better separation */
   &:hover {
     background: #f3f4f6;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
   }
+  @media (min-width: 640px) {
+    padding: 1.25rem;
+  }
+
+  label {
+    font-size: 0.75rem; /* Smaller font for mobile */
+    font-weight: 600;
+    color: #4b5563;
+    @media (min-width: 640px) {
+      font-size: 0.875rem;
+    }
+  }
+
+  p {
+    margin-top: 0.25rem;
+    font-size: 0.875rem; /* Slightly smaller text for mobile */
+    color: #1f2937;
+    @media (min-width: 640px) {
+      font-size: 1rem;
+    }
+  }
 `;
 
 export const SectionTitle = styled.h2`
-  font-size: 1.5rem;
+  font-size: 1.25rem; /* Smaller for mobile */
   font-weight: 600;
   color: #1f2937;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   animation: ${fadeIn} 0.3s ease-out;
   text-align: center;
   border-bottom: 2px solid #e5e7eb;
   padding-bottom: 0.5rem;
   @media (min-width: 640px) {
+    font-size: 1.5rem;
     text-align: left;
+    margin-bottom: 1.5rem;
   }
 `;
 
@@ -157,13 +189,18 @@ export const ActionButton = styled.button`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
+  padding: 0.5rem 1rem; /* Smaller padding for mobile */
   border-radius: 0.5rem;
   font-weight: 500;
+  font-size: 0.875rem; /* Smaller font for mobile */
   transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  @media (min-width: 640px) {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
   }
 `;
 
@@ -219,7 +256,6 @@ export const SearchContainer = styled.div`
     align-items: center;
   }
 
-  /* Ajustar el tamaño de los inputs y selects dentro del contenedor */
   & > div {
     display: flex;
     flex-direction: column;
@@ -232,22 +268,19 @@ export const SearchContainer = styled.div`
     }
   }
 
-  /* Reducir el ancho de los selects e inputs para FASE_AND_DEPARTAMENTO */
   & select,
   & input {
     max-width: 100%;
     @media (min-width: 640px) {
-      max-width: 12rem; /* Limita el ancho de los combos y el input */
+      max-width: 12rem;
     }
   }
 
-  /* Ajustar el botón de búsqueda */
   & button {
     padding: 0.5rem 1rem;
     font-size: 0.875rem;
   }
 
-  /* Estilos para el contenedor de SwitchContainer y botón Registrar Persona */
   & > div:last-child {
     display: flex;
     flex-direction: row;
@@ -271,30 +304,39 @@ export const SwitchContainer = styled.div`
 
 export const Input = styled.input`
   width: 100%;
-  padding: 0.75rem;
+  padding: 0.5rem; /* Smaller padding for mobile */
   border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
+  border-radius: 0.375rem;
   outline: none;
+  font-size: 0.875rem; /* Smaller font for mobile */
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   &:focus {
     border-color: #2563eb;
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+  @media (min-width: 640px) {
+    padding: 0.75rem;
+    font-size: 1rem;
   }
 `;
 
 export const Select = styled.select`
   width: 100%;
-  padding: 0.75rem;
+  padding: 0.5rem;
   border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
+  border-radius: 0.375rem;
   outline: none;
+  font-size: 0.875rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   &:focus {
     border-color: #2563eb;
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
   }
+  @media (min-width: 640px) {
+    padding: 0.75rem;
+    font-size: 1rem;
+  }
 
-  /* Estilos para react-select */
   & .react-select__control {
     border: 1px solid #d1d5db;
     border-radius: 0.5rem;
@@ -307,11 +349,11 @@ export const Select = styled.select`
   }
 
   & .react-select__menu {
-    z-index: 9999; /* Asegura que el dropdown sobresalga del modal */
+    z-index: 9999;
     border-radius: 0.5rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     margin-top: 0.25rem;
-    overflow: visible; /* Evita que el modal corte el dropdown */
+    overflow: visible;
   }
 
   & .react-select__menu-list {
@@ -328,10 +370,9 @@ export const Select = styled.select`
   }
 `;
 
-// Componentes del modal genérico (no específico de roles)
 export const ModalContent = styled.div`
   background: white;
-  padding: 2rem;
+  padding: 1.5rem; /* Reduced padding for mobile */
   border-radius: 0.75rem;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
   max-height: 90vh;
@@ -341,9 +382,30 @@ export const ModalContent = styled.div`
     props.mode === "view" ? "64rem" : "48rem"};
   animation: ${fadeIn} 0.3s ease-out;
   position: relative;
+
+  & > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    @media (min-width: 640px) {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      align-items: start;
+      gap: 1.5rem;
+    }
+  }
+
+  /* Adjust the grid for Información Adicional section */
+  & .additional-info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* Two columns for all screen sizes */
+    gap: 0.75rem;
+    @media (min-width: 640px) {
+      gap: 1rem;
+    }
+  }
 `;
 
-// Componentes específicos del modal de roles
 export const RolesModalContent = styled.div`
   background: white;
   padding: 2rem;
@@ -386,7 +448,6 @@ export const RolesModalSelect = styled.select`
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
   }
 
-  /* Estilos para react-select */
   & .react-select__control {
     border: 1px solid #d1d5db;
     border-radius: 0.5rem;
@@ -399,20 +460,20 @@ export const RolesModalSelect = styled.select`
   }
 
   & .react-select__menu {
-    position: fixed; /* Posicionamiento fijo para que no sea afectado por el overflow del modal */
-    z-index: 10000; /* Más alto que el modal para asegurar que sobresalga */
+    position: fixed;
+    z-index: 10000;
     border-radius: 0.5rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     margin-top: 0.25rem;
     background: white;
-    width: inherit; /* Mantiene el ancho del control */
+    width: inherit;
   }
 
   & .react-select__menu-list {
     padding: 0;
     border-radius: 0.5rem;
-    max-height: 200px; /* Limita la altura del dropdown para que no sea demasiado largo */
-    overflow-y: auto; /* Permite desplazamiento dentro del dropdown si hay muchas opciones */
+    max-height: 200px;
+    overflow-y: auto;
   }
 
   & .react-select__option {
