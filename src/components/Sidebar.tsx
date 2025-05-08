@@ -226,12 +226,13 @@ const ModalContent = styled.div`
   padding: 2rem;
   border-radius: 0.75rem;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-  max-height: 81vh;
+  max-height: 87vh;
   overflow-y: auto;
   width: 100%;
   max-width: 64rem;
   animation: ${fadeIn} 0.3s ease-out;
   position: relative;
+  margin-top: -5em;
 `;
 
 const Select = styled.select`
@@ -794,6 +795,17 @@ const Sidebar = ({
                 <label className="block text-sm font-semibold text-gray-700">Sexo</label>
                 <p className="mt-1 text-gray-800">{personDetails.basicInfo.SEXO}</p>
               </InfoItem>
+              <PrimaryButton onClick={() => setViewMode("edit")}>
+                <FaEdit className="mr-2" />
+                Editar Perfil
+              </PrimaryButton>
+              <PrimaryButton
+  onClick={() => setViewMode("changePassword")}
+  className="bg-green-600 hover:bg-green-700 text-white"
+>
+  <FaLock className="mr-2 text-white" />
+  Cambiar Contraseña
+</PrimaryButton>
             </InfoGrid>
             {(personDetails.residentInfo.length > 0 || personDetails.workerInfo.length > 0) && (
               <div className="col-span-3 mt-6">
@@ -816,7 +828,7 @@ const Sidebar = ({
                 </div>
               </div>
             )}
-            <div className="col-span-3 flex justify-center sm:flex sm:justify-center gap-4 mt-6">
+{/*             <div className="col-span-3 flex justify-center sm:flex sm:justify-center gap-4 mt-6">
               <PrimaryButton onClick={() => setViewMode("edit")}>
                 <FaEdit className="mr-2" />
                 Editar Perfil
@@ -825,7 +837,7 @@ const Sidebar = ({
                 <FaLock className="mr-2" />
                 Cambiar Contraseña
               </PrimaryButton>
-            </div>
+            </div> */}
           </div>
         )}
         {viewMode === "edit" && editingPerson && (
