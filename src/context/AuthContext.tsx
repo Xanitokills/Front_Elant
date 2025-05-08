@@ -461,12 +461,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        // Propagar el mensaje exacto del backend, si está disponible
         const errorMessage = errorData.message || "Error al iniciar sesión";
         console.error("Error en login (AuthContext):", {
           status: response.status,
           errorData,
         });
+
+        if (
+          errorMessage.includes("Usuario no encontrado") ||
+          errorMessage.includes("inactivo")
+        ) {
+          throw new Error("Usuario no encontrado o cuenta inactiva.");
+        }
+        if (
+          errorMessage.includes("bloqueado") ||
+          errorMessage.includes("múltiples intentos")
+        ) {
+          throw new Error(
+            "Cuenta bloqueada por múltiples intentos fallidos. Contacta al administrador."
+          );
+        }
+        if (errorMessage.includes("Contraseña incorrecta")) {
+          throw new Error("Contraseña incorrecta.");
+        }
         throw new Error(errorMessage);
       }
 
@@ -487,17 +504,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setRoles(data.roles || []);
       setUserId(data.user.id);
 
-      const sidebarData = await updateSidebarData(data.user.id, data.token);
-      if (sidebarData.length === 0) {
-        console.warn(
-          "AuthContext - No permissions loaded after login, logging out"
-        );
-        logout();
-        throw new Error("No se pudieron cargar los permisos del usuario");
+      try {
+        const sidebarData = await updateSidebarData(data.user.id, data.token);
+        if (sidebarData.length === 0) {
+          console.warn(
+            "AuthContext - No permissions loaded for user, using default permissions"
+          );
+          // Opcional: Usar permisos por defecto o manejar el caso de permisos vacíos
+          localStorage.setItem("sidebarData", JSON.stringify([]));
+          setSidebarData([]);
+          setUserPermissions([]);
+        }
+      } catch (error) {
+        console.error("AuthContext - Error loading sidebar data:", error);
+        // Manejar el error sin ejecutar logout()
+        localStorage.setItem("sidebarData", JSON.stringify([]));
+        setSidebarData([]);
+        setUserPermissions([]);
       }
     } catch (error) {
       console.error("AuthContext - Error al iniciar sesión:", error);
-      throw error; // Propagar el error sin modificarlo
+      throw error;
     } finally {
       setIsLoading(false);
     }
