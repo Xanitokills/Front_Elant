@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import * as FaIcons from "react-icons/fa";
-import { FaChevronDown, FaSearch, FaSignOutAlt, FaBell, FaCamera, FaEdit, FaLock } from "react-icons/fa";
+import {
+  FaChevronDown,
+  FaSearch,
+  FaSignOutAlt,
+  FaBell,
+  FaCamera,
+  FaEdit,
+  FaLock,
+} from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 import styled from "styled-components";
 import Modal from "react-modal";
@@ -308,18 +316,31 @@ const Sidebar = ({
   setNotificationsOpen,
   unreadCount,
 }: SidebarProps) => {
-  const { logout, userName, roles, isAuthenticated, isLoading, sidebarData } = useAuth();
-  const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({});
+  const { logout, userName, roles, isAuthenticated, isLoading, sidebarData } =
+    useAuth();
+  const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>(
+    {}
+  );
   const [searchTerm, setSearchTerm] = useState("");
-  const [sidebarStructure, setSidebarStructure] = useState<SidebarStructure[]>([]);
+  const [sidebarStructure, setSidebarStructure] = useState<SidebarStructure[]>(
+    []
+  );
   const [fotoUrl, setFotoUrl] = useState<string>("");
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
-  const [personDetails, setPersonDetails] = useState<PersonDetails | null>(null);
-  const [editingPerson, setEditingPerson] = useState<PersonDetails | null>(null);
-  const [viewMode, setViewMode] = useState<"view" | "edit" | "changePassword">("view");
+  const [personDetails, setPersonDetails] = useState<PersonDetails | null>(
+    null
+  );
+  const [editingPerson, setEditingPerson] = useState<PersonDetails | null>(
+    null
+  );
+  const [viewMode, setViewMode] = useState<"view" | "edit" | "changePassword">(
+    "view"
+  );
   const [newPhoto, setNewPhoto] = useState<File | null>(null);
-  const [sexes, setSexes] = useState<{ ID_SEXO: number; DESCRIPCION: string }[]>([]);
+  const [sexes, setSexes] = useState<
+    { ID_SEXO: number; DESCRIPCION: string }[]
+  >([]);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -356,7 +377,8 @@ const Sidebar = ({
     }
 
     if (!personaId) {
-      const defaultFoto = sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
+      const defaultFoto =
+        sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
       setFotoUrl(defaultFoto);
       return;
     }
@@ -374,16 +396,19 @@ const Sidebar = ({
           setFotoUrl(data.fotoBase64);
           localStorage.setItem("foto", data.fotoBase64);
         } else {
-          const defaultFoto = sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
+          const defaultFoto =
+            sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
           setFotoUrl(defaultFoto);
         }
       } else {
-        const defaultFoto = sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
+        const defaultFoto =
+          sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
         setFotoUrl(defaultFoto);
       }
     } catch (error) {
       console.error("Error cargando la foto desde el backend:", error);
-      const defaultFoto = sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
+      const defaultFoto =
+        sexo === "Femenino" ? "/images/Mujer.jpeg" : "/images/Hombree.jpeg";
       setFotoUrl(defaultFoto);
     }
   };
@@ -403,7 +428,8 @@ const Sidebar = ({
       const response = await fetch(`${API_URL}/persons/${personaId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok) throw new Error("Error al obtener detalles de la persona");
+      if (!response.ok)
+        throw new Error("Error al obtener detalles de la persona");
       const data = await response.json();
       setPersonDetails(data);
       setEditingPerson(data);
@@ -432,7 +458,11 @@ const Sidebar = ({
     }
   };
 
-  const resizeImage = (file: File, maxWidth = 600, quality = 0.7): Promise<string> => {
+  const resizeImage = (
+    file: File,
+    maxWidth = 600,
+    quality = 0.7
+  ): Promise<string> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
       const reader = new FileReader();
@@ -529,14 +559,17 @@ const Sidebar = ({
         workerInfo: editingPerson.workerInfo.map((w) => w.ID_FASE),
         photo: photoData,
       };
-      const response = await fetch(`${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        `${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        }
+      );
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Error al actualizar el perfil");
@@ -747,7 +780,9 @@ const Sidebar = ({
         </CloseButton>
         {viewMode === "view" && (
           <div className="flex flex-col items-center sm:grid sm:grid-cols-3 sm:gap-6">
-            <SectionTitle className="col-span-3 text-center sm:text-left">Mi Perfil</SectionTitle>
+            <SectionTitle className="col-span-3 text-center sm:text-left">
+              Mi Perfil
+            </SectionTitle>
             <div className="flex justify-center mb-6 sm:mb-0">
               <ProfileImage
                 src={
@@ -758,77 +793,77 @@ const Sidebar = ({
                 alt="Foto de perfil"
                 className="view-mode"
                 onError={(e) => {
-                  e.currentTarget.src = getDefaultPhoto(personDetails.basicInfo.SEXO);
+                  e.currentTarget.src = getDefaultPhoto(
+                    personDetails.basicInfo.SEXO
+                  );
                 }}
               />
             </div>
             <InfoGrid className="col-span-2 grid-cols-2 sm:grid-cols-2">
               <InfoItem>
-                <label className="block text-sm font-semibold text-gray-700">Nombres</label>
-                <p className="mt-1 text-gray-800">{personDetails.basicInfo.NOMBRES}</p>
+                <label className="block text-sm font-semibold text-gray-700">
+                  Nombres
+                </label>
+                <p className="mt-1 text-gray-800">
+                  {personDetails.basicInfo.NOMBRES}
+                </p>
               </InfoItem>
               <InfoItem>
-                <label className="block text-sm font-semibold text-gray-700">Apellidos</label>
-                <p className="mt-1 text-gray-800">{personDetails.basicInfo.APELLIDOS}</p>
+                <label className="block text-sm font-semibold text-gray-700">
+                  Apellidos
+                </label>
+                <p className="mt-1 text-gray-800">
+                  {personDetails.basicInfo.APELLIDOS}
+                </p>
               </InfoItem>
               <InfoItem>
-                <label className="block text-sm font-semibold text-gray-700">DNI</label>
-                <p className="mt-1 text-gray-800">{personDetails.basicInfo.DNI}</p>
+                <label className="block text-sm font-semibold text-gray-700">
+                  DNI
+                </label>
+                <p className="mt-1 text-gray-800">
+                  {personDetails.basicInfo.DNI}
+                </p>
               </InfoItem>
               <InfoItem>
-                <label className="block text-sm font-semibold text-gray-700">Correo</label>
-                <p className="mt-1 text-gray-800">{personDetails.basicInfo.CORREO || "N/A"}</p>
+                <label className="block text-sm font-semibold text-gray-700">
+                  Correo
+                </label>
+                <p className="mt-1 text-gray-800">
+                  {personDetails.basicInfo.CORREO || "N/A"}
+                </p>
               </InfoItem>
               <InfoItem>
-                <label className="block text-sm font-semibold text-gray-700">Celular</label>
-                <p className="mt-1 text-gray-800">{personDetails.basicInfo.CELULAR || "N/A"}</p>
+                <label className="block text-sm font-semibold text-gray-700">
+                  Celular
+                </label>
+                <p className="mt-1 text-gray-800">
+                  {personDetails.basicInfo.CELULAR || "N/A"}
+                </p>
               </InfoItem>
               <InfoItem>
-                <label className="block text-sm font-semibold text-gray-700">Contacto de Emergencia</label>
-                <p className="mt-1 text-gray-800">{personDetails.basicInfo.CONTACTO_EMERGENCIA || "N/A"}</p>
+                <label className="block text-sm font-semibold text-gray-700">
+                  Contacto de Emergencia
+                </label>
+                <p className="mt-1 text-gray-800">
+                  {personDetails.basicInfo.CONTACTO_EMERGENCIA || "N/A"}
+                </p>
               </InfoItem>
               <InfoItem>
-                <label className="block text-sm font-semibold text-gray-700">Fecha de Nacimiento</label>
-                <p className="mt-1 text-gray-800">{formatDate(personDetails.basicInfo.FECHA_NACIMIENTO)}</p>
+                <label className="block text-sm font-semibold text-gray-700">
+                  Fecha de Nacimiento
+                </label>
+                <p className="mt-1 text-gray-800">
+                  {formatDate(personDetails.basicInfo.FECHA_NACIMIENTO)}
+                </p>
               </InfoItem>
               <InfoItem>
-                <label className="block text-sm font-semibold text-gray-700">Sexo</label>
-                <p className="mt-1 text-gray-800">{personDetails.basicInfo.SEXO}</p>
+                <label className="block text-sm font-semibold text-gray-700">
+                  Sexo
+                </label>
+                <p className="mt-1 text-gray-800">
+                  {personDetails.basicInfo.SEXO}
+                </p>
               </InfoItem>
-              <PrimaryButton onClick={() => setViewMode("edit")}>
-                <FaEdit className="mr-2" />
-                Editar Perfil
-              </PrimaryButton>
-              <PrimaryButton
-  onClick={() => setViewMode("changePassword")}
-  className="bg-green-600 hover:bg-green-700 text-white"
->
-  <FaLock className="mr-2 text-white" />
-  Cambiar Contraseña
-</PrimaryButton>
-            </InfoGrid>
-            {(personDetails.residentInfo.length > 0 || personDetails.workerInfo.length > 0) && (
-              <div className="col-span-3 mt-6">
-                <SectionTitle className="text-center sm:text-left">Información Adicional</SectionTitle>
-                <div className="grid grid-cols-2 gap-4">
-                  {personDetails.residentInfo.map((info, index) => (
-                    <AdditionalInfoCard key={index}>
-                      <p><strong>Departamento:</strong> Nº {info.NRO_DPTO}</p>
-                      <p><strong>Fase:</strong> {info.FASE}</p>
-                      <p><strong>Clasificación:</strong> {info.DETALLE_CLASIFICACION}</p>
-                      <p><strong>Inicio de Residencia:</strong> {formatDate(info.INICIO_RESIDENCIA)}</p>
-                    </AdditionalInfoCard>
-                  ))}
-                  {personDetails.workerInfo.map((info, index) => (
-                    <AdditionalInfoCard key={index}>
-                      <p><strong>Fase:</strong> {info.FASE}</p>
-                      <p><strong>Fecha de Asignación:</strong> {formatDate(info.FECHA_ASIGNACION)}</p>
-                    </AdditionalInfoCard>
-                  ))}
-                </div>
-              </div>
-            )}
-{/*             <div className="col-span-3 flex justify-center sm:flex sm:justify-center gap-4 mt-6">
               <PrimaryButton onClick={() => setViewMode("edit")}>
                 <FaEdit className="mr-2" />
                 Editar Perfil
@@ -837,12 +872,53 @@ const Sidebar = ({
                 <FaLock className="mr-2" />
                 Cambiar Contraseña
               </PrimaryButton>
-            </div> */}
+            </InfoGrid>
+            {(personDetails.residentInfo.length > 0 ||
+              personDetails.workerInfo.length > 0) && (
+              <div className="col-span-3 mt-6">
+                <SectionTitle className="text-center sm:text-left">
+                  Información Adicional
+                </SectionTitle>
+                <div className="grid grid-cols-2 gap-4">
+                  {personDetails.residentInfo.map((info, index) => (
+                    <AdditionalInfoCard key={index}>
+                      <p>
+                        <strong>Departamento:</strong> Nº {info.NRO_DPTO}
+                      </p>
+                      <p>
+                        <strong>Fase:</strong> {info.FASE}
+                      </p>
+                      <p>
+                        <strong>Clasificación:</strong>{" "}
+                        {info.DETALLE_CLASIFICACION}
+                      </p>
+                      <p>
+                        <strong>Inicio de Residencia:</strong>{" "}
+                        {formatDate(info.INICIO_RESIDENCIA)}
+                      </p>
+                    </AdditionalInfoCard>
+                  ))}
+                  {personDetails.workerInfo.map((info, index) => (
+                    <AdditionalInfoCard key={index}>
+                      <p>
+                        <strong>Fase:</strong> {info.FASE}
+                      </p>
+                      <p>
+                        <strong>Fecha de Asignación:</strong>{" "}
+                        {formatDate(info.FECHA_ASIGNACION)}
+                      </p>
+                    </AdditionalInfoCard>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
         {viewMode === "edit" && editingPerson && (
           <div className="flex flex-col items-center sm:grid sm:grid-cols-3 sm:gap-6">
-            <SectionTitle className="col-span-3 text-center sm:text-left">Editar Perfil</SectionTitle>
+            <SectionTitle className="col-span-3 text-center sm:text-left">
+              Editar Perfil
+            </SectionTitle>
             <div className="flex flex-col items-center mb-6 sm:mb-0">
               <ProfileImage
                 src={
@@ -854,7 +930,9 @@ const Sidebar = ({
                 }
                 alt="Foto de perfil"
                 onError={(e) => {
-                  e.currentTarget.src = getDefaultPhoto(editingPerson.basicInfo.SEXO);
+                  e.currentTarget.src = getDefaultPhoto(
+                    editingPerson.basicInfo.SEXO
+                  );
                 }}
               />
               <label className="mt-4 flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-blue-700 transition-colors">
@@ -880,10 +958,13 @@ const Sidebar = ({
                     });
                     if (confirm.isConfirmed) {
                       try {
-                        await fetch(`${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}/photo`, {
-                          method: "DELETE",
-                          headers: { Authorization: `Bearer ${token}` },
-                        });
+                        await fetch(
+                          `${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}/photo`,
+                          {
+                            method: "DELETE",
+                            headers: { Authorization: `Bearer ${token}` },
+                          }
+                        );
                         setEditingPerson({
                           ...editingPerson,
                           basicInfo: {
@@ -901,10 +982,20 @@ const Sidebar = ({
                           },
                         });
                         localStorage.removeItem("foto");
-                        setFotoUrl(getDefaultPhoto(editingPerson.basicInfo.SEXO));
-                        Swal.fire("Eliminada", "La foto fue eliminada", "success");
+                        setFotoUrl(
+                          getDefaultPhoto(editingPerson.basicInfo.SEXO)
+                        );
+                        Swal.fire(
+                          "Eliminada",
+                          "La foto fue eliminada",
+                          "success"
+                        );
                       } catch (error) {
-                        Swal.fire("Error", "No se pudo eliminar la foto", "error");
+                        Swal.fire(
+                          "Error",
+                          "No se pudo eliminar la foto",
+                          "error"
+                        );
                       }
                     }
                   }}
@@ -916,91 +1007,125 @@ const Sidebar = ({
             </div>
             <InfoGrid className="col-span-2 grid-cols-2 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-semibold text-gray-700">Nombres *</label>
+                <label className="block text-sm font-semibold text-gray-700">
+                  Nombres *
+                </label>
                 <Input
                   type="text"
                   value={editingPerson.basicInfo.NOMBRES}
                   onChange={(e) =>
                     setEditingPerson({
                       ...editingPerson,
-                      basicInfo: { ...editingPerson.basicInfo, NOMBRES: e.target.value },
+                      basicInfo: {
+                        ...editingPerson.basicInfo,
+                        NOMBRES: e.target.value,
+                      },
                     })
                   }
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700">Apellidos *</label>
+                <label className="block text-sm font-semibold text-gray-700">
+                  Apellidos *
+                </label>
                 <Input
                   type="text"
                   value={editingPerson.basicInfo.APELLIDOS}
                   onChange={(e) =>
                     setEditingPerson({
                       ...editingPerson,
-                      basicInfo: { ...editingPerson.basicInfo, APELLIDOS: e.target.value },
+                      basicInfo: {
+                        ...editingPerson.basicInfo,
+                        APELLIDOS: e.target.value,
+                      },
                     })
                   }
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700">Correo *</label>
+                <label className="block text-sm font-semibold text-gray-700">
+                  Correo *
+                </label>
                 <Input
                   type="email"
                   value={editingPerson.basicInfo.CORREO}
                   onChange={(e) =>
                     setEditingPerson({
                       ...editingPerson,
-                      basicInfo: { ...editingPerson.basicInfo, CORREO: e.target.value },
+                      basicInfo: {
+                        ...editingPerson.basicInfo,
+                        CORREO: e.target.value,
+                      },
                     })
                   }
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700">Celular *</label>
+                <label className="block text-sm font-semibold text-gray-700">
+                  Celular *
+                </label>
                 <Input
                   type="text"
                   value={editingPerson.basicInfo.CELULAR}
                   onChange={(e) =>
                     setEditingPerson({
                       ...editingPerson,
-                      basicInfo: { ...editingPerson.basicInfo, CELULAR: e.target.value },
+                      basicInfo: {
+                        ...editingPerson.basicInfo,
+                        CELULAR: e.target.value,
+                      },
                     })
                   }
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700">Contacto de Emergencia *</label>
+                <label className="block text-sm font-semibold text-gray-700">
+                  Contacto de Emergencia *
+                </label>
                 <Input
                   type="text"
                   value={editingPerson.basicInfo.CONTACTO_EMERGENCIA}
                   onChange={(e) =>
                     setEditingPerson({
                       ...editingPerson,
-                      basicInfo: { ...editingPerson.basicInfo, CONTACTO_EMERGENCIA: e.target.value },
+                      basicInfo: {
+                        ...editingPerson.basicInfo,
+                        CONTACTO_EMERGENCIA: e.target.value,
+                      },
                     })
                   }
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700">Fecha de Nacimiento *</label>
+                <label className="block text-sm font-semibold text-gray-700">
+                  Fecha de Nacimiento *
+                </label>
                 <Input
                   type="date"
-                  value={formatDateForInput(editingPerson.basicInfo.FECHA_NACIMIENTO)}
+                  value={formatDateForInput(
+                    editingPerson.basicInfo.FECHA_NACIMIENTO
+                  )}
                   onChange={(e) =>
                     setEditingPerson({
                       ...editingPerson,
-                      basicInfo: { ...editingPerson.basicInfo, FECHA_NACIMIENTO: e.target.value },
+                      basicInfo: {
+                        ...editingPerson.basicInfo,
+                        FECHA_NACIMIENTO: e.target.value,
+                      },
                     })
                   }
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700">Sexo *</label>
+                <label className="block text-sm font-semibold text-gray-700">
+                  Sexo *
+                </label>
                 <Select
                   value={editingPerson.basicInfo.ID_SEXO}
                   onChange={(e) =>
@@ -1009,13 +1134,18 @@ const Sidebar = ({
                       basicInfo: {
                         ...editingPerson.basicInfo,
                         ID_SEXO: Number(e.target.value),
-                        SEXO: sexes.find((s) => s.ID_SEXO === Number(e.target.value))?.DESCRIPCION || "",
+                        SEXO:
+                          sexes.find(
+                            (s) => s.ID_SEXO === Number(e.target.value)
+                          )?.DESCRIPCION || "",
                       },
                     })
                   }
                   required
                 >
-                  <option value={0} disabled>Seleccione</option>
+                  <option value={0} disabled>
+                    Seleccione
+                  </option>
                   {sexes.map((sex) => (
                     <option key={sex.ID_SEXO} value={sex.ID_SEXO}>
                       {sex.DESCRIPCION}
@@ -1044,10 +1174,14 @@ const Sidebar = ({
         )}
         {viewMode === "changePassword" && (
           <div className="flex flex-col items-center sm:grid sm:grid-cols-1 sm:gap-6">
-            <SectionTitle className="text-center sm:text-left">Cambiar Contraseña</SectionTitle>
+            <SectionTitle className="text-center sm:text-left">
+              Cambiar Contraseña
+            </SectionTitle>
             <InfoGrid className="grid-cols-2 sm:grid-cols-1 w-full max-w-md sm:max-w-full">
               <div>
-                <label className="block text-sm font-semibold text-gray-700">Contraseña Actual *</label>
+                <label className="block text-sm font-semibold text-gray-700">
+                  Contraseña Actual *
+                </label>
                 <Input
                   type="password"
                   value={currentPassword}
@@ -1057,7 +1191,9 @@ const Sidebar = ({
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700">Nueva Contraseña *</label>
+                <label className="block text-sm font-semibold text-gray-700">
+                  Nueva Contraseña *
+                </label>
                 <Input
                   type="password"
                   value={newPassword}
@@ -1067,7 +1203,9 @@ const Sidebar = ({
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700">Confirmar Contraseña *</label>
+                <label className="block text-sm font-semibold text-gray-700">
+                  Confirmar Contraseña *
+                </label>
                 <Input
                   type="password"
                   value={confirmPassword}
@@ -1090,7 +1228,12 @@ const Sidebar = ({
               </SecondaryButton>
               <PrimaryButton
                 onClick={handleChangePassword}
-                disabled={isLoadingProfile || !currentPassword || !newPassword || !confirmPassword}
+                disabled={
+                  isLoadingProfile ||
+                  !currentPassword ||
+                  !newPassword ||
+                  !confirmPassword
+                }
               >
                 Guardar
               </PrimaryButton>
@@ -1236,7 +1379,9 @@ const Sidebar = ({
       )}
 
       <Modal
-        isOpen={isProfileModalOpen && !isLoadingProfile && personDetails !== null}
+        isOpen={
+          isProfileModalOpen && !isLoadingProfile && personDetails !== null
+        }
         onRequestClose={handleCloseProfileModal}
         className="mx-4 sm:mx-auto mt-20"
         overlayClassName="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50"
