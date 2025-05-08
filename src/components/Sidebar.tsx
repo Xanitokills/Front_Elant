@@ -6,6 +6,22 @@ import { useAuth } from "../context/AuthContext";
 import styled from "styled-components";
 import Modal from "react-modal";
 import Swal from "sweetalert2";
+import {
+  Container,
+  Card,
+  InfoGrid,
+  InfoItem,
+  SectionTitle,
+  ProfileImage,
+  CloseButton,
+  PrimaryButton,
+  SecondaryButton,
+  Input,
+  SpinnerOverlay,
+  Spinner,
+  SpinnerText,
+  fadeIn,
+} from "../Styles/UserListStyles";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -197,7 +213,7 @@ const NotificationsButton = styled.button`
   }
 `;
 
-const ProfileImage = styled.img`
+const SidebarProfileImage = styled.img`
   cursor: pointer;
   transition: transform 0.2s ease;
   &:hover {
@@ -205,112 +221,30 @@ const ProfileImage = styled.img`
   }
 `;
 
-// Profile Modal Styles (inlined from UserListStyles)
-const Card = styled.div`
-  background: #ffffff;
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-`;
-
-const InfoGrid = styled.div`
-  display: grid;
-  gap: 1rem;
-`;
-
-const InfoItem = styled.div`
-  display: flex;
-  flex-direction: column;
-`;
-
-const SectionTitle = styled.h3`
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-`;
-
-const CloseButton = styled.button`
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #4a5568;
-  &:hover {
-    color: #2d3748;
-  }
-`;
-
-const PrimaryButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.5rem;
-  font-weight: 500;
-  transition: background-color 0.2s ease;
-  &: hovering
-  &:hover {
-    opacity: 0.9;
-  }
-`;
-
-const SecondaryButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.5rem;
-  font-weight: 500;
-  transition: background-color 0.2s ease;
-  &:hover {
-    background-color: #e2e8f0;
-  }
-`;
-
-const Input = styled.input`
+const ModalContent = styled.div`
+  background: white;
+  padding: 2rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  max-height: 90vh;
+  overflow-y: auto;
   width: 100%;
-  padding: 0.5rem;
+  max-width: 64rem;
+  animation: ${fadeIn} 0.3s ease-out;
+  position: relative;
+`;
+
+const Select = styled.select`
+  width: 100%;
+  padding: 0.75rem;
   border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   outline: none;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
   &:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
   }
-`;
-
-const SpinnerOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-`;
-
-const Spinner = styled.div`
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #3b82f6;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-`;
-
-const SpinnerText = styled.p`
-  color: #ffffff;
-  margin-top: 0.5rem;
-  font-size: 1rem;
 `;
 
 const getIconComponent = (iconName: string) => {
@@ -755,7 +689,6 @@ const Sidebar = ({
   }, []);
 
   const handleOpenProfileModal = async () => {
-    // Resetear estados para asegurar que el modal se cargue desde cero
     setPersonDetails(null);
     setEditingPerson(null);
     setSexes([]);
@@ -794,343 +727,362 @@ const Sidebar = ({
     if (!personDetails) return null;
 
     return (
-      <>
-        <div className="relative w-full max-w-4xl mx-auto bg-white rounded-lg shadow-lg max-h-[90vh] overflow-y-auto">
-          <Card className="p-4 relative">
-            <CloseButton onClick={handleCloseProfileModal}>
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M6 18L18 6M6 6l12 12"
+      <ModalContent>
+        <CloseButton onClick={handleCloseProfileModal}>
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </CloseButton>
+        {viewMode === "view" && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <SectionTitle className="col-span-3">Mi Perfil</SectionTitle>
+            <div className="flex justify-center">
+              <ProfileImage
+                src={
+                  personDetails.basicInfo.FOTO
+                    ? `data:image/${personDetails.basicInfo.FORMATO};base64,${personDetails.basicInfo.FOTO}`
+                    : getDefaultPhoto(personDetails.basicInfo.SEXO)
+                }
+                alt="Foto de perfil"
+                onError={(e) => {
+                  e.currentTarget.src = getDefaultPhoto(personDetails.basicInfo.SEXO);
+                }}
+              />
+            </div>
+            <InfoGrid className="col-span-2">
+              <InfoItem>
+                <label className="block text-sm font-semibold text-gray-700">Nombres</label>
+                <p className="mt-1 text-gray-800">{personDetails.basicInfo.NOMBRES}</p>
+              </InfoItem>
+              <InfoItem>
+                <label className="block text-sm font-semibold text-gray-700">Apellidos</label>
+                <p className="mt-1 text-gray-800">{personDetails.basicInfo.APELLIDOS}</p>
+              </InfoItem>
+              <InfoItem>
+                <label className="block text-sm font-semibold text-gray-700">DNI</label>
+                <p className="mt-1 text-gray-800">{personDetails.basicInfo.DNI}</p>
+              </InfoItem>
+              <InfoItem>
+                <label className="block text-sm font-semibold text-gray-700">Correo</label>
+                <p className="mt-1 text-gray-800">{personDetails.basicInfo.CORREO || "N/A"}</p>
+              </InfoItem>
+              <InfoItem>
+                <label className="block text-sm font-semibold text-gray-700">Celular</label>
+                <p className="mt-1 text-gray-800">{personDetails.basicInfo.CELULAR || "N/A"}</p>
+              </InfoItem>
+              <InfoItem>
+                <label className="block text-sm font-semibold text-gray-700">Contacto de Emergencia</label>
+                <p className="mt-1 text-gray-800">{personDetails.basicInfo.CONTACTO_EMERGENCIA || "N/A"}</p>
+              </InfoItem>
+              <InfoItem>
+                <label className="block text-sm font-semibold text-gray-700">Fecha de Nacimiento</label>
+                <p className="mt-1 text-gray-800">{formatDate(personDetails.basicInfo.FECHA_NACIMIENTO)}</p>
+              </InfoItem>
+              <InfoItem>
+                <label className="block text-sm font-semibold text-gray-700">Sexo</label>
+                <p className="mt-1 text-gray-800">{personDetails.basicInfo.SEXO}</p>
+              </InfoItem>
+            </InfoGrid>
+            {(personDetails.residentInfo.length > 0 || personDetails.workerInfo.length > 0) && (
+              <div className="col-span-3 mt-6">
+                <SectionTitle>Información Adicional</SectionTitle>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {personDetails.residentInfo.map((info, index) => (
+                    <Card key={index}>
+                      <p><strong>Departamento:</strong> Nº {info.NRO_DPTO}</p>
+                      <p><strong>Fase:</strong> {info.FASE}</p>
+                      <p><strong>Clasificación:</strong> {info.DETALLE_CLASIFICACION}</p>
+                      <p><strong>Inicio de Residencia:</strong> {formatDate(info.INICIO_RESIDENCIA)}</p>
+                    </Card>
+                  ))}
+                  {personDetails.workerInfo.map((info, index) => (
+                    <Card key={index}>
+                      <p><strong>Fase:</strong> {info.FASE}</p>
+                      <p><strong>Fecha de Asignación:</strong> {formatDate(info.FECHA_ASIGNACION)}</p>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="col-span-3 flex justify-end gap-4 mt-6">
+              <PrimaryButton onClick={() => setViewMode("edit")}>
+                <FaEdit className="mr-2" />
+                Editar Perfil
+              </PrimaryButton>
+              <PrimaryButton onClick={() => setViewMode("changePassword")}>
+                <FaLock className="mr-2" />
+                Cambiar Contraseña
+              </PrimaryButton>
+            </div>
+          </div>
+        )}
+        {viewMode === "edit" && editingPerson && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <SectionTitle className="col-span-3">Editar Perfil</SectionTitle>
+            <div className="flex flex-col items-center">
+              <ProfileImage
+                src={
+                  newPhoto
+                    ? URL.createObjectURL(newPhoto)
+                    : editingPerson.basicInfo.FOTO
+                    ? `data:image/${editingPerson.basicInfo.FORMATO};base64,${editingPerson.basicInfo.FOTO}`
+                    : getDefaultPhoto(editingPerson.basicInfo.SEXO)
+                }
+                alt="Foto de perfil"
+                onError={(e) => {
+                  e.currentTarget.src = getDefaultPhoto(editingPerson.basicInfo.SEXO);
+                }}
+              />
+              <label className="mt-4 flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-blue-700 transition-colors">
+                <FaCamera />
+                <span>Cambiar Foto</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setNewPhoto(e.target.files?.[0] || null)}
+                  className="hidden"
                 />
-              </svg>
-            </CloseButton>
-            {viewMode === "view" && (
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                <SectionTitle className="col-span-1 lg:col-span-4 text-center text-gray-700 text-lg">
-                  Mi Perfil
-                </SectionTitle>
-                <div className="flex justify-center lg:col-span-1">
-                  <ProfileImage
-                    src={
-                      personDetails.basicInfo.FOTO
-                        ? `data:image/${personDetails.basicInfo.FORMATO};base64,${personDetails.basicInfo.FOTO}`
-                        : getDefaultPhoto(personDetails.basicInfo.SEXO)
+              </label>
+              <button
+                onClick={async () => {
+                  const confirm = await Swal.fire({
+                    title: "¿Eliminar foto?",
+                    text: "Esta acción eliminará la foto actual.",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Sí, eliminar",
+                    cancelButtonText: "Cancelar",
+                  });
+                  if (confirm.isConfirmed) {
+                    try {
+                      await fetch(`${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}/photo`, {
+                        method: "DELETE",
+                        headers: { Authorization: `Bearer ${token}` },
+                      });
+                      setEditingPerson({
+                        ...editingPerson,
+                        basicInfo: {
+                          ...editingPerson.basicInfo,
+                          FOTO: null,
+                          FORMATO: null,
+                        },
+                      });
+                      setPersonDetails({
+                        ...personDetails,
+                        basicInfo: {
+                          ...personDetails.basicInfo,
+                          FOTO: null,
+                          FORMATO: null,
+                        },
+                      });
+                      localStorage.removeItem("foto");
+                      setFotoUrl(getDefaultPhoto(editingPerson.basicInfo.SEXO));
+                      Swal.fire("Eliminada", "La foto fue eliminada", "success");
+                    } catch (error) {
+                      Swal.fire("Error", "No se pudo eliminar la foto", "error");
                     }
-                    alt="Foto de perfil"
-                    onError={(e) => {
-                      e.currentTarget.src = getDefaultPhoto(personDetails.basicInfo.SEXO);
-                    }}
-                    className="w-24 h-24 rounded-full object-cover border border-gray-300"
-                  />
-                </div>
-                <InfoGrid className="col-span-1 lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">Nombres</label>
-                    <p className="mt-1 text-gray-800 text-base">{personDetails.basicInfo.NOMBRES}</p>
-                  </InfoItem>
-                  <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">Apellidos</label>
-                    <p className="mt-1 text-gray-800 text-base">{personDetails.basicInfo.APELLIDOS}</p>
-                  </InfoItem>
-                  <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">DNI</label>
-                    <p className="mt-1 text-gray-800 text-base">{personDetails.basicInfo.DNI}</p>
-                  </InfoItem>
-                  <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">Correo</label>
-                    <p className="mt-1 text-gray-800 text-base">{personDetails.basicInfo.CORREO || "N/A"}</p>
-                  </InfoItem>
-                  <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">Celular</label>
-                    <p className="mt-1 text-gray-800 text-base">{personDetails.basicInfo.CELULAR || "N/A"}</p>
-                  </InfoItem>
-                  <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">Contacto de Emergencia</label>
-                    <p className="mt-1 text-gray-800 text-base">{personDetails.basicInfo.CONTACTO_EMERGENCIA || "N/A"}</p>
-                  </InfoItem>
-                  <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">Fecha de Nacimiento</label>
-                    <p className="mt-1 text-gray-800 text-base">{formatDate(personDetails.basicInfo.FECHA_NACIMIENTO)}</p>
-                  </InfoItem>
-                  <InfoItem>
-                    <label className="block text-sm font-semibold text-gray-700">Sexo</label>
-                    <p className="mt-1 text-gray-800 text-base">{personDetails.basicInfo.SEXO}</p>
-                  </InfoItem>
-                </InfoGrid>
-                <div className="col-span-1 lg:col-span-4 flex justify-end gap-4 mt-4">
-                  <PrimaryButton onClick={() => setViewMode("edit")} className="bg-blue-600 text-white text-base py-2 px-4">
-                    <FaEdit className="mr-2" />
-                    Editar Perfil
-                  </PrimaryButton>
-                  <PrimaryButton onClick={() => setViewMode("changePassword")} className="bg-green-600 text-white text-base py-2 px-4">
-                    <FaLock className="mr-2" />
-                    Cambiar Contraseña
-                  </PrimaryButton>
-                </div>
-                {(personDetails.residentInfo.length > 0 || personDetails.workerInfo.length > 0) && (
-                  <div className="col-span-1 lg:col-span-4 mt-4">
-                    <SectionTitle className="text-gray-700 text-lg">Información Adicional</SectionTitle>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {personDetails.residentInfo.map((info, index) => (
-                        <Card key={index} className="p-2 text-sm bg-gray-50">
-                          <p><strong>Dept.:</strong> Nº {info.NRO_DPTO}</p>
-                          <p><strong>Fase:</strong> {info.FASE}</p>
-                        </Card>
-                      ))}
-                      {personDetails.workerInfo.map((info, index) => (
-                        <Card key={index} className="p-2 text-sm bg-gray-50">
-                          <p><strong>Fase:</strong> {info.FASE}</p>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                  }
+                }}
+                className="mt-2 text-red-500 hover:text-red-700 underline"
+              >
+                Eliminar Foto
+              </button>
+            </div>
+            <InfoGrid className="col-span-2">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700">Nombres *</label>
+                <Input
+                  type="text"
+                  value={editingPerson.basicInfo.NOMBRES}
+                  onChange={(e) =>
+                    setEditingPerson({
+                      ...editingPerson,
+                      basicInfo: { ...editingPerson.basicInfo, NOMBRES: e.target.value },
+                    })
+                  }
+                  required
+                />
               </div>
-            )}
-            {viewMode === "edit" && editingPerson && (
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                <SectionTitle className="col-span-1 lg:col-span-4 text-center text-gray-700 text-lg">
-                  Editar Perfil
-                </SectionTitle>
-                <div className="flex flex-col items-center lg:col-span-1">
-                  <ProfileImage
-                    src={
-                      newPhoto
-                        ? URL.createObjectURL(newPhoto)
-                        : editingPerson.basicInfo.FOTO
-                        ? `data:image/${editingPerson.basicInfo.FORMATO};base64,${editingPerson.basicInfo.FOTO}`
-                        : getDefaultPhoto(editingPerson.basicInfo.SEXO)
-                    }
-                    alt="Foto de perfil"
-                    onError={(e) => {
-                      e.currentTarget.src = getDefaultPhoto(editingPerson.basicInfo.SEXO);
-                    }}
-                    className="w-24 h-24 rounded-full object-cover border border-gray-300"
-                  />
-                  <label className="mt-2 flex items-center gap-2 bg-blue-600 text-white px-3 py-1 rounded-lg cursor-pointer hover:bg-blue-700 transition-colors text-sm">
-                    <FaCamera />
-                    <span>Cambiar Foto</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setNewPhoto(e.target.files?.[0] || null)}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-                <InfoGrid className="col-span-1 lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700">Nombres *</label>
-                    <Input
-                      type="text"
-                      value={editingPerson.basicInfo.NOMBRES}
-                      onChange={(e) =>
-                        setEditingPerson({
-                          ...editingPerson,
-                          basicInfo: { ...editingPerson.basicInfo, NOMBRES: e.target.value },
-                        })
-                      }
-                      className="text-base p-2"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700">Apellidos *</label>
-                    <Input
-                      type="text"
-                      value={editingPerson.basicInfo.APELLIDOS}
-                      onChange={(e) =>
-                        setEditingPerson({
-                          ...editingPerson,
-                          basicInfo: { ...editingPerson.basicInfo, APELLIDOS: e.target.value },
-                        })
-                      }
-                      className="text-base p-2"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700">Correo *</label>
-                    <Input
-                      type="email"
-                      value={editingPerson.basicInfo.CORREO}
-                      onChange={(e) =>
-                        setEditingPerson({
-                          ...editingPerson,
-                          basicInfo: { ...editingPerson.basicInfo, CORREO: e.target.value },
-                        })
-                      }
-                      className="text-base p-2"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700">Celular *</label>
-                    <Input
-                      type="text"
-                      value={editingPerson.basicInfo.CELULAR}
-                      onChange={(e) =>
-                        setEditingPerson({
-                          ...editingPerson,
-                          basicInfo: { ...editingPerson.basicInfo, CELULAR: e.target.value },
-                        })
-                      }
-                      className="text-base p-2"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700">Contacto de Emergencia *</label>
-                    <Input
-                      type="text"
-                      value={editingPerson.basicInfo.CONTACTO_EMERGENCIA}
-                      onChange={(e) =>
-                        setEditingPerson({
-                          ...editingPerson,
-                          basicInfo: { ...editingPerson.basicInfo, CONTACTO_EMERGENCIA: e.target.value },
-                        })
-                      }
-                      className="text-base p-2"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700">Fecha de Nacimiento *</label>
-                    <Input
-                      type="date"
-                      value={formatDateForInput(editingPerson.basicInfo.FECHA_NACIMIENTO)}
-                      onChange={(e) =>
-                        setEditingPerson({
-                          ...editingPerson,
-                          basicInfo: { ...editingPerson.basicInfo, FECHA_NACIMIENTO: e.target.value },
-                        })
-                      }
-                      className="text-base p-2"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700">Sexo *</label>
-                    <select
-                      value={editingPerson.basicInfo.ID_SEXO}
-                      onChange={(e) =>
-                        setEditingPerson({
-                          ...editingPerson,
-                          basicInfo: {
-                            ...editingPerson.basicInfo,
-                            ID_SEXO: Number(e.target.value),
-                            SEXO: sexes.find((s) => s.ID_SEXO === Number(e.target.value))?.DESCRIPCION || "",
-                          },
-                        })
-                      }
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring focus:ring-blue-200 text-base"
-                      required
-                    >
-                      <option value={0} disabled>Seleccione</option>
-                      {sexes.map((sex) => (
-                        <option key={sex.ID_SEXO} value={sex.ID_SEXO}>
-                          {sex.DESCRIPCION}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </InfoGrid>
-                <div className="col-span-1 lg:col-span-4 flex justify-end gap-4 mt-4">
-                  <SecondaryButton
-                    onClick={() => {
-                      setViewMode("view");
-                      setNewPhoto(null);
-                    }}
-                    className="text-base bg-gray-200 text-gray-700 py-2 px-4"
-                  >
-                    Cancelar
-                  </SecondaryButton>
-                  <PrimaryButton
-                    onClick={handleUpdatePerson}
-                    disabled={isLoadingProfile || !validateFields()}
-                    className={`text-base py-2 px-4 ${isLoadingProfile || !validateFields() ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 text-white"}`}
-                  >
-                    Guardar
-                  </PrimaryButton>
-                </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700">Apellidos *</label>
+                <Input
+                  type="text"
+                  value={editingPerson.basicInfo.APELLIDOS}
+                  onChange={(e) =>
+                    setEditingPerson({
+                      ...editingPerson,
+                      basicInfo: { ...editingPerson.basicInfo, APELLIDOS: e.target.value },
+                    })
+                  }
+                  required
+                />
               </div>
-            )}
-            {viewMode === "changePassword" && (
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                <SectionTitle className="col-span-1 lg:col-span-4 text-center text-gray-700 text-lg">
-                  Cambiar Contraseña
-                </SectionTitle>
-                <div className="col-span-1 lg:col-span-4">
-                  <InfoGrid className="grid grid-cols-1 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700">Contraseña Actual *</label>
-                      <Input
-                        type="password"
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        placeholder="Ingresa tu contraseña actual"
-                        className="text-base p-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700">Nueva Contraseña *</label>
-                      <Input
-                        type="password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Ingresa tu nueva contraseña"
-                        className="text-base p-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700">Confirmar Contraseña *</label>
-                      <Input
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Confirma tu nueva contraseña"
-                        className="text-base p-2"
-                        required
-                      />
-                    </div>
-                  </InfoGrid>
-                  <div className="flex justify-end gap-4 mt-4">
-                    <SecondaryButton
-                      onClick={() => {
-                        setViewMode("view");
-                        setCurrentPassword("");
-                        setNewPassword("");
-                        setConfirmPassword("");
-                      }}
-                      className="text-base bg-gray-200 text-gray-700 py-2 px-4"
-                    >
-                      Cancelar
-                    </SecondaryButton>
-                    <PrimaryButton
-                      onClick={handleChangePassword}
-                      disabled={isLoadingProfile || !currentPassword || !newPassword || !confirmPassword}
-                      className={`text-base py-2 px-4 ${isLoadingProfile || !currentPassword || !newPassword || !confirmPassword ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 text-white"}`}
-                    >
-                      Guardar
-                    </PrimaryButton>
-                  </div>
-                </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700">Correo *</label>
+                <Input
+                  type="email"
+                  value={editingPerson.basicInfo.CORREO}
+                  onChange={(e) =>
+                    setEditingPerson({
+                      ...editingPerson,
+                      basicInfo: { ...editingPerson.basicInfo, CORREO: e.target.value },
+                    })
+                  }
+                  required
+                />
               </div>
-            )}
-          </Card>
-        </div>
-      </>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700">Celular *</label>
+                <Input
+                  type="text"
+                  value={editingPerson.basicInfo.CELULAR}
+                  onChange={(e) =>
+                    setEditingPerson({
+                      ...editingPerson,
+                      basicInfo: { ...editingPerson.basicInfo, CELULAR: e.target.value },
+                    })
+                  }
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700">Contacto de Emergencia *</label>
+                <Input
+                  type="text"
+                  value={editingPerson.basicInfo.CONTACTO_EMERGENCIA}
+                  onChange={(e) =>
+                    setEditingPerson({
+                      ...editingPerson,
+                      basicInfo: { ...editingPerson.basicInfo, CONTACTO_EMERGENCIA: e.target.value },
+                    })
+                  }
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700">Fecha de Nacimiento *</label>
+                <Input
+                  type="date"
+                  value={formatDateForInput(editingPerson.basicInfo.FECHA_NACIMIENTO)}
+                  onChange={(e) =>
+                    setEditingPerson({
+                      ...editingPerson,
+                      basicInfo: { ...editingPerson.basicInfo, FECHA_NACIMIENTO: e.target.value },
+                    })
+                  }
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700">Sexo *</label>
+                <Select
+                  value={editingPerson.basicInfo.ID_SEXO}
+                  onChange={(e) =>
+                    setEditingPerson({
+                      ...editingPerson,
+                      basicInfo: {
+                        ...editingPerson.basicInfo,
+                        ID_SEXO: Number(e.target.value),
+                        SEXO: sexes.find((s) => s.ID_SEXO === Number(e.target.value))?.DESCRIPCION || "",
+                      },
+                    })
+                  }
+                  required
+                >
+                  <option value={0} disabled>Seleccione</option>
+                  {sexes.map((sex) => (
+                    <option key={sex.ID_SEXO} value={sex.ID_SEXO}>
+                      {sex.DESCRIPCION}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </InfoGrid>
+            <div className="col-span-3 flex justify-end gap-4 mt-6">
+              <SecondaryButton
+                onClick={() => {
+                  setViewMode("view");
+                  setNewPhoto(null);
+                }}
+              >
+                Cancelar
+              </SecondaryButton>
+              <PrimaryButton
+                onClick={handleUpdatePerson}
+                disabled={isLoadingProfile || !validateFields()}
+              >
+                Guardar
+              </PrimaryButton>
+            </div>
+          </div>
+        )}
+        {viewMode === "changePassword" && (
+          <div className="grid grid-cols-1 gap-6">
+            <SectionTitle>Cambiar Contraseña</SectionTitle>
+            <InfoGrid className="grid-cols-1">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700">Contraseña Actual *</label>
+                <Input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Ingresa tu contraseña actual"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700">Nueva Contraseña *</label>
+                <Input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Ingresa tu nueva contraseña"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700">Confirmar Contraseña *</label>
+                <Input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirma tu nueva contraseña"
+                  required
+                />
+              </div>
+            </InfoGrid>
+            <div className="flex justify-end gap-4">
+              <SecondaryButton
+                onClick={() => {
+                  setViewMode("view");
+                  setCurrentPassword("");
+                  setNewPassword("");
+                  setConfirmPassword("");
+                }}
+              >
+                Cancelar
+              </SecondaryButton>
+              <PrimaryButton
+                onClick={handleChangePassword}
+                disabled={isLoadingProfile || !currentPassword || !newPassword || !confirmPassword}
+              >
+                Guardar
+              </PrimaryButton>
+            </div>
+          </div>
+        )}
+      </ModalContent>
     );
   };
 
@@ -1143,7 +1095,7 @@ const Sidebar = ({
       <SidebarContainer sidebarOpen={sidebarOpen}>
         <FixedHeader>
           <div className="flex items-center mb-4">
-            <ProfileImage
+            <SidebarProfileImage
               src={fotoUrl}
               alt="Usuario"
               className="w-12 h-12 rounded-full mr-3 object-cover"
@@ -1271,30 +1223,8 @@ const Sidebar = ({
       <Modal
         isOpen={isProfileModalOpen && !isLoadingProfile && personDetails !== null}
         onRequestClose={handleCloseProfileModal}
-        className="w-[95%] max-w-4xl mx-auto mt-4 rounded-lg sm:mt-8 sm:w-[90%] md:w-[80%] lg:w-[70%]"
-        overlayClassName="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[1000]"
-        style={{
-          overlay: {
-            zIndex: 1000,
-            overflowY: "auto",
-            padding: "1rem",
-            transition: "opacity 0.2s ease-in-out",
-          },
-          content: {
-            position: "relative",
-            top: "auto",
-            left: "auto",
-            right: "auto",
-            bottom: "auto",
-            margin: "auto",
-            maxHeight: "90vh",
-            overflowY: "auto",
-            padding: "0",
-            border: "none",
-            background: "transparent",
-            zIndex: 1001,
-          },
-        }}
+        className="mx-4 sm:mx-auto mt-20"
+        overlayClassName="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50"
         ariaHideApp={false}
       >
         {renderModalContent()}
