@@ -201,7 +201,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
       });
 
-      console.log("AuthContext - /refresh-token response status:", response.status);
+      console.log(
+        "AuthContext - /refresh-token response status:",
+        response.status
+      );
 
       if (response.ok) {
         const data = await response.json();
@@ -220,7 +223,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         const sidebarData = await updateSidebarData(data.user.id, data.token);
         if (sidebarData.length === 0) {
-          console.warn("AuthContext - No permissions loaded after refresh, logging out");
+          console.warn(
+            "AuthContext - No permissions loaded after refresh, logging out"
+          );
           logout();
           setIsRefreshing(false);
           return false;
@@ -313,7 +318,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         console.log(
           "AuthContext - Token status:",
-          `Start time: ${new Date(tokenStartTime * 1000).toISOString()} (${formatTime(tokenDuration)})`,
+          `Start time: ${new Date(
+            tokenStartTime * 1000
+          ).toISOString()} (${formatTime(tokenDuration)})`,
           `Expiration: ${new Date(decoded.exp * 1000).toISOString()}`,
           `Current time: ${new Date(currentTime * 1000).toISOString()}`,
           `Time left: ${formatTime(timeLeft)}`
@@ -374,10 +381,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 console.log("AuthContext - Refresh failed, logging out");
                 logout();
               }
-            } else if (result.isDismissed && result.dismiss === Swal.DismissReason.cancel) {
+            } else if (
+              result.isDismissed &&
+              result.dismiss === Swal.DismissReason.cancel
+            ) {
               console.log("AuthContext - User clicked 'Cerrar sesión'");
               logout();
-            } else if (result.isDismissed && result.dismiss === Swal.DismissReason.timer) {
+            } else if (
+              result.isDismissed &&
+              result.dismiss === Swal.DismissReason.timer
+            ) {
               console.log("AuthContext - Session expiration warning timed out");
               // Verificar si el token ya expiró antes de intentar renovar
               const currentToken = localStorage.getItem("token");
@@ -386,12 +399,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   const decoded: { exp: number } = jwtDecode(currentToken);
                   const currentTime = Date.now() / 1000;
                   if (decoded.exp <= currentTime) {
-                    console.log("AuthContext - Token already expired, logging out silently");
+                    console.log(
+                      "AuthContext - Token already expired, logging out silently"
+                    );
                     logout();
                     return;
                   }
                 } catch (error) {
-                  console.error("AuthContext - Error decoding token during refresh check:", error);
+                  console.error(
+                    "AuthContext - Error decoding token during refresh check:",
+                    error
+                  );
                   logout();
                   return;
                 }
@@ -443,12 +461,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        let errorMessage = "Error al iniciar sesión";
-        if (response.status === 401) {
-          errorMessage = errorData.message || "DNI o contraseña incorrectos";
-        } else if (response.status === 500) {
-          errorMessage = "Error del servidor, por favor intenta de nuevo";
-        }
+        // Propagar el mensaje exacto del backend, si está disponible
+        const errorMessage = errorData.message || "Error al iniciar sesión";
+        console.error("Error en login (AuthContext):", {
+          status: response.status,
+          errorData,
+        });
         throw new Error(errorMessage);
       }
 
@@ -479,7 +497,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error) {
       console.error("AuthContext - Error al iniciar sesión:", error);
-      throw error;
+      throw error; // Propagar el error sin modificarlo
     } finally {
       setIsLoading(false);
     }

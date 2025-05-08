@@ -13,7 +13,9 @@ const Login = () => {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentImage, setCurrentImage] = useState(0);
-  const [images, setImages] = useState<{ imageData: string; imageName: string }[]>([]);
+  const [images, setImages] = useState<
+    { imageData: string; imageName: string }[]
+  >([]);
   const [forgotDni, setForgotDni] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
@@ -52,12 +54,32 @@ const Login = () => {
     try {
       await login(dni, password);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Error al iniciar sesión, por favor intenta de nuevo");
+      // Registrar el error completo para depuración
+      console.error("Error en handleSubmit:", err);
+      console.error("Detalles del error:", {
+        response: err.response,
+        data: err.response?.data,
+        message: err.response?.data?.message,
+        status: err.response?.status,
+      });
+
+      // Manejar el mensaje de error
+      let errorMessage = "Error al iniciar sesión, por favor intenta de nuevo";
+      if (err.response && err.response.data) {
+        if (err.response.data.message) {
+          errorMessage = err.response.data.message; // Usar el mensaje del backend
+        } else if (typeof err.response.data === "string") {
+          errorMessage = err.response.data; // En caso de que el backend devuelva un string directamente
+        }
+      } else if (err.message) {
+        errorMessage = err.message; // Usar el mensaje del error si no hay respuesta del servidor
+      }
+
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
-
   useEffect(() => {
     if (isAuthenticated) navigate("/dashboard", { replace: true });
   }, [isAuthenticated, navigate]);
@@ -69,8 +91,11 @@ const Login = () => {
   useEffect(() => {
     const fetchImages = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/get-login-images`);
-        if (Array.isArray(response.data.images)) setImages(response.data.images);
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/get-login-images`
+        );
+        if (Array.isArray(response.data.images))
+          setImages(response.data.images);
         else setImages([]);
       } catch (error) {
         console.error("Error al obtener las imágenes:", error);
@@ -115,34 +140,43 @@ const Login = () => {
       return;
     }
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/forgot-password`, { dni: forgotDni });
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/forgot-password`,
+        { dni: forgotDni }
+      );
       setEmail(response.data.email);
       setCodeSent(true);
       setCodeTimer(900); // Reiniciar temporizador a 15 minutos
       setError(`Código enviado con éxito a ${response.data.email}`);
     } catch (err: any) {
-      setError(err.response?.data?.message || "DNI no encontrado o error al enviar código");
+      setError(
+        err.response?.data?.message ||
+          "DNI no encontrado o error al enviar código"
+      );
     }
   };
 
-const handleVerifyCode = async (e: React.FormEvent) => {
-  e.preventDefault();
-  try {
-    const response = await axios.post(`${import.meta.env.VITE_API_URL}/verify-code`, {
-      dni: forgotDni,
-      code: verificationCode,
-    });
-    if (response.data.success) {
-      navigate(`/reset-password/${forgotDni}`);
-    } else {
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/verify-code`,
+        {
+          dni: forgotDni,
+          code: verificationCode,
+        }
+      );
+      if (response.data.success) {
+        navigate(`/reset-password/${forgotDni}`);
+      } else {
+        setCodeAttempts(codeAttempts + 1);
+        setError(response.data.message); // Mostrar mensaje del backend
+      }
+    } catch (err: any) {
       setCodeAttempts(codeAttempts + 1);
-      setError(response.data.message); // Mostrar mensaje del backend
+      setError(err.response?.data?.message || "Error al verificar código");
     }
-  } catch (err: any) {
-    setCodeAttempts(codeAttempts + 1);
-    setError(err.response?.data?.message || "Error al verificar código");
-  }
-};
+  };
 
   const maskEmail = (email: string) => {
     const [user, domain] = email.split("@");
@@ -153,13 +187,23 @@ const handleVerifyCode = async (e: React.FormEvent) => {
   return (
     <div className="min-h-screen flex flex-col md:flex-row pt-10 md:pt-0 bg-gray-100">
       <div className="flex flex-col justify-center items-center p-8 w-full md:w-1/2 bg-white shadow-md z-10">
-        <img src={logoSoftHome} alt="Logo SoftHome" className="mb-6 w-48 h-auto" />
+        <img
+          src={logoSoftHome}
+          alt="Logo SoftHome"
+          className="mb-6 w-48 h-auto"
+        />
         <div className="w-full max-w-md">
-          <h1 className="text-3xl font-bold mb-6 text-gray-800 text-center">Iniciar Sesión</h1>
-          {error && <div className="text-red-500 text-sm mb-4 text-center">{error}</div>}
+          <h1 className="text-3xl font-bold mb-6 text-gray-800 text-center">
+            Iniciar Sesión
+          </h1>
+          {error && (
+            <div className="text-red-500 text-sm mb-4 text-center">{error}</div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700">DNI</label>
+              <label className="block text-sm font-medium text-gray-700">
+                DNI
+              </label>
               <input
                 type="text"
                 value={dni}
@@ -171,7 +215,9 @@ const handleVerifyCode = async (e: React.FormEvent) => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Contraseña</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Contraseña
+              </label>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -207,7 +253,14 @@ const handleVerifyCode = async (e: React.FormEvent) => {
               )}
             </button>
             <div className="text-center">
-              <a href="#forgot" onClick={() => { setShowForgotForm(true); setCodeSent(false); }} className="text-blue-600 hover:underline">
+              <a
+                href="#forgot"
+                onClick={() => {
+                  setShowForgotForm(true);
+                  setCodeSent(false);
+                }}
+                className="text-blue-600 hover:underline"
+              >
                 ¿Olvidé mi contraseña?
               </a>
             </div>
@@ -215,12 +268,20 @@ const handleVerifyCode = async (e: React.FormEvent) => {
 
           {/* Sección de recuperación de contraseña */}
           {(showForgotForm || codeSent) && (
-            <form onSubmit={codeSent ? handleVerifyCode : handleForgotPassword} className="mt-6 space-y-4" id="forgot">
-              <h2 className="text-xl font-semibold text-gray-800">{codeSent ? "Verificar Código" : "Recuperar Contraseña"}</h2>
+            <form
+              onSubmit={codeSent ? handleVerifyCode : handleForgotPassword}
+              className="mt-6 space-y-4"
+              id="forgot"
+            >
+              <h2 className="text-xl font-semibold text-gray-800">
+                {codeSent ? "Verificar Código" : "Recuperar Contraseña"}
+              </h2>
               {!codeSent ? (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">DNI</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      DNI
+                    </label>
                     <input
                       type="text"
                       value={forgotDni}
@@ -241,9 +302,12 @@ const handleVerifyCode = async (e: React.FormEvent) => {
                 <>
                   <div>
                     <p className="text-sm text-gray-600">
-                      Se envió un código a: {maskEmail(email)} (expira en {formatTimer(codeTimer)})
+                      Se envió un código a: {maskEmail(email)} (expira en{" "}
+                      {formatTimer(codeTimer)})
                     </p>
-                    <label className="block text-sm font-medium text-gray-700">Código</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Código
+                    </label>
                     <input
                       type="text"
                       value={verificationCode}
@@ -273,7 +337,11 @@ const handleVerifyCode = async (e: React.FormEvent) => {
         <div
           className="absolute inset-0 bg-cover bg-center transition-all duration-1000"
           style={{
-            backgroundImage: `url('${images.length > 0 ? images[currentImage].imageData : ImagenLoginDefault}')`,
+            backgroundImage: `url('${
+              images.length > 0
+                ? images[currentImage].imageData
+                : ImagenLoginDefault
+            }')`,
             backgroundSize: "cover",
             backgroundPosition: "center",
             height: "100%",
@@ -284,7 +352,11 @@ const handleVerifyCode = async (e: React.FormEvent) => {
         <div
           className="absolute inset-0 bg-cover bg-center transition-all duration-1000"
           style={{
-            backgroundImage: `url('${images.length > 0 ? images[currentImage].imageData : ImagenLoginDefault}')`,
+            backgroundImage: `url('${
+              images.length > 0
+                ? images[currentImage].imageData
+                : ImagenLoginDefault
+            }')`,
             backgroundSize: "contain",
             backgroundPosition: "center",
             height: "100%",
@@ -297,7 +369,9 @@ const handleVerifyCode = async (e: React.FormEvent) => {
               <button
                 key={index}
                 onClick={() => setCurrentImage(index)}
-                className={`h-3 w-3 rounded-full transition-all duration-300 ${index === currentImage ? "bg-white" : "bg-white/50"}`}
+                className={`h-3 w-3 rounded-full transition-all duration-300 ${
+                  index === currentImage ? "bg-white" : "bg-white/50"
+                }`}
               ></button>
             ))}
           </div>
