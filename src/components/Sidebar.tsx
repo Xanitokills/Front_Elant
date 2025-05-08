@@ -7,8 +7,6 @@ import styled from "styled-components";
 import Modal from "react-modal";
 import Swal from "sweetalert2";
 import {
-  Container,
-  Card,
   AdditionalInfoCard,
   InfoGrid,
   InfoItem,
@@ -228,7 +226,7 @@ const ModalContent = styled.div`
   padding: 2rem;
   border-radius: 0.75rem;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-  max-height: 90vh;
+  max-height: 81vh;
   overflow-y: auto;
   width: 100%;
   max-width: 64rem;
@@ -757,7 +755,7 @@ const Sidebar = ({
                     : getDefaultPhoto(personDetails.basicInfo.SEXO)
                 }
                 alt="Foto de perfil"
-                className="view-mode" // Added class for upward adjustment on large screens
+                className="view-mode"
                 onError={(e) => {
                   e.currentTarget.src = getDefaultPhoto(personDetails.basicInfo.SEXO);
                 }}
@@ -800,7 +798,7 @@ const Sidebar = ({
             {(personDetails.residentInfo.length > 0 || personDetails.workerInfo.length > 0) && (
               <div className="col-span-3 mt-6">
                 <SectionTitle className="text-center sm:text-left">Información Adicional</SectionTitle>
-                <div className="additional-info-grid">
+                <div className="grid grid-cols-2 gap-4">
                   {personDetails.residentInfo.map((info, index) => (
                     <AdditionalInfoCard key={index}>
                       <p><strong>Departamento:</strong> Nº {info.NRO_DPTO}</p>
