@@ -448,7 +448,7 @@ export const ChangePasswordModalContent = styled.div`
   max-height: 87vh;
   overflow-y: auto;
   width: 100%;
-  max-width: 80rem;
+  max-width: 80rem; /* Ajustado para hacer el modal más ancho */
   animation: ${fadeIn} 0.3s ease-out;
   position: relative;
   margin-top: -5em;
