@@ -56,18 +56,18 @@ export const Card = styled.div`
 `;
 
 export const AdditionalInfoCard = styled.div`
-  background: linear-gradient(145deg, #fefce8 0%, #fef9c3 100%); /* Light yellow gradient for distinction */
+  background: linear-gradient(145deg, #ffffff 0%, #f9fafb 100%); /* Match Card styling */
   padding: 0.75rem; /* Reduced padding for mobile */
   border-radius: 0.5rem;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
   margin-bottom: 0.75rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   animation: ${fadeIn} 0.5s ease-out;
-  border: 2px solid #fef08a; /* Slightly darker yellow border */
+  border: 1px solid #e5e7eb; /* Match Card border */
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    background: linear-gradient(145deg, #fdfde7 0%, #fef9c3 100%);
+    background: linear-gradient(145deg, #f3f4f6 0%, #f9fafb 100%);
   }
   @media (min-width: 768px) {
     padding: 1rem;
@@ -141,6 +141,10 @@ export const ProfileImage = styled.img`
     height: 10rem;
     border: 4px solid #e5e7eb;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    /* Move the image upward in view mode on large screens */
+    &.view-mode {
+      margin-top: -1.5rem;
+    }
   }
 `;
 
@@ -425,8 +429,9 @@ export const ModalContent = styled.div`
     @media (min-width: 640px) {
       display: grid;
       grid-template-columns: 1fr 2fr;
-      align-items: start;
+      align-items: center; /* Center align items on large screens */
       gap: 1.5rem;
+      justify-content: center; /* Center the content horizontally */
     }
   }
 
@@ -518,4 +523,12 @@ export const RolesModalSelect = styled.select`
       background: #f3f4f6;
     }
   }
+`;
+
+// New styled component for centering the "Eliminar Foto" button on large screens
+export const DeletePhotoButtonContainer = styled.div`
+  display: flex;
+  justify-content: center; /* Center on all screens */
+  width: 100%;
+  margin-top: 0.5rem;
 `;

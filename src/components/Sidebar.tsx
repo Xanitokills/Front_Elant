@@ -9,7 +9,7 @@ import Swal from "sweetalert2";
 import {
   Container,
   Card,
-  AdditionalInfoCard, // Imported the new styled component
+  AdditionalInfoCard,
   InfoGrid,
   InfoItem,
   SectionTitle,
@@ -22,6 +22,7 @@ import {
   Spinner,
   SpinnerText,
   fadeIn,
+  DeletePhotoButtonContainer,
 } from "../Styles/SidebarStyles";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -748,7 +749,7 @@ const Sidebar = ({
         {viewMode === "view" && (
           <div className="flex flex-col items-center sm:grid sm:grid-cols-3 sm:gap-6">
             <SectionTitle className="col-span-3 text-center sm:text-left">Mi Perfil</SectionTitle>
-            <div className="flex justify-center mb-6 sm:justify-start sm:mb-0">
+            <div className="flex justify-center mb-6 sm:mb-0">
               <ProfileImage
                 src={
                   personDetails.basicInfo.FOTO
@@ -756,6 +757,7 @@ const Sidebar = ({
                     : getDefaultPhoto(personDetails.basicInfo.SEXO)
                 }
                 alt="Foto de perfil"
+                className="view-mode" // Added class for upward adjustment on large screens
                 onError={(e) => {
                   e.currentTarget.src = getDefaultPhoto(personDetails.basicInfo.SEXO);
                 }}
@@ -816,7 +818,7 @@ const Sidebar = ({
                 </div>
               </div>
             )}
-            <div className="col-span-3 flex justify-center sm:justify-end gap-4 mt-6">
+            <div className="col-span-3 flex justify-center sm:flex sm:justify-center gap-4 mt-6">
               <PrimaryButton onClick={() => setViewMode("edit")}>
                 <FaEdit className="mr-2" />
                 Editar Perfil
@@ -831,7 +833,7 @@ const Sidebar = ({
         {viewMode === "edit" && editingPerson && (
           <div className="flex flex-col items-center sm:grid sm:grid-cols-3 sm:gap-6">
             <SectionTitle className="col-span-3 text-center sm:text-left">Editar Perfil</SectionTitle>
-            <div className="flex flex-col items-center mb-6 sm:items-start sm:mb-0">
+            <div className="flex flex-col items-center mb-6 sm:mb-0">
               <ProfileImage
                 src={
                   newPhoto
@@ -855,50 +857,52 @@ const Sidebar = ({
                   className="hidden"
                 />
               </label>
-              <button
-                onClick={async () => {
-                  const confirm = await Swal.fire({
-                    title: "¿Eliminar foto?",
-                    text: "Esta acción eliminará la foto actual.",
-                    icon: "warning",
-                    showCancelButton: true,
-                    confirmButtonText: "Sí, eliminar",
-                    cancelButtonText: "Cancelar",
-                  });
-                  if (confirm.isConfirmed) {
-                    try {
-                      await fetch(`${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}/photo`, {
-                        method: "DELETE",
-                        headers: { Authorization: `Bearer ${token}` },
-                      });
-                      setEditingPerson({
-                        ...editingPerson,
-                        basicInfo: {
-                          ...editingPerson.basicInfo,
-                          FOTO: null,
-                          FORMATO: null,
-                        },
-                      });
-                      setPersonDetails({
-                        ...personDetails,
-                        basicInfo: {
-                          ...personDetails.basicInfo,
-                          FOTO: null,
-                          FORMATO: null,
-                        },
-                      });
-                      localStorage.removeItem("foto");
-                      setFotoUrl(getDefaultPhoto(editingPerson.basicInfo.SEXO));
-                      Swal.fire("Eliminada", "La foto fue eliminada", "success");
-                    } catch (error) {
-                      Swal.fire("Error", "No se pudo eliminar la foto", "error");
+              <DeletePhotoButtonContainer>
+                <button
+                  onClick={async () => {
+                    const confirm = await Swal.fire({
+                      title: "¿Eliminar foto?",
+                      text: "Esta acción eliminará la foto actual.",
+                      icon: "warning",
+                      showCancelButton: true,
+                      confirmButtonText: "Sí, eliminar",
+                      cancelButtonText: "Cancelar",
+                    });
+                    if (confirm.isConfirmed) {
+                      try {
+                        await fetch(`${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}/photo`, {
+                          method: "DELETE",
+                          headers: { Authorization: `Bearer ${token}` },
+                        });
+                        setEditingPerson({
+                          ...editingPerson,
+                          basicInfo: {
+                            ...editingPerson.basicInfo,
+                            FOTO: null,
+                            FORMATO: null,
+                          },
+                        });
+                        setPersonDetails({
+                          ...personDetails,
+                          basicInfo: {
+                            ...personDetails.basicInfo,
+                            FOTO: null,
+                            FORMATO: null,
+                          },
+                        });
+                        localStorage.removeItem("foto");
+                        setFotoUrl(getDefaultPhoto(editingPerson.basicInfo.SEXO));
+                        Swal.fire("Eliminada", "La foto fue eliminada", "success");
+                      } catch (error) {
+                        Swal.fire("Error", "No se pudo eliminar la foto", "error");
+                      }
                     }
-                  }
-                }}
-                className="mt-2 text-red-500 hover:text-red-700 underline"
-              >
-                Eliminar Foto
-              </button>
+                  }}
+                  className="mt-2 text-red-500 hover:text-red-700 underline"
+                >
+                  Eliminar Foto
+                </button>
+              </DeletePhotoButtonContainer>
             </div>
             <InfoGrid className="col-span-2 grid-cols-2 sm:grid-cols-2">
               <div>
@@ -1010,7 +1014,7 @@ const Sidebar = ({
                 </Select>
               </div>
             </InfoGrid>
-            <div className="col-span-3 flex justify-center sm:justify-end gap-4 mt-6">
+            <div className="col-span-3 flex justify-center sm:flex sm:justify-center gap-4 mt-6">
               <SecondaryButton
                 onClick={() => {
                   setViewMode("view");
@@ -1063,7 +1067,7 @@ const Sidebar = ({
                 />
               </div>
             </InfoGrid>
-            <div className="flex justify-center sm:justify-end gap-4 mt-6">
+            <div className="flex justify-center sm:flex sm:justify-center gap-4 mt-6">
               <SecondaryButton
                 onClick={() => {
                   setViewMode("view");
