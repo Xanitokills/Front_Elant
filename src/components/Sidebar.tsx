@@ -745,9 +745,9 @@ const Sidebar = ({
           </svg>
         </CloseButton>
         {viewMode === "view" && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <SectionTitle className="col-span-3">Mi Perfil</SectionTitle>
-            <div className="flex justify-center">
+          <div className="flex flex-col items-center sm:grid sm:grid-cols-3 sm:gap-6">
+            <SectionTitle className="col-span-3 text-center sm:text-left">Mi Perfil</SectionTitle>
+            <div className="flex justify-center mb-6 sm:justify-start sm:mb-0">
               <ProfileImage
                 src={
                   personDetails.basicInfo.FOTO
@@ -760,7 +760,7 @@ const Sidebar = ({
                 }}
               />
             </div>
-            <InfoGrid className="col-span-2">
+            <InfoGrid className="col-span-2 grid-cols-2 sm:grid-cols-2">
               <InfoItem>
                 <label className="block text-sm font-semibold text-gray-700">Nombres</label>
                 <p className="mt-1 text-gray-800">{personDetails.basicInfo.NOMBRES}</p>
@@ -788,7 +788,7 @@ const Sidebar = ({
               <InfoItem>
                 <label className="block text-sm font-semibold text-gray-700">Fecha de Nacimiento</label>
                 <p className="mt-1 text-gray-800">{formatDate(personDetails.basicInfo.FECHA_NACIMIENTO)}</p>
-              </InfoItem>
+8              </InfoItem>
               <InfoItem>
                 <label className="block text-sm font-semibold text-gray-700">Sexo</label>
                 <p className="mt-1 text-gray-800">{personDetails.basicInfo.SEXO}</p>
@@ -796,7 +796,7 @@ const Sidebar = ({
             </InfoGrid>
             {(personDetails.residentInfo.length > 0 || personDetails.workerInfo.length > 0) && (
               <div className="col-span-3 mt-6">
-                <SectionTitle>Información Adicional</SectionTitle>
+                <SectionTitle className="text-center sm:text-left">Información Adicional</SectionTitle>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {personDetails.residentInfo.map((info, index) => (
                     <Card key={index}>
@@ -815,7 +815,7 @@ const Sidebar = ({
                 </div>
               </div>
             )}
-            <div className="col-span-3 flex justify-end gap-4 mt-6">
+            <div className="col-span-3 flex justify-center sm:justify-end gap-4 mt-6">
               <PrimaryButton onClick={() => setViewMode("edit")}>
                 <FaEdit className="mr-2" />
                 Editar Perfil
@@ -828,9 +828,9 @@ const Sidebar = ({
           </div>
         )}
         {viewMode === "edit" && editingPerson && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <SectionTitle className="col-span-3">Editar Perfil</SectionTitle>
-            <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center sm:grid sm:grid-cols-3 sm:gap-6">
+            <SectionTitle className="col-span-3 text-center sm:text-left">Editar Perfil</SectionTitle>
+            <div className="flex flex-col items-center mb-6 sm:items-start sm:mb-0">
               <ProfileImage
                 src={
                   newPhoto
@@ -899,7 +899,7 @@ const Sidebar = ({
                 Eliminar Foto
               </button>
             </div>
-            <InfoGrid className="col-span-2">
+            <InfoGrid className="col-span-2 grid-cols-2 sm:grid-cols-2">
               <div>
                 <label className="block text-sm font-semibold text-gray-700">Nombres *</label>
                 <Input
@@ -1009,7 +1009,7 @@ const Sidebar = ({
                 </Select>
               </div>
             </InfoGrid>
-            <div className="col-span-3 flex justify-end gap-4 mt-6">
+            <div className="col-span-3 flex justify-center sm:justify-end gap-4 mt-6">
               <SecondaryButton
                 onClick={() => {
                   setViewMode("view");
@@ -1028,9 +1028,9 @@ const Sidebar = ({
           </div>
         )}
         {viewMode === "changePassword" && (
-          <div className="grid grid-cols-1 gap-6">
-            <SectionTitle>Cambiar Contraseña</SectionTitle>
-            <InfoGrid className="grid-cols-1">
+          <div className="flex flex-col items-center sm:grid sm:grid-cols-1 sm:gap-6">
+            <SectionTitle className="text-center sm:text-left">Cambiar Contraseña</SectionTitle>
+            <InfoGrid className="grid-cols-2 sm:grid-cols-1 w-full max-w-md sm:max-w-full">
               <div>
                 <label className="block text-sm font-semibold text-gray-700">Contraseña Actual *</label>
                 <Input
@@ -1062,7 +1062,7 @@ const Sidebar = ({
                 />
               </div>
             </InfoGrid>
-            <div className="flex justify-end gap-4">
+            <div className="flex justify-center sm:justify-end gap-4 mt-6">
               <SecondaryButton
                 onClick={() => {
                   setViewMode("view");
@@ -1216,7 +1216,7 @@ const Sidebar = ({
       {isLoadingProfile && (
         <SpinnerOverlay>
           <Spinner />
-          <SpinnerText>Procesando...</SpinnerText>
+          <SpinnerText>Procesando...</ SpinnerText>
         </SpinnerOverlay>
       )}
 
