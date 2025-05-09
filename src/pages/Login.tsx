@@ -22,6 +22,7 @@ const Login = () => {
   const [codeAttempts, setCodeAttempts] = useState(0);
   const [showRecoveryModal, setShowRecoveryModal] = useState(false);
   const [codeTimer, setCodeTimer] = useState(900);
+  const [isSendingCode, setIsSendingCode] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const imageContainerRef = useRef(null);
@@ -72,6 +73,7 @@ const Login = () => {
       setError("DNI inválido");
       return;
     }
+    setIsSendingCode(true);
     try {
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/forgot-password`, { dni: forgotDni });
       setEmail(response.data.email);
@@ -79,6 +81,8 @@ const Login = () => {
       setCodeTimer(900);
     } catch (err) {
       setError(err.response?.data?.message || "DNI no encontrado o error al enviar código");
+    } finally {
+      setIsSendingCode(false);
     }
   };
 
@@ -109,9 +113,9 @@ const Login = () => {
   };
 
   const handleCodeChange = (index, value) => {
-    if (/^[0-9]?$/.test(value)) {
+    if (/^[0-9a-fA-F]?$/.test(value)) {
       const newCode = [...verificationCode];
-      newCode[index] = value;
+      newCode[index] = value.toLowerCase();
       setVerificationCode(newCode);
       if (value && index < 5) {
         inputRefs.current[index + 1].focus();
@@ -120,7 +124,7 @@ const Login = () => {
   };
 
   const handleCodePaste = (e) => {
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    const pasted = e.clipboardData.getData("text").replace(/[^0-9a-fA-F]/g, "").slice(0, 6).toLowerCase();
     if (pasted.length === 6) {
       setVerificationCode(pasted.split(""));
       inputRefs.current[5].focus();
@@ -220,8 +224,8 @@ const Login = () => {
                       <>
                         <label className="block text-sm font-medium text-gray-700">DNI</label>
                         <input type="text" value={forgotDni} onChange={(e) => setForgotDni(e.target.value)} className="w-full px-4 py-2 border rounded-lg bg-gray-50" required />
-                        <button type="submit" className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg">
-                          Enviar Código
+                        <button type="submit" className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg flex items-center justify-center" disabled={isSendingCode}>
+                          {isSendingCode ? (<><FaSpinner className="animate-spin mr-2" />Enviando...</>) : "Enviar Código"}
                         </button>
                       </>
                     ) : (
