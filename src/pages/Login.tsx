@@ -12,6 +12,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentImage, setCurrentImage] = useState(0);
   const [images, setImages] = useState([]);
@@ -79,6 +80,7 @@ const Login = () => {
       setEmail(response.data.email);
       setCodeSent(true);
       setCodeTimer(900);
+      setError("");
     } catch (err) {
       setError(err.response?.data?.message || "DNI no encontrado o error al enviar código");
     } finally {
@@ -96,8 +98,12 @@ const Login = () => {
       });
       if (response.data.success) {
         setError("");
+        setSuccessMessage("¡Código verificado! Se ha enviado una nueva contraseña a tu correo.");
         setShowRecoveryModal(false);
-        navigate(`/reset-password/${forgotDni}`);
+        setCodeSent(false);
+        setVerificationCode(["", "", "", "", "", ""]);
+        setForgotDni("");
+        setCodeAttempts(0);
       } else {
         setError(response.data.message);
       }
@@ -181,6 +187,7 @@ const Login = () => {
         <div className="w-full max-w-md">
           <h1 className="text-3xl font-bold mb-6 text-gray-800 text-center">Iniciar Sesión</h1>
           {error && <div className="text-red-500 text-sm mb-4 text-center">{error}</div>}
+          {successMessage && <div className="text-green-500 text-sm mb-4 text-center">{successMessage}</div>}
           <form onSubmit={handleSubmit} className="space-y-6">
             <input type="text" value={dni} onChange={(e) => setDni(e.target.value)} placeholder="DNI" required className="w-full px-4 py-2 border rounded-lg bg-gray-50" disabled={isSubmitting} />
             <div className="relative">
@@ -193,7 +200,7 @@ const Login = () => {
               {isSubmitting ? (<><FaSpinner className="animate-spin mr-2" />Procesando...</>) : "Iniciar Sesión"}
             </button>
             <div className="text-center">
-              <a href="#" onClick={(e) => { e.preventDefault(); setShowRecoveryModal(true); }} className="text-blue-600 hover:underline">
+              <a href="#" onClick={(e) => { e.preventDefault(); setShowRecoveryModal(true); setSuccessMessage(""); }} className="text-blue-600 hover:underline">
                 ¿Olvidé mi contraseña?
               </a>
             </div>
