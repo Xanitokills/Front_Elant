@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuth, CustomError } from "../context/AuthContext";
 import { FaEye, FaEyeSlash, FaSpinner } from "react-icons/fa";
 import axios from "axios";
-import log from "loglevel";
 import logoSoftHome from "../../public/LogoSoftHome/Logo_SoftHome_1.png";
 import ImagenLoginDefault from "../images/fachada_canada.jpg";
 
@@ -45,42 +44,46 @@ const Login = () => {
     e.preventDefault();
     setError("");
     setIsSubmitting(true);
-  
+
     if (!validateDNI(dni)) {
       setError("El DNI debe tener hasta 12 caracteres alfanuméricos");
       setIsSubmitting(false);
       return;
     }
-  
+
     try {
       await login(dni, password);
     } catch (err: unknown) {
       const error = err as CustomError;
-      log.error("Error en handleSubmit:", {
-        message: error.message,
-        code: error.code,
-        status: error.status,
-      });
-  
-      let errorMessage = "Error al iniciar sesión, por favor intenta de nuevo";
-      if (error.code === "USER_NOT_FOUND_OR_INACTIVE") {
-        errorMessage = "Usuario no encontrado o cuenta inactiva";
-      } else if (error.code === "ACCOUNT_LOCKED") {
-        errorMessage = "Cuenta bloqueada por múltiples intentos fallidos. Contacta al administrador.";
-      } else if (error.code === "INVALID_PASSWORD") {
-        errorMessage = "Contraseña incorrecta";
-      } else if (error.data?.message) {
-        errorMessage = error.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
+      let errorMessage =
+        "Error al iniciar sesión. Por favor, intenta de nuevo.";
+
+      switch (error.code) {
+        case "USER_NOT_FOUND":
+          errorMessage = "Usuario no encontrado";
+          break;
+        case "ACCOUNT_LOCKED":
+          errorMessage =
+            "Cuenta bloqueada por múltiples intentos fallidos. Contacta al administrador.";
+          break;
+        case "INVALID_PASSWORD":
+          errorMessage = "Contraseña incorrecta";
+          break;
+        case "VALIDATION_ERROR":
+          errorMessage = "Faltan campos requeridos";
+          break;
+        default:
+          if (error.data?.message) {
+            errorMessage = error.data.message;
+          }
+          break;
       }
-  
+
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
-
 
   useEffect(() => {
     if (isAuthenticated) navigate("/dashboard", { replace: true });

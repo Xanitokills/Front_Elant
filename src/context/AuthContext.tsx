@@ -456,83 +456,62 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     validateSession();
   }, []);
 
-  const login = async (dni: string, password: string) => {
-    try {
-      const response = await fetch(`${API_URL}/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dni, password }),
-      });
-  
-      if (!response.ok) {
-        const errorData = await response.json();
-        const errorMessage = errorData.message || "Error al iniciar sesión";
-        
-        // Crear un error personalizado
-        const error: CustomError = new Error(errorMessage);
-        error.status = response.status;
-        error.data = errorData;
-        if (
-          errorMessage.includes("Usuario no encontrado") ||
-          errorMessage.includes("inactivo")
-        ) {
-          error.code = "USER_NOT_FOUND_OR_INACTIVE";
-        } else if (
-          errorMessage.includes("bloqueado") ||
-          errorMessage.includes("múltiples intentos")
-        ) {
-          error.code = "ACCOUNT_LOCKED";
-        } else if (errorMessage.includes("Contraseña incorrecta")) {
-          error.code = "INVALID_PASSWORD";
-        }
-        throw error;
-      }
-  
-      setIsLoading(true);
-  
-      const data = await response.json();
-  
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("userName", data.userName);
-      localStorage.setItem("roles", JSON.stringify(data.roles || []));
-      localStorage.setItem("userId", String(data.user.id));
-      localStorage.setItem("personaId", String(data.user.personaId || ""));
-      localStorage.setItem("sexo", data.user.sexo || "Masculino");
-      localStorage.setItem("foto", data.user.foto || "");
-  
-      setIsAuthenticated(true);
-      setUserName(data.userName);
-      setRoles(data.roles || []);
-      setUserId(data.user.id);
-  
-      try {
-        const sidebarData = await updateSidebarData(data.user.id, data.token);
-        if (sidebarData.length === 0) {
-          log.warn(
-            "AuthContext - No permissions loaded for user, using default permissions"
-          );
-          localStorage.setItem("sidebarData", JSON.stringify([]));
-          setSidebarData([]);
-          setUserPermissions([]);
-        }
-      } catch (error) {
-        log.error("AuthContext - Error loading sidebar data:", error);
-        localStorage.setItem("sidebarData", JSON.stringify([]));
-        setSidebarData([]);
-        setUserPermissions([]);
-      }
-    } catch (error: unknown) {
-      const customError = error as CustomError;
-      log.error("AuthContext - Error al iniciar sesión:", {
-        message: customError.message,
-        code: customError.code,
-        status: customError.status,
-      });
-      throw customError;
-    } finally {
-      setIsLoading(false);
+const login = async (dni: string, password: string) => {
+  try {
+    const response = await fetch(`${API_URL}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dni, password }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      const error: CustomError = new Error(data.message || "Error al iniciar sesión");
+      error.status = response.status;
+      error.code = data.code || "UNKNOWN_ERROR";
+      error.data = data;
+      throw error;
     }
-  };
+
+    setIsLoading(true);
+
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("userName", data.userName);
+    localStorage.setItem("roles", JSON.stringify(data.roles || []));
+    localStorage.setItem("userId", String(data.user.id));
+    localStorage.setItem("personaId", String(data.user.personaId || ""));
+    localStorage.setItem("sexo", data.user.sexo || "Masculino");
+    localStorage.setItem("foto", data.user.foto || "");
+
+    setIsAuthenticated(true);
+    setUserName(data.userName);
+    setRoles(data.roles || []);
+    setUserId(data.user.id);
+
+    try {
+      const sidebarData = await updateSidebarData(data.user.id, data.token);
+      setSidebarData(sidebarData);
+      setUserPermissions(sidebarData);
+    } catch (err) {
+      log.error("AuthContext - Error loading sidebar data:", err);
+      setSidebarData([]);
+      setUserPermissions([]);
+      localStorage.setItem("sidebarData", JSON.stringify([]));
+    }
+  } catch (error: unknown) {
+    const customError = error as CustomError;
+    log.error("AuthContext - Error al iniciar sesión:", {
+      message: customError.message,
+      code: customError.code,
+      status: customError.status,
+    });
+    throw customError;
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   const logout = () => {
     console.log("AuthContext - Logging out");
