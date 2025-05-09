@@ -29,9 +29,9 @@ const Login = () => {
 
   useEffect(() => {
     if (imageContainerRef.current) {
-      const { offsetWidth, offsetHeight } = imageContainerRef.current;
-      console.log("Ancho del contenedor de la imagen:", offsetWidth);
-      console.log("Alto del contenedor de la imagen:", offsetHeight);
+      //const { offsetWidth, offsetHeight } = imageContainerRef.current;
+      //console.log("Ancho del contenedor de la imagen:", offsetWidth);
+      //console.log("Alto del contenedor de la imagen:", offsetHeight);
     }
   }, []);
 

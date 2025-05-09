@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const updateSidebarData = async (userId: number, token: string) => {
     try {
-      console.log("AuthContext - Updating sidebar data for userId:", userId);
+      //console.log("AuthContext - Updating sidebar data for userId:", userId);
       const response = await fetch(`${API_URL}/sidebar/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -79,7 +79,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem("sidebarData", JSON.stringify(data));
         setSidebarData(data);
         setUserPermissions(data);
-        console.log("AuthContext - Updated User Permissions:", data);
+        //console.log("AuthContext - Updated User Permissions:", data);
         return data;
       } else {
         console.error(
@@ -111,7 +111,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const validateSession = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
-      console.log("AuthContext - No token found, logging out");
+      //console.log("AuthContext - No token found, logging out");
       setIsAuthenticated(false);
       setUserId(null);
       setUserPermissions([]);
@@ -158,7 +158,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           logout();
           return false;
         }
-        console.log("AuthContext - Session validated successfully");
+        //console.log("AuthContext - Session validated successfully");
         return true;
       } else {
         console.error(
@@ -184,21 +184,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshToken = async (showError: boolean = true) => {
     if (isRefreshing) {
-      console.log("AuthContext - Refresh already in progress, skipping");
+      //console.log("AuthContext - Refresh already in progress, skipping");
       return false;
     }
 
     setIsRefreshing(true);
     const token = localStorage.getItem("token");
     if (!token) {
-      console.log("AuthContext - No token found for refresh, logging out");
+      //console.log("AuthContext - No token found for refresh, logging out");
       logout();
       setIsRefreshing(false);
       return false;
     }
 
     try {
-      console.log("AuthContext - Attempting to refresh token");
+      //console.log("AuthContext - Attempting to refresh token");
       const response = await fetch(`${API_URL}/refresh-token`, {
         method: "POST",
         headers: {
@@ -213,7 +213,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (response.ok) {
         const data = await response.json();
-        console.log("AuthContext - Token refreshed successfully:", data);
+        //console.log("AuthContext - Token refreshed successfully:", data);
 
         localStorage.setItem("token", data.token);
         localStorage.setItem("userName", data.userName);
@@ -236,13 +236,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           return false;
         }
 
-        console.log("AuthContext - Token refresh completed successfully");
+        //console.log("AuthContext - Token refresh completed successfully");
         return true;
       } else {
         if (response.status === 401) {
-          console.log(
-            "AuthContext - Token refresh failed due to unauthorized access (401)"
-          );
+          console.log("AuthContext - Token refresh failed due to unauthorized access (401)");
         } else {
           console.error(
             "AuthContext - Token refresh failed:",
@@ -260,7 +258,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             logout();
           });
         } else {
-          console.log("AuthContext - Silent logout due to refresh failure");
+          //console.log("AuthContext - Silent logout due to refresh failure");
           logout();
         }
         return false;
@@ -295,7 +293,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const checkTokenExpiration = () => {
       const token = localStorage.getItem("token");
       if (!token) {
-        console.log("AuthContext - No token, logging out");
+        //console.log("AuthContext - No token, logging out");
         logout();
         return;
       }
@@ -514,7 +512,7 @@ const login = async (dni: string, password: string) => {
 
 
   const logout = () => {
-    console.log("AuthContext - Logging out");
+    //console.log("AuthContext - Logging out");
     setIsAlertShown(false);
     setLastAlertTime(0); // Resetear el tiempo de la última alerta
     localStorage.clear();
