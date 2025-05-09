@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth, CustomError } from "../context/AuthContext";
 import { FaEye, FaEyeSlash, FaSpinner } from "react-icons/fa";
 import axios from "axios";
+import log from "loglevel";
 import logoSoftHome from "../../public/LogoSoftHome/Logo_SoftHome_1.png";
 import ImagenLoginDefault from "../images/fachada_canada.jpg";
 
@@ -44,42 +45,43 @@ const Login = () => {
     e.preventDefault();
     setError("");
     setIsSubmitting(true);
-
+  
     if (!validateDNI(dni)) {
       setError("El DNI debe tener hasta 12 caracteres alfanuméricos");
       setIsSubmitting(false);
       return;
     }
-
+  
     try {
       await login(dni, password);
-    } catch (err: any) {
-      // Registrar el error completo para depuración
-      console.error("Error en handleSubmit:", err);
-      console.error("Detalles del error:", {
-        response: err.response,
-        data: err.response?.data,
-        message: err.response?.data?.message,
-        status: err.response?.status,
+    } catch (err: unknown) {
+      const error = err as CustomError;
+      log.error("Error en handleSubmit:", {
+        message: error.message,
+        code: error.code,
+        status: error.status,
       });
-
-      // Manejar el mensaje de error
+  
       let errorMessage = "Error al iniciar sesión, por favor intenta de nuevo";
-      if (err.response && err.response.data) {
-        if (err.response.data.message) {
-          errorMessage = err.response.data.message; // Usar el mensaje del backend
-        } else if (typeof err.response.data === "string") {
-          errorMessage = err.response.data; // En caso de que el backend devuelva un string directamente
-        }
-      } else if (err.message) {
-        errorMessage = err.message; // Usar el mensaje del error si no hay respuesta del servidor
+      if (error.code === "USER_NOT_FOUND_OR_INACTIVE") {
+        errorMessage = "Usuario no encontrado o cuenta inactiva";
+      } else if (error.code === "ACCOUNT_LOCKED") {
+        errorMessage = "Cuenta bloqueada por múltiples intentos fallidos. Contacta al administrador.";
+      } else if (error.code === "INVALID_PASSWORD") {
+        errorMessage = "Contraseña incorrecta";
+      } else if (error.data?.message) {
+        errorMessage = error.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
       }
-
+  
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+
   useEffect(() => {
     if (isAuthenticated) navigate("/dashboard", { replace: true });
   }, [isAuthenticated, navigate]);

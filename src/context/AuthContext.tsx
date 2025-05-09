@@ -7,9 +7,14 @@ import {
 } from "react";
 import { jwtDecode } from "jwt-decode";
 import Swal from "sweetalert2";
-
+import log from "loglevel";
 const API_URL = import.meta.env.VITE_API_URL;
 
+export interface CustomError extends Error {
+  status?: number;
+  data?: any;
+  code?: string;
+}
 interface Submenu {
   id: number;
   nombre: string;
@@ -458,39 +463,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dni, password }),
       });
-
+  
       if (!response.ok) {
         const errorData = await response.json();
         const errorMessage = errorData.message || "Error al iniciar sesión";
-        console.error("Error en login (AuthContext):", {
-          status: response.status,
-          errorData,
-        });
-
+        
+        // Crear un error personalizado
+        const error: CustomError = new Error(errorMessage);
+        error.status = response.status;
+        error.data = errorData;
         if (
           errorMessage.includes("Usuario no encontrado") ||
           errorMessage.includes("inactivo")
         ) {
-          throw new Error("Usuario no encontrado o cuenta inactiva.");
-        }
-        if (
+          error.code = "USER_NOT_FOUND_OR_INACTIVE";
+        } else if (
           errorMessage.includes("bloqueado") ||
           errorMessage.includes("múltiples intentos")
         ) {
-          throw new Error(
-            "Cuenta bloqueada por múltiples intentos fallidos. Contacta al administrador."
-          );
+          error.code = "ACCOUNT_LOCKED";
+        } else if (errorMessage.includes("Contraseña incorrecta")) {
+          error.code = "INVALID_PASSWORD";
         }
-        if (errorMessage.includes("Contraseña incorrecta")) {
-          throw new Error("Contraseña incorrecta.");
-        }
-        throw new Error(errorMessage);
+        throw error;
       }
-
+  
       setIsLoading(true);
-
+  
       const data = await response.json();
-
+  
       localStorage.setItem("token", data.token);
       localStorage.setItem("userName", data.userName);
       localStorage.setItem("roles", JSON.stringify(data.roles || []));
@@ -498,33 +499,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem("personaId", String(data.user.personaId || ""));
       localStorage.setItem("sexo", data.user.sexo || "Masculino");
       localStorage.setItem("foto", data.user.foto || "");
-
+  
       setIsAuthenticated(true);
       setUserName(data.userName);
       setRoles(data.roles || []);
       setUserId(data.user.id);
-
+  
       try {
         const sidebarData = await updateSidebarData(data.user.id, data.token);
         if (sidebarData.length === 0) {
-          console.warn(
+          log.warn(
             "AuthContext - No permissions loaded for user, using default permissions"
           );
-          // Opcional: Usar permisos por defecto o manejar el caso de permisos vacíos
           localStorage.setItem("sidebarData", JSON.stringify([]));
           setSidebarData([]);
           setUserPermissions([]);
         }
       } catch (error) {
-        console.error("AuthContext - Error loading sidebar data:", error);
-        // Manejar el error sin ejecutar logout()
+        log.error("AuthContext - Error loading sidebar data:", error);
         localStorage.setItem("sidebarData", JSON.stringify([]));
         setSidebarData([]);
         setUserPermissions([]);
       }
-    } catch (error) {
-      console.error("AuthContext - Error al iniciar sesión:", error);
-      throw error;
+    } catch (error: unknown) {
+      const customError = error as CustomError;
+      log.error("AuthContext - Error al iniciar sesión:", {
+        message: customError.message,
+        code: customError.code,
+        status: customError.status,
+      });
+      throw customError;
     } finally {
       setIsLoading(false);
     }
