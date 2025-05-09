@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, Transition } from "@headlessui/react";
-import { useAuth, CustomError } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext";
 import { FaEye, FaEyeSlash, FaSpinner } from "react-icons/fa";
 import axios from "axios";
 import logoSoftHome from "../../public/LogoSoftHome/Logo_SoftHome_1.png";
@@ -24,6 +24,7 @@ const Login = () => {
   const [showRecoveryModal, setShowRecoveryModal] = useState(false);
   const [codeTimer, setCodeTimer] = useState(900);
   const [isSendingCode, setIsSendingCode] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const imageContainerRef = useRef(null);
@@ -91,6 +92,7 @@ const Login = () => {
   const handleVerifyCode = async (e) => {
     e.preventDefault();
     const code = verificationCode.join("");
+    setIsVerifying(true);
     try {
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/verify-code`, {
         dni: forgotDni,
@@ -115,6 +117,8 @@ const Login = () => {
         const intento = parseInt(match[1], 10);
         setCodeAttempts(intento);
       }
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -259,8 +263,19 @@ const Login = () => {
                         {codeAttempts > 0 && codeAttempts < 3 && (
                           <p className="text-sm text-red-500">Intento {codeAttempts} de 3</p>
                         )}
-                        <button type="submit" className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg">
-                          Verificar
+                        <button
+                          type="submit"
+                          className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg flex items-center justify-center"
+                          disabled={isVerifying}
+                        >
+                          {isVerifying ? (
+                            <>
+                              <FaSpinner className="animate-spin mr-2" />
+                              Verificando...
+                            </>
+                          ) : (
+                            "Verificar"
+                          )}
                         </button>
                       </>
                     )}
