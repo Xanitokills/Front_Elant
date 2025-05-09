@@ -1,5 +1,3 @@
-// Login.tsx completo con modal elegante para recuperación de contraseña
-
 import { useState, useEffect, useRef, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, Transition } from "@headlessui/react";
@@ -18,7 +16,7 @@ const Login = () => {
   const [currentImage, setCurrentImage] = useState(0);
   const [images, setImages] = useState([]);
   const [forgotDni, setForgotDni] = useState("");
-  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationCode, setVerificationCode] = useState(["", "", "", "", "", ""]);
   const [codeSent, setCodeSent] = useState(false);
   const [email, setEmail] = useState("");
   const [codeAttempts, setCodeAttempts] = useState(0);
@@ -27,6 +25,7 @@ const Login = () => {
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const imageContainerRef = useRef(null);
+  const inputRefs = useRef([]);
 
   const validateDNI = (dni) => /^[a-zA-Z0-9]{1,12}$/.test(dni);
 
@@ -78,7 +77,6 @@ const Login = () => {
       setEmail(response.data.email);
       setCodeSent(true);
       setCodeTimer(900);
-      setError(`Código enviado con éxito a ${response.data.email}`);
     } catch (err) {
       setError(err.response?.data?.message || "DNI no encontrado o error al enviar código");
     }
@@ -86,10 +84,11 @@ const Login = () => {
 
   const handleVerifyCode = async (e) => {
     e.preventDefault();
+    const code = verificationCode.join("");
     try {
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/verify-code`, {
         dni: forgotDni,
-        code: verificationCode,
+        code,
       });
       if (response.data.success) {
         setError("");
@@ -106,6 +105,31 @@ const Login = () => {
         const intento = parseInt(match[1], 10);
         setCodeAttempts(intento);
       }
+    }
+  };
+
+  const handleCodeChange = (index, value) => {
+    if (/^[0-9]?$/.test(value)) {
+      const newCode = [...verificationCode];
+      newCode[index] = value;
+      setVerificationCode(newCode);
+      if (value && index < 5) {
+        inputRefs.current[index + 1].focus();
+      }
+    }
+  };
+
+  const handleCodePaste = (e) => {
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (pasted.length === 6) {
+      setVerificationCode(pasted.split(""));
+      inputRefs.current[5].focus();
+    }
+  };
+
+  const handleKeyDown = (index, e) => {
+    if (e.key === "Backspace" && !verificationCode[index] && index > 0) {
+      inputRefs.current[index - 1].focus();
     }
   };
 
@@ -206,7 +230,21 @@ const Login = () => {
                           Se envió un código a: {maskEmail(email)} (expira en {formatTimer(codeTimer)})
                         </p>
                         <label className="block text-sm font-medium text-gray-700">Código</label>
-                        <input type="text" value={verificationCode} onChange={(e) => setVerificationCode(e.target.value)} className="w-full px-4 py-2 border rounded-lg bg-gray-50" required />
+                        <div className="flex space-x-2 justify-center" onPaste={handleCodePaste}>
+                          {verificationCode.map((digit, index) => (
+                            <input
+                              key={index}
+                              type="text"
+                              maxLength={1}
+                              value={digit}
+                              onChange={(e) => handleCodeChange(index, e.target.value)}
+                              onKeyDown={(e) => handleKeyDown(index, e)}
+                              ref={(el) => (inputRefs.current[index] = el)}
+                              className="w-10 h-10 text-center border rounded-lg bg-gray-50 focus:ring-2 focus:ring-green-500"
+                              required
+                            />
+                          ))}
+                        </div>
                         {codeAttempts > 0 && codeAttempts < 3 && (
                           <p className="text-sm text-red-500">Intento {codeAttempts} de 3</p>
                         )}
