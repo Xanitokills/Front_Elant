@@ -2,16 +2,24 @@ import { useState, useEffect, useRef, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, Transition } from "@headlessui/react";
 import { useAuth } from "../context/AuthContext";
-import { FaEye, FaEyeSlash, FaSpinner } from "react-icons/fa";
+import { FaEye, FaEyeSlash, FaSpinner, FaUser, FaLock, FaKey, FaExclamationCircle, FaCheckCircle } from "react-icons/fa";
 import axios from "axios";
 import logoSoftHome from "../../public/LogoSoftHome/Logo_SoftHome_1.png";
 import ImagenLoginDefault from "../images/fachada_canada.jpg";
+
+const COLOR_DARK_GRAY = "#4a5568";
+const COLOR_LIGHT_BLUE = "#93c5fd";
+const COLOR_BLUE = "#60a5fa";
+const COLOR_TEAL = "#6caeb6";
+const COLOR_WHITE = "#ffffff";
+const COLOR_CHARCOAL = "#1a202c";
 
 const Login = () => {
   const [dni, setDni] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
+  const [loginError, setLoginError] = useState(""); // Nuevo estado para errores de login
+  const [recoveryError, setRecoveryError] = useState(""); // Renombrado para errores del modal
   const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentImage, setCurrentImage] = useState(0);
@@ -32,12 +40,24 @@ const Login = () => {
 
   const validateDNI = (dni) => /^[a-zA-Z0-9]{1,12}$/.test(dni);
 
+  // Auto-dismiss messages after 3 seconds
+  useEffect(() => {
+    if (loginError || recoveryError || successMessage) {
+      const timer = setTimeout(() => {
+        setLoginError("");
+        setRecoveryError("");
+        setSuccessMessage("");
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [loginError, recoveryError, successMessage]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+    setLoginError("");
     setIsSubmitting(true);
     if (!validateDNI(dni)) {
-      setError("El DNI debe tener hasta 12 caracteres alfanuméricos");
+      setLoginError("El DNI debe tener hasta 12 caracteres alfanuméricos");
       setIsSubmitting(false);
       return;
     }
@@ -63,7 +83,7 @@ const Login = () => {
           if (error.data?.message) errorMessage = error.data.message;
           break;
       }
-      setError(errorMessage);
+      setLoginError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -72,7 +92,7 @@ const Login = () => {
   const handleForgotPassword = async (e) => {
     e.preventDefault();
     if (!validateDNI(forgotDni)) {
-      setError("DNI inválido");
+      setRecoveryError("DNI inválido");
       return;
     }
     setIsSendingCode(true);
@@ -81,9 +101,9 @@ const Login = () => {
       setEmail(response.data.email);
       setCodeSent(true);
       setCodeTimer(900);
-      setError("");
+      setRecoveryError("");
     } catch (err) {
-      setError(err.response?.data?.message || "DNI no encontrado o error al enviar código");
+      setRecoveryError(err.response?.data?.message || "DNI no encontrado o error al enviar código");
     } finally {
       setIsSendingCode(false);
     }
@@ -99,7 +119,7 @@ const Login = () => {
         code,
       });
       if (response.data.success) {
-        setError("");
+        setRecoveryError("");
         setSuccessMessage("¡Código verificado! Se ha enviado una nueva contraseña a tu correo.");
         setShowRecoveryModal(false);
         setCodeSent(false);
@@ -107,11 +127,11 @@ const Login = () => {
         setForgotDni("");
         setCodeAttempts(0);
       } else {
-        setError(response.data.message);
+        setRecoveryError(response.data.message);
       }
     } catch (err) {
       const msg = err.response?.data?.message || "Error al verificar código";
-      setError(msg);
+      setRecoveryError(msg);
       const match = msg.match(/Intento (\d) de 3/);
       if (match) {
         const intento = parseInt(match[1], 10);
@@ -167,7 +187,7 @@ const Login = () => {
     }
     if (codeTimer === 0) {
       setCodeSent(false);
-      setError("El código ha expirado. Solicite un nuevo código.");
+      setRecoveryError("El código ha expirado. Solicite un nuevo código.");
     }
   }, [isAuthenticated, codeSent, codeTimer]);
 
@@ -185,26 +205,90 @@ const Login = () => {
   }, [images]);
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row pt-10 md:pt-0 bg-gray-100">
+    <div className="min-h-screen flex flex-col md:flex-row pt-10 md:pt-0" style={{ backgroundColor: COLOR_CHARCOAL }}>
       <div className="flex flex-col justify-center items-center p-8 w-full md:w-1/2 bg-white shadow-md z-10">
-        <img src={logoSoftHome} alt="Logo SoftHome" className="mb-6 w-48 h-auto" />
+        <div className="relative mb-6">
+          <img 
+            src={logoSoftHome} 
+            alt="Logo SoftHome" 
+            className="w-48 h-auto relative z-10 animate-contour-glow"
+          />
+        </div>
         <div className="w-full max-w-md">
-          <h1 className="text-3xl font-bold mb-6 text-gray-800 text-center">Iniciar Sesión</h1>
-          {error && <div className="text-red-500 text-sm mb-4 text-center">{error}</div>}
-          {successMessage && <div className="text-green-500 text-sm mb-4 text-center">{successMessage}</div>}
+          <h1 className="text-3xl font-bold mb-6 text-center" style={{ color: COLOR_DARK_GRAY }}>
+            Iniciar Sesión
+          </h1>
+          {loginError && (
+            <div className="flex items-center bg-red-100 text-red-600 text-sm mb-4 p-3 rounded-lg shadow-sm animate-fade-in">
+              <FaExclamationCircle className="mr-2" />
+              <span>{loginError}</span>
+            </div>
+          )}
+          {successMessage && (
+            <div className="flex items-center bg-green-100 text-green-600 text-sm mb-4 p-3 rounded-lg shadow-sm animate-fade-in">
+              <FaCheckCircle className="mr-2" />
+              <span>{successMessage}</span>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-6">
-            <input type="text" value={dni} onChange={(e) => setDni(e.target.value)} placeholder="DNI" required className="w-full px-4 py-2 border rounded-lg bg-gray-50" disabled={isSubmitting} />
             <div className="relative">
-              <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña" required className="w-full px-4 py-2 border rounded-lg bg-gray-50 pr-10" disabled={isSubmitting} />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-2.5 text-gray-500">
+              <FaUser className="absolute left-3 top-2.5" style={{ color: COLOR_TEAL }} />
+              <input 
+                type="text" 
+                value={dni} 
+                onChange={(e) => setDni(e.target.value)} 
+                placeholder="DNI" 
+                required 
+                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-300 transition-all duration-300" 
+                style={{ backgroundColor: COLOR_WHITE, borderColor: COLOR_DARK_GRAY }}
+                disabled={isSubmitting} 
+              />
+            </div>
+            <div className="relative">
+              <FaLock className="absolute left-3 top-2.5" style={{ color: COLOR_TEAL }} />
+              <input 
+                type={showPassword ? "text" : "password"} 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+                placeholder="Contraseña" 
+                required 
+                className="w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-blue-300 transition-all duration-300" 
+                style={{ backgroundColor: COLOR_WHITE, borderColor: COLOR_DARK_GRAY }}
+                disabled={isSubmitting} 
+              />
+              <button 
+                type="button" 
+                onClick={() => setShowPassword(!showPassword)} 
+                className="absolute right-3 top-2.5 hover:text-blue-400 transition-colors duration-200" 
+                style={{ color: COLOR_DARK_GRAY }}
+              >
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
             </div>
-            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg shadow-md flex items-center justify-center" disabled={isSubmitting}>
-              {isSubmitting ? (<><FaSpinner className="animate-spin mr-2" />Procesando...</>) : "Iniciar Sesión"}
+            <button 
+              type="submit" 
+              className="w-full text-white py-2 px-4 rounded-lg shadow-md flex items-center justify-center relative overflow-hidden transition-all duration-300 button-glow" 
+              style={{ backgroundColor: COLOR_BLUE }}
+              disabled={isSubmitting}
+            >
+              <span className="relative z-10 flex items-center">
+                {isSubmitting ? (
+                  <>
+                    <FaSpinner className="animate-spin mr-3" />
+                    Procesando...
+                  </>
+                ) : (
+                  "Iniciar Sesión"
+                )}
+              </span>
             </button>
             <div className="text-center">
-              <a href="#" onClick={(e) => { e.preventDefault(); setShowRecoveryModal(true); setSuccessMessage(""); }} className="text-blue-600 hover:underline">
+              <a 
+                href="#" 
+                onClick={(e) => { e.preventDefault(); setShowRecoveryModal(true); setSuccessMessage(""); }} 
+                className="hover:underline hover:text-blue-400 transition-colors duration-200" 
+                style={{ color: COLOR_LIGHT_BLUE }}
+              >
                 ¿Olvidé mi contraseña?
               </a>
             </div>
@@ -212,75 +296,149 @@ const Login = () => {
         </div>
       </div>
 
-      <div ref={imageContainerRef} className="hidden md:flex w-1/2 items-center justify-center relative bg-gradient-to-b from-purple-500 to-white">
-        <div className="absolute inset-0 bg-cover bg-center blur-sm" style={{ backgroundImage: `url('${images[currentImage]?.imageData || ImagenLoginDefault}')`, backgroundSize: "cover" }}></div>
-        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${images[currentImage]?.imageData || ImagenLoginDefault}')`, backgroundSize: "contain" }}></div>
+      <div 
+        ref={imageContainerRef} 
+        className="hidden md:flex w-1/2 items-center justify-center relative" 
+        style={{ background: `linear-gradient(to bottom, ${COLOR_LIGHT_BLUE}80, ${COLOR_WHITE})` }}
+      >
+        <div 
+          className="absolute inset-0 bg-cover bg-center blur-md" 
+          style={{ 
+            backgroundImage: `url('${images[currentImage]?.imageData || ImagenLoginDefault}')`, 
+            backgroundSize: "cover",
+            backgroundColor: `${COLOR_LIGHT_BLUE}40`
+          }}
+        ></div>
+        <div 
+          className="absolute inset-0 bg-cover bg-center" 
+          style={{ 
+            backgroundImage: `url('${images[currentImage]?.imageData || ImagenLoginDefault}')`, 
+            backgroundSize: "contain" 
+          }}
+        ></div>
       </div>
 
       <Transition appear show={showRecoveryModal} as={Fragment}>
         <Dialog as="div" className="relative z-50" onClose={() => setShowRecoveryModal(false)}>
-          <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0">
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
             <div className="fixed inset-0 bg-black bg-opacity-25" />
           </Transition.Child>
 
           <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4 text-center">
-              <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0 scale-95" enterTo="opacity-100 scale-100" leave="ease-in duration-200" leaveFrom="opacity-100 scale-100" leaveTo="opacity-0 scale-95">
-                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                  <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900">
+            <div className="flex min-h-full items-center justify-center md:justify-start p-4 text-center">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all md:ml-8">
+                  <Dialog.Title
+                    as="h3"
+                    className="text-lg font-medium leading-6"
+                    style={{ color: COLOR_DARK_GRAY }}
+                  >
                     {codeSent ? "Verificar Código" : "Recuperar Contraseña"}
                   </Dialog.Title>
                   <form onSubmit={codeSent ? handleVerifyCode : handleForgotPassword} className="mt-4 space-y-4">
                     {!codeSent ? (
                       <>
-                        <label className="block text-sm font-medium text-gray-700">DNI</label>
-                        <input type="text" value={forgotDni} onChange={(e) => setForgotDni(e.target.value)} className="w-full px-4 py-2 border rounded-lg bg-gray-50" required />
-                        <button type="submit" className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg flex items-center justify-center" disabled={isSendingCode}>
-                          {isSendingCode ? (<><FaSpinner className="animate-spin mr-2" />Enviando...</>) : "Enviar Código"}
+                        <label className="block text-sm font-medium" style={{ color: COLOR_DARK_GRAY }}>
+                          DNI
+                        </label>
+                        <div className="relative">
+                          <FaUser className="absolute left-3 top-2.5" style={{ color: COLOR_TEAL }} />
+                          <input
+                            type="text"
+                            value={forgotDni}
+                            onChange={(e) => setForgotDni(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-300 transition-all duration-300"
+                            style={{ backgroundColor: COLOR_WHITE, borderColor: COLOR_DARK_GRAY }}
+                            required
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          className="w-full text-white py-2 px-4 rounded-lg flex items-center justify-center relative overflow-hidden transition-all duration-300 button-glow"
+                          style={{ backgroundColor: COLOR_BLUE }}
+                          disabled={isSendingCode}
+                        >
+                          <span className="relative z-10 flex items-center">
+                            {isSendingCode ? (
+                              <>
+                                <FaSpinner className="animate-spin mr-3" />
+                                Enviando...
+                              </>
+                            ) : (
+                              "Enviar Código"
+                            )}
+                          </span>
                         </button>
                       </>
                     ) : (
                       <>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm" style={{ color: COLOR_DARK_GRAY }}>
                           Se envió un código a: {maskEmail(email)} (expira en {formatTimer(codeTimer)})
                         </p>
-                        <label className="block text-sm font-medium text-gray-700">Código</label>
+                        <label className="block text-sm font-medium" style={{ color: COLOR_DARK_GRAY }}>
+                          Código
+                        </label>
                         <div className="flex space-x-2 justify-center" onPaste={handleCodePaste}>
                           {verificationCode.map((digit, index) => (
-                            <input
-                              key={index}
-                              type="text"
-                              maxLength={1}
-                              value={digit}
-                              onChange={(e) => handleCodeChange(index, e.target.value)}
-                              onKeyDown={(e) => handleKeyDown(index, e)}
-                              ref={(el) => (inputRefs.current[index] = el)}
-                              className="w-10 h-10 text-center border rounded-lg bg-gray-50 focus:ring-2 focus:ring-green-500"
-                              required
-                            />
+                            <div key={index} className="relative">
+                              <FaKey className="absolute left-2 top-2.5" style={{ color: COLOR_TEAL }} />
+                              <input
+                                type="text"
+                                maxLength={1}
+                                value={digit}
+                                onChange={(e) => handleCodeChange(index, e.target.value)}
+                                onKeyDown={(e) => handleKeyDown(index, e)}
+                                ref={(el) => (inputRefs.current[index] = el)}
+                                className="w-10 h-10 pl-8 text-center border rounded-lg focus:ring-2 focus:ring-blue-300 transition-all duration-300"
+                                style={{ backgroundColor: COLOR_WHITE, borderColor: COLOR_DARK_GRAY }}
+                                required
+                              />
+                            </div>
                           ))}
                         </div>
                         {codeAttempts > 0 && codeAttempts < 3 && (
-                          <p className="text-sm text-red-500">Intento {codeAttempts} de 3</p>
+                          <p className="text-sm text-red-400">Intento {codeAttempts} de 3</p>
                         )}
                         <button
                           type="submit"
-                          className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg flex items-center justify-center"
+                          className="w-full text-white py-2 px-4 rounded-lg flex items-center justify-center relative overflow-hidden transition-all duration-300 button-glow"
+                          style={{ backgroundColor: COLOR_BLUE }}
                           disabled={isVerifying}
                         >
-                          {isVerifying ? (
-                            <>
-                              <FaSpinner className="animate-spin mr-2" />
-                              Verificando...
-                            </>
-                          ) : (
-                            "Verificar"
-                          )}
+                          <span className="relative z-10 flex items-center">
+                            {isVerifying ? (
+                              <>
+                                <FaSpinner className="animate-spin mr-3" />
+                                Verificando...
+                              </>
+                            ) : (
+                              "Verificar"
+                            )}
+                          </span>
                         </button>
                       </>
                     )}
-                    {error && (
-                      <p className="text-sm text-red-500 text-center">{error}</p>
+                    {recoveryError && (
+                      <p className="flex items-center bg-red-100 text-red-600 text-sm p-3 rounded-lg shadow-sm animate-fade-in">
+                        <FaExclamationCircle className="mr-2" />
+                        <span>{recoveryError}</span>
+                      </p>
                     )}
                   </form>
                 </Dialog.Panel>
@@ -289,6 +447,102 @@ const Login = () => {
           </div>
         </Dialog>
       </Transition>
+      <style jsx>{`
+        .animate-contour-glow {
+          position: relative;
+          filter: url(#glow-filter);
+        }
+        .animate-contour-glow::after {
+          content: '';
+          position: absolute;
+          top: -2px;
+          left: -2px;
+          right: -2px;
+          bottom: -2px;
+          background: linear-gradient(
+            45deg,
+            rgba(147, 197, 253, 0) 0%,
+            rgba(147, 197, 253, 0.8) 25%,
+            rgba(147, 197, 253, 0) 50%,
+            rgba(147, 197, 253, 0.8) 75%,
+            rgba(147, 197, 253, 0) 100%
+          );
+          background-size: 200% 200%;
+          animation: glowTrail 3s linear infinite;
+          z-index: 0;
+          mix-blend-mode: overlay;
+        }
+        .button-glow {
+          position: relative;
+          transition: all 0.3s ease-in-out;
+        }
+        .button-glow::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: radial-gradient(
+            circle at center,
+            rgba(147, 197, 253, 0.4) 0%,
+            transparent 70%
+          );
+          opacity: 0;
+          transition: opacity 0.3s ease-in-out;
+          z-index: 0;
+        }
+        .button-glow:hover::before {
+          opacity: 1;
+        }
+        .button-glow:hover {
+          background-color: #3b82f6;
+          box-shadow: 0 0 10px rgba(147, 197, 253, 0.4);
+        }
+        .button-glow:disabled {
+          cursor: not-allowed;
+          opacity: 0.6;
+          box-shadow: none;
+        }
+        .button-glow:disabled::before {
+          opacity: 0;
+        }
+        @keyframes glowTrail {
+          0% {
+            background-position: 0% 0%;
+          }
+          100% {
+            background-position: 200% 200%;
+          }
+        }
+        @keyframes fade-in {
+          0% { opacity: 0; transform: translateY(-10px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fade-out {
+          0% { opacity: 1; transform: translateY(0); }
+          100% { opacity: 0; transform: translateY(-10px); }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.3s ease-in forwards;
+        }
+        .animate-fade-out {
+          animation: fade-out 0.3s ease-out forwards;
+        }
+      `}</style>
+      <svg style={{ position: 'absolute', width: 0, height: 0 }}>
+        <defs>
+          <filter id="glow-filter">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur" />
+            <feFlood floodColor="#93c5fd" floodOpacity="0.7" result="color" />
+            <feComposite in="color" in2="blur" operator="in" result="coloredBlur" />
+            <feMerge>
+              <feMergeNode in="coloredBlur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+      </svg>
     </div>
   );
 };
