@@ -18,8 +18,8 @@ const Login = () => {
   const [dni, setDni] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [loginError, setLoginError] = useState(""); // Nuevo estado para errores de login
-  const [recoveryError, setRecoveryError] = useState(""); // Renombrado para errores del modal
+  const [loginError, setLoginError] = useState("");
+  const [recoveryError, setRecoveryError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentImage, setCurrentImage] = useState(0);
@@ -40,7 +40,6 @@ const Login = () => {
 
   const validateDNI = (dni) => /^[a-zA-Z0-9]{1,12}$/.test(dni);
 
-  // Auto-dismiss messages after 3 seconds
   useEffect(() => {
     if (loginError || recoveryError || successMessage) {
       const timer = setTimeout(() => {
@@ -343,7 +342,7 @@ const Login = () => {
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all md:ml-8">
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all md:ml-[15rem] md:mt-[17rem] md:max-w-[29rem]">
                   <Dialog.Title
                     as="h3"
                     className="text-lg font-medium leading-6"
