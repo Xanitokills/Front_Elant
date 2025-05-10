@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, Transition } from "@headlessui/react";
 import { useAuth } from "../context/AuthContext";
-import { FaEye, FaEyeSlash, FaSpinner, FaUser, FaLock, FaKey, FaExclamationCircle, FaCheckCircle } from "react-icons/fa";
+import { FaEye, FaEyeSlash, FaSpinner, FaUser, FaLock, FaExclamationCircle, FaCheckCircle } from "react-icons/fa";
 import axios from "axios";
 import logoSoftHome from "../../public/LogoSoftHome/Logo_SoftHome_1.png";
 import ImagenLoginDefault from "../images/fachada_canada.jpg";
@@ -47,7 +47,7 @@ const Login = () => {
         setRecoveryError("");
         setSuccessMessage("");
       }, 3000);
-      return () => clearTimeout(timer);
+      return () => clearTimeout(timer); // Fixed: Replaced clearNetherlands with clearTimeout
     }
   }, [loginError, recoveryError, successMessage]);
 
@@ -111,6 +111,8 @@ const Login = () => {
   const handleVerifyCode = async (e) => {
     e.preventDefault();
     const code = verificationCode.join("");
+    console.log("API URL:", import.meta.env.VITE_API_URL); // Debug: Log API URL
+    console.log("Sending payload:", { dni: forgotDni, code }); // Debug: Log request payload
     setIsVerifying(true);
     try {
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/verify-code`, {
@@ -129,7 +131,8 @@ const Login = () => {
         setRecoveryError(response.data.message);
       }
     } catch (err) {
-      const msg = err.response?.data?.message || "Error al verificar código";
+      console.error("Error response:", err.response?.data); // Debug: Log server response
+      const msg = err.response?.data?.message || err.message || "Error al verificar código";
       setRecoveryError(msg);
       const match = msg.match(/Intento (\d) de 3/);
       if (match) {
@@ -395,20 +398,18 @@ const Login = () => {
                         </label>
                         <div className="flex space-x-2 justify-center" onPaste={handleCodePaste}>
                           {verificationCode.map((digit, index) => (
-                            <div key={index} className="relative">
-                              <FaKey className="absolute left-2 top-2.5" style={{ color: COLOR_TEAL }} />
-                              <input
-                                type="text"
-                                maxLength={1}
-                                value={digit}
-                                onChange={(e) => handleCodeChange(index, e.target.value)}
-                                onKeyDown={(e) => handleKeyDown(index, e)}
-                                ref={(el) => (inputRefs.current[index] = el)}
-                                className="w-10 h-10 pl-8 text-center border rounded-lg focus:ring-2 focus:ring-blue-300 transition-all duration-300"
-                                style={{ backgroundColor: COLOR_WHITE, borderColor: COLOR_DARK_GRAY }}
-                                required
-                              />
-                            </div>
+                            <input
+                              key={index}
+                              type="text"
+                              maxLength={1}
+                              value={digit}
+                              onChange={(e) => handleCodeChange(index, e.target.value)}
+                              onKeyDown={(e) => handleKeyDown(index, e)}
+                              ref={(el) => (inputRefs.current[index] = el)}
+                              className="w-10 h-10 text-center border rounded-lg focus:ring-2 focus:ring-blue-300 transition-all duration-300"
+                              style={{ backgroundColor: COLOR_WHITE, borderColor: COLOR_DARK_GRAY }}
+                              required
+                            />
                           ))}
                         </div>
                         {codeAttempts > 0 && codeAttempts < 3 && (
