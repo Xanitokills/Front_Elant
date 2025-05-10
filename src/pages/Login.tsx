@@ -47,7 +47,7 @@ const Login = () => {
         setRecoveryError("");
         setSuccessMessage("");
       }, 3000);
-      return () => clearTimeout(timer); // Fixed: Replaced clearNetherlands with clearTimeout
+      return () => clearTimeout(timer);
     }
   }, [loginError, recoveryError, successMessage]);
 
@@ -111,8 +111,6 @@ const Login = () => {
   const handleVerifyCode = async (e) => {
     e.preventDefault();
     const code = verificationCode.join("");
-    console.log("API URL:", import.meta.env.VITE_API_URL); // Debug: Log API URL
-    console.log("Sending payload:", { dni: forgotDni, code }); // Debug: Log request payload
     setIsVerifying(true);
     try {
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/verify-code`, {
@@ -128,20 +126,40 @@ const Login = () => {
         setForgotDni("");
         setCodeAttempts(0);
       } else {
+        setVerificationCode(["", "", "", "", "", ""]);
         setRecoveryError(response.data.message);
       }
     } catch (err) {
-      console.error("Error response:", err.response?.data); // Debug: Log server response
+      setVerificationCode(["", "", "", "", "", ""]);
       const msg = err.response?.data?.message || err.message || "Error al verificar código";
       setRecoveryError(msg);
       const match = msg.match(/Intento (\d) de 3/);
       if (match) {
         const intento = parseInt(match[1], 10);
         setCodeAttempts(intento);
+        if (intento >= 3) {
+          setRecoveryError("Todos los intentos fallidos. Por favor, solicita un nuevo código.");
+          setTimeout(() => {
+            setShowRecoveryModal(false);
+            setCodeSent(false);
+            setVerificationCode(["", "", "", "", "", ""]);
+            setForgotDni("");
+            setCodeAttempts(0);
+          }, 3000);
+        }
       }
     } finally {
       setIsVerifying(false);
     }
+  };
+
+  const handleCancel = () => {
+    setShowRecoveryModal(false);
+    setCodeSent(false);
+    setVerificationCode(["", "", "", "", "", ""]);
+    setForgotDni("");
+    setCodeAttempts(0);
+    setRecoveryError("");
   };
 
   const handleCodeChange = (index, value) => {
@@ -321,7 +339,7 @@ const Login = () => {
       </div>
 
       <Transition appear show={showRecoveryModal} as={Fragment}>
-        <Dialog as="div" className="relative z-50" onClose={() => setShowRecoveryModal(false)}>
+        <Dialog as="div" className="relative z-50" onClose={() => {}}>
           <Transition.Child
             as={Fragment}
             enter="ease-out duration-300"
@@ -387,6 +405,14 @@ const Login = () => {
                             )}
                           </span>
                         </button>
+                        <button
+                          type="button"
+                          onClick={handleCancel}
+                          className="w-full text-gray-600 py-2 px-4 rounded-lg border border-gray-300 flex items-center justify-center transition-all duration-300 hover:bg-gray-100"
+                          style={{ color: COLOR_DARK_GRAY }}
+                        >
+                          Cancelar
+                        </button>
                       </>
                     ) : (
                       <>
@@ -431,6 +457,14 @@ const Login = () => {
                               "Verificar"
                             )}
                           </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancel}
+                          className="w-full text-gray-600 py-2 px-4 rounded-lg border border-gray-300 flex items-center justify-center transition-all duration-300 hover:bg-gray-100"
+                          style={{ color: COLOR_DARK_GRAY }}
+                        >
+                          Cancelar
                         </button>
                       </>
                     )}
