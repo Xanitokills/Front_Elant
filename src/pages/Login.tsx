@@ -101,6 +101,7 @@ const Login = () => {
       setCodeSent(true);
       setCodeTimer(900);
       setRecoveryError("");
+      setCodeAttempts(0); // Reiniciar intentos fallidos al enviar un nuevo código
     } catch (err) {
       setRecoveryError(err.response?.data?.message || "DNI no encontrado o error al enviar código");
     } finally {
@@ -127,26 +128,42 @@ const Login = () => {
         setCodeAttempts(0);
       } else {
         setVerificationCode(["", "", "", "", "", ""]);
-        setRecoveryError(response.data.message);
-      }
-    } catch (err) {
-      setVerificationCode(["", "", "", "", "", ""]);
-      const msg = err.response?.data?.message || err.message || "Error al verificar código";
-      setRecoveryError(msg);
-      const match = msg.match(/Intento (\d) de 3/);
-      if (match) {
-        const intento = parseInt(match[1], 10);
-        setCodeAttempts(intento);
-        if (intento >= 3) {
-          setRecoveryError("Todos los intentos fallidos. Por favor, solicita un nuevo código.");
+        const msg = response.data.message || "Código inválido";
+        if (msg === "Código inválido. Se ha superado el número de intentos.") {
+          setCodeAttempts(3); // Forzamos 3 para reflejar el límite alcanzado
+          setRecoveryError(msg);
           setTimeout(() => {
             setShowRecoveryModal(false);
             setCodeSent(false);
             setVerificationCode(["", "", "", "", "", ""]);
             setForgotDni("");
             setCodeAttempts(0);
-          }, 3000);
+          }, 1000); // Cierra el modal después de 1 segundo
+        } else {
+          const match = msg.match(/Intento (\d) de 3/);
+          const nuevosIntentos = match ? parseInt(match[1], 10) : codeAttempts + 1;
+          setCodeAttempts(nuevosIntentos);
+          setRecoveryError(msg);
         }
+      }
+    } catch (err) {
+      setVerificationCode(["", "", "", "", "", ""]);
+      const msg = err.response?.data?.message || "Código inválido";
+      if (msg === "Código inválido. Se ha superado el número de intentos.") {
+        setCodeAttempts(3); // Forzamos 3 para reflejar el límite alcanzado
+        setRecoveryError(msg);
+        setTimeout(() => {
+          setShowRecoveryModal(false);
+          setCodeSent(false);
+          setVerificationCode(["", "", "", "", "", ""]);
+          setForgotDni("");
+          setCodeAttempts(0);
+        }, 2000); // Cierra el modal después de 1 segundo
+      } else {
+        const match = msg.match(/Intento (\d) de 3/);
+        const nuevosIntentos = match ? parseInt(match[1], 10) : codeAttempts + 1;
+        setCodeAttempts(nuevosIntentos);
+        setRecoveryError(msg);
       }
     } finally {
       setIsVerifying(false);
