@@ -366,6 +366,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             cancelButtonText: "Cerrar sesión",
             timer: alertTimer,
             timerProgressBar: true,
+            allowOutsideClick: false, // Impide cerrar al hacer clic fuera
+            allowEscapeKey: false, // Impide cerrar con la tecla Escape
             didOpen: () => {
               const button = Swal.getConfirmButton();
               if (button) button.focus();
@@ -509,7 +511,6 @@ const login = async (dni: string, password: string) => {
     setIsLoading(false);
   }
 };
-
 
   const logout = () => {
     //console.log("AuthContext - Logging out");
