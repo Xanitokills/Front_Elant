@@ -190,6 +190,16 @@ const LoginConfigPage = () => {
       return;
     }
 
+    const token = localStorage.getItem("token"); // Obtener el token de localStorage
+    if (!token) {
+      Swal.fire(
+        "Error",
+        "No se encontró un token de autenticación. Por favor, inicia sesión nuevamente.",
+        "error"
+      );
+      return;
+    }
+
     const resizedImage = await resizeImage(imageFile);
 
     try {
@@ -202,7 +212,10 @@ const LoginConfigPage = () => {
         `${import.meta.env.VITE_API_URL}/upload-login-images`,
         formData,
         {
-          headers: { "Content-Type": "multipart/form-data" },
+          headers: {
+            "Content-Type": "multipart/form-data",
+            Authorization: `Bearer ${token}`, // Añadir el token
+          },
         }
       );
 
@@ -243,9 +256,52 @@ const LoginConfigPage = () => {
 
     if (confirm.isConfirmed) {
       try {
-        await axios.delete(
-          `${import.meta.env.VITE_API_URL}/delete-login-image/${imageId}`
-        );
+        let token = localStorage.getItem("token"); // Obtener el token
+        if (!token) {
+          Swal.fire(
+            "Error",
+            "No se encontró un token de autenticación. Por favor, inicia sesión nuevamente.",
+            "error"
+          );
+          return;
+        }
+
+        const deleteImage = async (token: string) => {
+          await axios.delete(
+            `${import.meta.env.VITE_API_URL}/delete-login-image/${imageId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+        };
+
+        try {
+          await deleteImage(token);
+        } catch (error: any) {
+          if (
+            error.response?.status === 401 &&
+            error.response?.data?.message === "Token expirado"
+          ) {
+            // Intentar renovar el token
+            const refreshResponse = await axios.post(
+              `${import.meta.env.VITE_API_URL}/refresh-token`,
+              {},
+              {
+                headers: { Authorization: `Bearer ${token}` },
+              }
+            );
+            token = refreshResponse.data.token;
+            localStorage.setItem("token", token); // Actualizar el token
+
+            // Reintentar la solicitud con el nuevo token
+            await deleteImage(token);
+          } else {
+            throw error; // Lanzar otros errores
+          }
+        }
+
         Swal.fire({
           icon: "success",
           title: "Eliminada",
@@ -254,12 +310,15 @@ const LoginConfigPage = () => {
           showConfirmButton: false,
         });
         fetchImages();
-      } catch (error) {
-        Swal.fire("Error", "No se pudo eliminar la imagen.", "error");
+      } catch (error: any) {
+        Swal.fire(
+          "Error",
+          error?.response?.data?.message || "No se pudo eliminar la imagen.",
+          "error"
+        );
       }
     }
   };
-
   const handleViewImage = (imageUrl: string) => {
     Swal.fire({
       title: "Vista de Imagen",
