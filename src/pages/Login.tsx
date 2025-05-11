@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { FaEye, FaEyeSlash, FaSpinner, FaUser, FaLock, FaExclamationCircle, FaCheckCircle } from "react-icons/fa";
 import axios from "axios";
 import logoSoftHome from "../../public/LogoSoftHome/Logo_SoftHome_1.png";
-import ImagenLoginDefault from "../images/fachada_canada.jpg";
+import ImagenLoginDefault from "../../public/images/SoftHome_login_1.png";
 
 const COLOR_DARK_GRAY = "#4a5568";
 const COLOR_LIGHT_BLUE = "#93c5fd";
@@ -370,7 +370,7 @@ const Login = () => {
           </Transition.Child>
 
           <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center md:justify-start p-4 text-center">
+            <div className="flex min-h-full items-center justify-center p-4 text-center">
               <Transition.Child
                 as={Fragment}
                 enter="ease-out duration-300"
@@ -380,19 +380,19 @@ const Login = () => {
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all md:ml-[15rem] md:mt-[17rem] md:max-w-[29rem]">
+                <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                   <Dialog.Title
                     as="h3"
                     className="text-lg font-medium leading-6"
                     style={{ color: COLOR_DARK_GRAY }}
                   >
-                    {codeSent ? "Verificar Código" : "Recuperar Contraseña"}
+                    {codeSent ? "Verificar Código" : "Recuperar tu Contraseña"}
                   </Dialog.Title>
                   <form onSubmit={codeSent ? handleVerifyCode : handleForgotPassword} className="mt-4 space-y-4">
                     {!codeSent ? (
                       <>
                         <label className="block text-sm font-medium" style={{ color: COLOR_DARK_GRAY }}>
-                          DNI
+                          Ingresa tu DNI para recuperar tu contraseña
                         </label>
                         <div className="relative">
                           <FaUser className="absolute left-3 top-2.5" style={{ color: COLOR_TEAL }} />
@@ -400,6 +400,7 @@ const Login = () => {
                             type="text"
                             value={forgotDni}
                             onChange={(e) => setForgotDni(e.target.value)}
+                            maxLength={12}
                             className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-300 transition-all duration-300"
                             style={{ backgroundColor: COLOR_WHITE, borderColor: COLOR_DARK_GRAY }}
                             required
@@ -463,6 +464,7 @@ const Login = () => {
                           className="w-full text-white py-2 px-4 rounded-lg flex items-center justify-center relative overflow-hidden transition-all duration-300 button-glow"
                           style={{ backgroundColor: COLOR_BLUE }}
                           disabled={isVerifying}
+也不能
                         >
                           <span className="relative z-10 flex items-center">
                             {isVerifying ? (
