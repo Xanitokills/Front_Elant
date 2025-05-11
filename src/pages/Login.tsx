@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { FaEye, FaEyeSlash, FaSpinner, FaUser, FaLock, FaExclamationCircle, FaCheckCircle } from "react-icons/fa";
 import axios from "axios";
 import logoSoftHome from "../../public/LogoSoftHome/Logo_SoftHome_1.png";
-import ImagenLoginDefault from "../../public/images/SoftHome_login_1.png";
+import ImagenLoginDefault from "../../public/images/SoftHome_login_2.png";
 
 const COLOR_DARK_GRAY = "#4a5568";
 const COLOR_LIGHT_BLUE = "#93c5fd";
