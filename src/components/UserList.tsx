@@ -1104,7 +1104,7 @@ const UserList = () => {
           )}
         </div>
         <SwitchContainer>
-          <span>Mostrar {showActive ? "Activos" : "Inactivos"}</span>
+          <span>Personas {showActive ? "Activas" : "Inactivas"}</span>
           <Switch
             onChange={() => {
               setShowActive(!showActive);
@@ -1149,7 +1149,18 @@ const UserList = () => {
             </tr>
           </thead>
           <tbody>
-            {paginatedPersons.length === 0 ? (
+            {isLoading ? (
+              <tr>
+                <td colSpan={7} className="py-8 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <Spinner className="w-6 h-6" />
+                    <SpinnerText className="text-sm">
+                      Cargando personas...
+                    </SpinnerText>
+                  </div>
+                </td>
+              </tr>
+            ) : paginatedPersons.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-4 text-center text-gray-500">
                   No hay personas para mostrar.
@@ -1172,10 +1183,10 @@ const UserList = () => {
                       className={`px-2 py-1 rounded-full text-xs font-semibold ${
                         person.ACCESO_SISTEMA === false &&
                         person.INTENTOS_FALLIDOS_CONTRASEÑA === 5
-                          ? "bg-indigo-100 text-indigo-800" // Bloqueado (tono sobrio y elegante)
+                          ? "bg-indigo-100 text-indigo-800"
                           : person.ACCESO_SISTEMA
-                          ? "bg-green-100 text-green-800" // Sí
-                          : "bg-red-100 text-red-800" // No
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
                       }`}
                     >
                       {person.ACCESO_SISTEMA === false &&
