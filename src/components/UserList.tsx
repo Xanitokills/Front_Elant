@@ -57,6 +57,7 @@ interface Person {
   FASES_RESIDENTE?: string;
   FASES_TRABAJADOR?: string;
   DEPARTAMENTOS?: string;
+  INTENTOS_FALLIDOS_CONTRASEÑA: number;
 }
 
 interface PersonDetails {
@@ -224,6 +225,7 @@ const UserList = () => {
       }
       if (!response.ok) throw new Error("Error al obtener las personas");
       const data = await response.json();
+      console.log("Datos recibidos:", data); // Añade este log
       setPersons(data);
     } catch (error) {
       setMessage({
@@ -237,7 +239,6 @@ const UserList = () => {
       setIsLoading(false);
     }
   };
-
   const fetchPersonDetails = async (
     id: number,
     mode: "view" | "edit" | "roles"
@@ -1169,12 +1170,20 @@ const UserList = () => {
                   <td className="py-3 px-4">
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        person.ACCESO_SISTEMA
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
+                        person.ACCESO_SISTEMA === false &&
+                        person.INTENTOS_FALLIDOS_CONTRASEÑA === 5
+                          ? "bg-indigo-100 text-indigo-800" // Bloqueado (tono sobrio y elegante)
+                          : person.ACCESO_SISTEMA
+                          ? "bg-green-100 text-green-800" // Sí
+                          : "bg-red-100 text-red-800" // No
                       }`}
                     >
-                      {person.ACCESO_SISTEMA ? "Sí" : "No"}
+                      {person.ACCESO_SISTEMA === false &&
+                      person.INTENTOS_FALLIDOS_CONTRASEÑA === 5
+                        ? "Bloqueado"
+                        : person.ACCESO_SISTEMA
+                        ? "Sí"
+                        : "No"}
                     </span>
                   </td>
                   <td className="py-3 px-4">

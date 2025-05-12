@@ -54,26 +54,27 @@ const LoginConfigPage = () => {
     fetchImages();
   }, [currentPage]);
 
-  const fetchImages = async () => {
-    try {
-      setLoading(true); // Iniciar la carga
-
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/get-login-images`
-      );
-      const loadedImages = response.data.images || [];
-      const maxPage = Math.ceil(loadedImages.length / imagesPerPage);
-      if (currentPage > maxPage && maxPage !== 0) {
-        setCurrentPage(maxPage);
-      } else {
-        setImages(loadedImages);
-      }
-    } catch (error) {
-      console.error("Error al cargar las imágenes:", error);
-    } finally {
-      setLoading(false); // Finalizar la carga
+const fetchImages = async () => {
+  try {
+    setLoading(true);
+    const response = await axios.get(
+      `${import.meta.env.VITE_API_URL}/get-login-images`
+    );
+    setImages(response.data.images || []);
+  } catch (error: any) {
+    console.error("Error al cargar las imágenes:", error);
+    if (error.response?.status === 404) {
+      // Manejar 404 como "no hay imágenes"
+      setImages([]);
+      // Opcional: mostrar un mensaje informativo
+      // Swal.fire("Info", "No hay imágenes disponibles.", "info");
+    } else {
+      Swal.fire("Error", "No se pudieron cargar las imágenes.", "error");
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -387,7 +388,7 @@ const LoginConfigPage = () => {
               className={`bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 w-full md:w-auto ${
                 loading ? "cursor-not-allowed opacity-50" : ""
               }`}
-              disabled={loading || images.length === 0} // Deshabilitar el botón mientras se carga o si no hay imágenes
+              disabled={loading || !imageFile} // Deshabilitar el botón mientras se carga o si no hay imágenes
             >
               Guardar Imagen
             </button>
