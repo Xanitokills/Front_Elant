@@ -2,7 +2,15 @@ import { useState, useEffect, useRef, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, Transition } from "@headlessui/react";
 import { useAuth } from "../context/AuthContext";
-import { FaEye, FaEyeSlash, FaSpinner, FaUser, FaLock, FaExclamationCircle, FaCheckCircle } from "react-icons/fa";
+import {
+  FaEye,
+  FaEyeSlash,
+  FaSpinner,
+  FaUser,
+  FaLock,
+  FaExclamationCircle,
+  FaCheckCircle,
+} from "react-icons/fa";
 import axios from "axios";
 import logoSoftHome from "../../public/LogoSoftHome/Logo_SoftHome_1.png";
 import ImagenLoginDefault from "../../public/images/SoftHome_login_2.png";
@@ -25,7 +33,14 @@ const Login = () => {
   const [currentImage, setCurrentImage] = useState(0);
   const [images, setImages] = useState([]);
   const [forgotDni, setForgotDni] = useState("");
-  const [verificationCode, setVerificationCode] = useState(["", "", "", "", "", ""]);
+  const [verificationCode, setVerificationCode] = useState([
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ]);
   const [codeSent, setCodeSent] = useState(false);
   const [email, setEmail] = useState("");
   const [codeAttempts, setCodeAttempts] = useState(0);
@@ -64,13 +79,15 @@ const Login = () => {
       await login(dni, password);
     } catch (err) {
       const error = err;
-      let errorMessage = "Error al iniciar sesión. Por favor, intenta de nuevo.";
+      let errorMessage =
+        "Error al iniciar sesión. Por favor, intenta de nuevo.";
       switch (error.code) {
         case "USER_NOT_FOUND":
           errorMessage = "Usuario no encontrado";
           break;
         case "ACCOUNT_LOCKED":
-          errorMessage = "Cuenta bloqueada por múltiples intentos fallidos. Contacta al administrador.";
+          errorMessage =
+            "Cuenta bloqueada por múltiples intentos fallidos. Contacta al administrador.";
           break;
         case "INVALID_PASSWORD":
           errorMessage = "Contraseña incorrecta";
@@ -96,14 +113,20 @@ const Login = () => {
     }
     setIsSendingCode(true);
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/forgot-password`, { dni: forgotDni });
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/forgot-password`,
+        { dni: forgotDni }
+      );
       setEmail(response.data.email);
       setCodeSent(true);
       setCodeTimer(900);
       setRecoveryError("");
-      setCodeAttempts(0); // Reiniciar intentos fallidos al enviar un nuevo código
+      setCodeAttempts(0);
     } catch (err) {
-      setRecoveryError(err.response?.data?.message || "DNI no encontrado o error al enviar código");
+      setRecoveryError(
+        err.response?.data?.message ||
+          "DNI no encontrado o error al enviar código"
+      );
     } finally {
       setIsSendingCode(false);
     }
@@ -114,13 +137,18 @@ const Login = () => {
     const code = verificationCode.join("");
     setIsVerifying(true);
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/verify-code`, {
-        dni: forgotDni,
-        code,
-      });
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/verify-code`,
+        {
+          dni: forgotDni,
+          code,
+        }
+      );
       if (response.data.success) {
         setRecoveryError("");
-        setSuccessMessage("¡Código verificado! Se ha enviado una nueva contraseña a tu correo.");
+        setSuccessMessage(
+          "¡Código verificado! Se ha enviado una nueva contraseña a tu correo."
+        );
         setShowRecoveryModal(false);
         setCodeSent(false);
         setVerificationCode(["", "", "", "", "", ""]);
@@ -130,7 +158,7 @@ const Login = () => {
         setVerificationCode(["", "", "", "", "", ""]);
         const msg = response.data.message || "Código inválido";
         if (msg === "Código inválido. Se ha superado el número de intentos.") {
-          setCodeAttempts(3); // Forzamos 3 para reflejar el límite alcanzado
+          setCodeAttempts(3);
           setRecoveryError(msg);
           setTimeout(() => {
             setShowRecoveryModal(false);
@@ -138,10 +166,12 @@ const Login = () => {
             setVerificationCode(["", "", "", "", "", ""]);
             setForgotDni("");
             setCodeAttempts(0);
-          }, 1000); // Cierra el modal después de 1 segundo
+          }, 1000);
         } else {
           const match = msg.match(/Intento (\d) de 3/);
-          const nuevosIntentos = match ? parseInt(match[1], 10) : codeAttempts + 1;
+          const nuevosIntentos = match
+            ? parseInt(match[1], 10)
+            : codeAttempts + 1;
           setCodeAttempts(nuevosIntentos);
           setRecoveryError(msg);
         }
@@ -150,7 +180,7 @@ const Login = () => {
       setVerificationCode(["", "", "", "", "", ""]);
       const msg = err.response?.data?.message || "Código inválido";
       if (msg === "Código inválido. Se ha superado el número de intentos.") {
-        setCodeAttempts(3); // Forzamos 3 para reflejar el límite alcanzado
+        setCodeAttempts(3);
         setRecoveryError(msg);
         setTimeout(() => {
           setShowRecoveryModal(false);
@@ -158,10 +188,12 @@ const Login = () => {
           setVerificationCode(["", "", "", "", "", ""]);
           setForgotDni("");
           setCodeAttempts(0);
-        }, 2000); // Cierra el modal después de 1 segundo
+        }, 2000);
       } else {
         const match = msg.match(/Intento (\d) de 3/);
-        const nuevosIntentos = match ? parseInt(match[1], 10) : codeAttempts + 1;
+        const nuevosIntentos = match
+          ? parseInt(match[1], 10)
+          : codeAttempts + 1;
         setCodeAttempts(nuevosIntentos);
         setRecoveryError(msg);
       }
@@ -191,7 +223,11 @@ const Login = () => {
   };
 
   const handleCodePaste = (e) => {
-    const pasted = e.clipboardData.getData("text").replace(/[^0-9a-fA-F]/g, "").slice(0, 6).toLowerCase();
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/[^0-9a-fA-F]/g, "")
+      .slice(0, 6)
+      .toLowerCase();
     if (pasted.length === 6) {
       setVerificationCode(pasted.split(""));
       inputRefs.current[5].focus();
@@ -226,33 +262,45 @@ const Login = () => {
       setCodeSent(false);
       setRecoveryError("El código ha expirado. Solicite un nuevo código.");
     }
-  }, [isAuthenticated, codeSent, codeTimer]);
+  }, [isAuthenticated, codeSent, codeTimer, navigate]);
 
   useEffect(() => {
-    axios.get(`${import.meta.env.VITE_API_URL}/get-login-images`).then((res) => {
-      setImages(Array.isArray(res.data.images) ? res.data.images : []);
-    }).catch(() => setImages([]));
+    axios
+      .get(`${import.meta.env.VITE_API_URL}/get-login-images`)
+      .then((res) => {
+        setImages(Array.isArray(res.data.images) ? res.data.images : []);
+      })
+      .catch(() => setImages([]));
   }, []);
 
   useEffect(() => {
     if (images.length > 0) {
-      const interval = setInterval(() => setCurrentImage((prev) => (prev + 1) % images.length), 5000);
+      const interval = setInterval(
+        () => setCurrentImage((prev) => (prev + 1) % images.length),
+        5000
+      );
       return () => clearInterval(interval);
     }
   }, [images]);
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row pt-10 md:pt-0" style={{ backgroundColor: COLOR_CHARCOAL }}>
+    <div
+      className="min-h-screen flex flex-col md:flex-row pt-10 md:pt-0"
+      style={{ backgroundColor: COLOR_WHITE }}
+    >
       <div className="flex flex-col justify-center items-center p-8 w-full md:w-1/2 bg-white shadow-md z-10">
         <div className="relative mb-6">
-          <img 
-            src={logoSoftHome} 
-            alt="Logo SoftHome" 
+          <img
+            src={logoSoftHome}
+            alt="Logo SoftHome"
             className="w-48 h-auto relative z-10 animate-contour-glow"
           />
         </div>
         <div className="w-full max-w-md">
-          <h1 className="text-3xl font-bold mb-6 text-center" style={{ color: COLOR_DARK_GRAY }}>
+          <h1
+            className="text-3xl font-bold mb-6 text-center"
+            style={{ color: COLOR_DARK_GRAY }}
+          >
             Iniciar Sesión
           </h1>
           {loginError && (
@@ -269,42 +317,55 @@ const Login = () => {
           )}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="relative">
-              <FaUser className="absolute left-3 top-2.5" style={{ color: COLOR_TEAL }} />
-              <input 
-                type="text" 
-                value={dni} 
-                onChange={(e) => setDni(e.target.value)} 
-                placeholder="DNI" 
-                required 
-                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-300 transition-all duration-300" 
-                style={{ backgroundColor: COLOR_WHITE, borderColor: COLOR_DARK_GRAY }}
-                disabled={isSubmitting} 
+              <FaUser
+                className="absolute left-3 top-2.5"
+                style={{ color: COLOR_TEAL }}
+              />
+              <input
+                type="text"
+                value={dni}
+                onChange={(e) => setDni(e.target.value)}
+                placeholder="DNI"
+                required
+                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-300 transition-all duration-300"
+                style={{
+                  backgroundColor: COLOR_WHITE,
+                  borderColor: COLOR_DARK_GRAY,
+                }}
+                disabled={isSubmitting}
               />
             </div>
             <div className="relative">
-              <FaLock className="absolute left-3 top-2.5" style={{ color: COLOR_TEAL }} />
-              <input 
-                type={showPassword ? "text" : "password"} 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                placeholder="Contraseña" 
-                required 
-                className="w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-blue-300 transition-all duration-300" 
-                style={{ backgroundColor: COLOR_WHITE, borderColor: COLOR_DARK_GRAY }}
-                disabled={isSubmitting} 
+              <FaLock
+                className="absolute left-3 top-2.5"
+                style={{ color: COLOR_TEAL }}
               />
-              <button 
-                type="button" 
-                onClick={() => setShowPassword(!showPassword)} 
-                className="absolute right-3 top-2.5 hover:text-blue-400 transition-colors duration-200" 
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Contraseña"
+                required
+
+                className="w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-blue-300 transition-all duration-300"
+                style={{
+                  backgroundColor: COLOR_WHITE,
+                  borderColor: COLOR_DARK_GRAY,
+                }}
+                disabled={isSubmitting}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-2.5 hover:text-blue-400 transition-colors duration-200"
                 style={{ color: COLOR_DARK_GRAY }}
               >
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
             </div>
-            <button 
-              type="submit" 
-              className="w-full text-white py-2 px-4 rounded-lg shadow-md flex items-center justify-center relative overflow-hidden transition-all duration-300 button-glow" 
+            <button
+              type="submit"
+              className="w-full text-white py-2 px-4 rounded-lg shadow-md flex items-center justify-center relative overflow-hidden transition-all duration-300 button-glow"
               style={{ backgroundColor: COLOR_BLUE }}
               disabled={isSubmitting}
             >
@@ -320,10 +381,14 @@ const Login = () => {
               </span>
             </button>
             <div className="text-center">
-              <a 
-                href="#" 
-                onClick={(e) => { e.preventDefault(); setShowRecoveryModal(true); setSuccessMessage(""); }} 
-                className="hover:underline hover:text-blue-400 transition-colors duration-200" 
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowRecoveryModal(true);
+                  setSuccessMessage("");
+                }}
+                className="hover:underline hover:text-blue-400 transition-colors duration-200"
                 style={{ color: COLOR_LIGHT_BLUE }}
               >
                 ¿Olvidé mi contraseña?
@@ -333,24 +398,29 @@ const Login = () => {
         </div>
       </div>
 
-      <div 
-        ref={imageContainerRef} 
-        className="hidden md:flex w-1/2 items-center justify-center relative" 
-        style={{ background: `linear-gradient(to bottom, ${COLOR_LIGHT_BLUE}80, ${COLOR_WHITE})` }}
+      <div
+        ref={imageContainerRef}
+        className="image-section w-full md:w-1/2 flex items-center justify-center relative min-h-[50vh] md:min-h-screen"
+        style={{
+          background: `linear-gradient(to bottom, ${COLOR_LIGHT_BLUE}80, ${COLOR_WHITE})`,
+        }}
       >
-        <div 
-          className="absolute inset-0 bg-cover bg-center blur-md" 
-          style={{ 
-            backgroundImage: `url('${images[currentImage]?.imageData || ImagenLoginDefault}')`, 
+        <div
+          className="absolute inset-0 bg-cover bg-center blur-md"
+          style={{
+            backgroundImage: `url('${
+              images[currentImage]?.imageData || ImagenLoginDefault
+            }')`,
             backgroundSize: "cover",
-            backgroundColor: `${COLOR_LIGHT_BLUE}40`
+            backgroundColor: `${COLOR_LIGHT_BLUE}40`,
           }}
         ></div>
-        <div 
-          className="absolute inset-0 bg-cover bg-center" 
-          style={{ 
-            backgroundImage: `url('${images[currentImage]?.imageData || ImagenLoginDefault}')`, 
-            backgroundSize: "contain" 
+        <div
+          className="absolute inset-0 bg-contain bg-center bg-no-repeat"
+          style={{
+            backgroundImage: `url('${
+              images[currentImage]?.imageData || ImagenLoginDefault
+            }')`,
           }}
         ></div>
       </div>
@@ -388,21 +458,35 @@ const Login = () => {
                   >
                     {codeSent ? "Verificar Código" : "Recuperar tu Contraseña"}
                   </Dialog.Title>
-                  <form onSubmit={codeSent ? handleVerifyCode : handleForgotPassword} className="mt-4 space-y-4">
+                  <form
+                    onSubmit={
+                      codeSent ? handleVerifyCode : handleForgotPassword
+                    }
+                    className="mt-4 space-y-4"
+                  >
                     {!codeSent ? (
                       <>
-                        <label className="block text-sm font-medium" style={{ color: COLOR_DARK_GRAY }}>
+                        <label
+                          className="block text-sm font-medium"
+                          style={{ color: COLOR_DARK_GRAY }}
+                        >
                           Ingresa tu DNI para recuperar tu contraseña
                         </label>
                         <div className="relative">
-                          <FaUser className="absolute left-3 top-2.5" style={{ color: COLOR_TEAL }} />
+                          <FaUser
+                            className="absolute left-3 top-2.5"
+                            style={{ color: COLOR_TEAL }}
+                          />
                           <input
                             type="text"
                             value={forgotDni}
                             onChange={(e) => setForgotDni(e.target.value)}
                             maxLength={12}
                             className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-300 transition-all duration-300"
-                            style={{ backgroundColor: COLOR_WHITE, borderColor: COLOR_DARK_GRAY }}
+                            style={{
+                              backgroundColor: COLOR_WHITE,
+                              borderColor: COLOR_DARK_GRAY,
+                            }}
                             required
                           />
                         </div>
@@ -434,37 +518,53 @@ const Login = () => {
                       </>
                     ) : (
                       <>
-                        <p className="text-sm" style={{ color: COLOR_DARK_GRAY }}>
-                          Se envió un código a: {maskEmail(email)} (expira en {formatTimer(codeTimer)})
+                        <p
+                          className="text-sm"
+                          style={{ color: COLOR_DARK_GRAY }}
+                        >
+                          Se envió un código a: {maskEmail(email)} (expira en{" "}
+                          {formatTimer(codeTimer)})
                         </p>
-                        <label className="block text-sm font-medium" style={{ color: COLOR_DARK_GRAY }}>
+                        <label
+                          className="block text-sm font-medium"
+                          style={{ color: COLOR_DARK_GRAY }}
+                        >
                           Código
                         </label>
-                        <div className="flex space-x-2 justify-center" onPaste={handleCodePaste}>
+                        <div
+                          className="flex space-x-2 justify-center"
+                          onPaste={handleCodePaste}
+                        >
                           {verificationCode.map((digit, index) => (
                             <input
                               key={index}
                               type="text"
                               maxLength={1}
                               value={digit}
-                              onChange={(e) => handleCodeChange(index, e.target.value)}
+                              onChange={(e) =>
+                                handleCodeChange(index, e.target.value)
+                              }
                               onKeyDown={(e) => handleKeyDown(index, e)}
                               ref={(el) => (inputRefs.current[index] = el)}
                               className="w-10 h-10 text-center border rounded-lg focus:ring-2 focus:ring-blue-300 transition-all duration-300"
-                              style={{ backgroundColor: COLOR_WHITE, borderColor: COLOR_DARK_GRAY }}
+                              style={{
+                                backgroundColor: COLOR_WHITE,
+                                borderColor: COLOR_DARK_GRAY,
+                              }}
                               required
                             />
                           ))}
                         </div>
                         {codeAttempts > 0 && codeAttempts < 3 && (
-                          <p className="text-sm text-red-400">Intento {codeAttempts} de 3</p>
+                          <p className="text-sm text-red-400">
+                            Intento {codeAttempts} de 3
+                          </p>
                         )}
                         <button
                           type="submit"
                           className="w-full text-white py-2 px-4 rounded-lg flex items-center justify-center relative overflow-hidden transition-all duration-300 button-glow"
                           style={{ backgroundColor: COLOR_BLUE }}
                           disabled={isVerifying}
-也不能
                         >
                           <span className="relative z-10 flex items-center">
                             {isVerifying ? (
@@ -501,12 +601,23 @@ const Login = () => {
         </Dialog>
       </Transition>
       <style jsx>{`
+        @media (max-width: 767px) {
+          .image-section {
+            display: none;
+          }
+          .min-h-screen {
+            flex-direction: column;
+          }
+          .flex-col {
+            width: 100%;
+          }
+        }
         .animate-contour-glow {
           position: relative;
           filter: url(#glow-filter);
         }
         .animate-contour-glow::after {
-          content: '';
+          content: "";
           position: absolute;
           top: -2px;
           left: -2px;
@@ -530,7 +641,7 @@ const Login = () => {
           transition: all 0.3s ease-in-out;
         }
         .button-glow::before {
-          content: '';
+          content: "";
           position: absolute;
           top: 0;
           left: 0;
@@ -569,12 +680,24 @@ const Login = () => {
           }
         }
         @keyframes fade-in {
-          0% { opacity: 0; transform: translateY(-10px); }
-          100% { opacity: 1; transform: translateY(0); }
+          0% {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
         @keyframes fade-out {
-          0% { opacity: 1; transform: translateY(0); }
-          100% { opacity: 0; transform: translateY(-10px); }
+          0% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+          100% {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
         }
         .animate-fade-in {
           animation: fade-in 0.3s ease-in forwards;
@@ -583,12 +706,17 @@ const Login = () => {
           animation: fade-out 0.3s ease-out forwards;
         }
       `}</style>
-      <svg style={{ position: 'absolute', width: 0, height: 0 }}>
+      <svg style={{ position: "absolute", width: 0, height: 0 }}>
         <defs>
           <filter id="glow-filter">
             <feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur" />
             <feFlood floodColor="#93c5fd" floodOpacity="0.7" result="color" />
-            <feComposite in="color" in2="blur" operator="in" result="coloredBlur" />
+            <feComposite
+              in="color"
+              in2="blur"
+              operator="in"
+              result="coloredBlur"
+            />
             <feMerge>
               <feMergeNode in="coloredBlur" />
               <feMergeNode in="SourceGraphic" />
