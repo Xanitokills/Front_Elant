@@ -1,123 +1,118 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import styled from "styled-components";
 import {
   FaSearch,
   FaSave,
-  FaFileExport,
   FaSignOutAlt,
   FaCheck,
+  FaFileExport,
 } from "react-icons/fa";
-import { useAuth } from "../context/AuthContext";
-import styled, { keyframes } from "styled-components";
 import Swal from "sweetalert2";
 
-const API_URL = import.meta.env.VITE_API_URL;
-
-// Define keyframes for animations
-const slideInDown = keyframes`
-  0% {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-`;
-
-const fadeIn = keyframes`
-  0% {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-`;
-
-// Styled components
+// Estilos
 const Container = styled.div`
-  padding: 1.5rem;
-  background-color: #f3f4f6;
-  min-height: 100vh;
-  @media (min-width: 768px) {
-    padding: 2rem;
-  }
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 20px;
 `;
 
 const Title = styled.h1`
   font-size: 1.5rem;
   font-weight: bold;
   margin-bottom: 1.5rem;
-  animation: ${slideInDown} 0.5s ease-out;
+  color: #1f2937;
 `;
 
 const TabButton = styled.button<{ active: boolean }>`
-  padding: 0.5rem 1rem;
-  font-weight: 600;
-  color: ${(props) => (props.active ? "#2563eb" : "#4b5563")};
-  border-bottom: ${(props) => (props.active ? "2px solid #2563eb" : "none")};
-  transition: color 0.2s ease, border-bottom 0.2s ease;
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: ${({ active }) => (active ? "#2563eb" : "#4b5563")};
+  border-bottom: ${({ active }) => (active ? "2px solid #2563eb" : "none")};
+  background: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
   &:hover {
     color: #2563eb;
   }
 `;
 
 const TabContent = styled.div`
-  animation: ${fadeIn} 0.5s ease-out;
   margin-top: 1.5rem;
 `;
 
 const Card = styled.div`
-  background-color: white;
-  padding: 1.5rem;
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin-bottom: 1.5rem;
-  transition: box-shadow 0.2s ease;
-  &:hover {
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-  }
-  @media (min-width: 768px) {
-    padding: 2rem;
-  }
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+  border: 1px solid #e5e7eb;
 `;
 
 const Input = styled.input`
-  border: 1px solid #d1d5db;
-  padding: 0.75rem;
-  border-radius: 0.375rem;
   width: 100%;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: #1f2937;
+  transition: border-color 0.2s ease;
+
   &:focus {
     outline: none;
     border-color: #2563eb;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+  }
+
+  &[type="text"][readonly] {
+    background-color: #f3f4f6;
+    cursor: not-allowed;
   }
 `;
 
 const Select = styled.select`
-  border: 1px solid #d1d5db;
-  padding: 0.75rem;
-  border-radius: 0.375rem;
   width: 100%;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: #1f2937;
+  background: white;
+  transition: border-color 0.2s ease;
+
   &:focus {
     outline: none;
     border-color: #2563eb;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+  }
+
+  &:disabled {
+    background-color: #f3f4f6;
+    cursor: not-allowed;
   }
 `;
 
 const Button = styled.button`
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  background: #2563eb;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+
   &:hover {
-    transform: translateY(-1px);
+    background: #1d4ed8;
+  }
+
+  &:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
   }
 `;
 
@@ -126,22 +121,36 @@ const TableRow = styled.tr<{
   $delay: number;
   $isHighlighted?: boolean;
 }>`
-  animation: ${fadeIn} 0.5s ease-out forwards;
-  animation-delay: ${(props) => props.$delay}s;
-  background-color: ${(props) =>
-    props.$isHighlighted
-      ? "rgba(37, 99, 235, 0.3)"
-      : props.$estado === 1
-      ? "#f0fff4"
-      : "#fef2f2"};
+  background: ${({ $isHighlighted }) => ($isHighlighted ? "#f0fdf4" : "white")};
+  animation: fadeIn 0.5s ease-in-out;
+  animation-delay: ${({ $delay }) => $delay}s;
+  transition: background 0.3s ease;
+
+  td {
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 0.875rem;
+    color: ${({ $estado }) => ($estado === 1 ? "#1f2937" : "#6b7280")};
+  }
+
   &:hover {
-    background-color: ${(props) =>
-      props.$isHighlighted ? "rgba(37, 99, 235, 0.4)" : "#f9fafb"};
+    background: #f9fafb;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 `;
 
-interface Propietario {
-  ID_USUARIO: number;
+// Interfaces
+interface Residente {
+  ID_RESIDENTE: number;
   NOMBRE_COMPLETO: string;
 }
 
@@ -149,14 +158,15 @@ interface Visitante {
   ID_VISITA: number;
   NRO_DPTO: number | null;
   NOMBRE_VISITANTE: string;
-  DNI_VISITANTE: string;
+  NRO_DOC_VISITANTE: string;
+  ID_TIPO_DOC_VISITANTE: number | null;
   FECHA_INGRESO: string;
   HORA_INGRESO: string;
   FECHA_SALIDA: string | null;
   HORA_SALIDA: string | null;
   MOTIVO: string;
   ID_USUARIO_REGISTRO: number;
-  ID_USUARIO_PROPIETARIO: number;
+  ID_RESIDENTE: number;
   NOMBRE_PROPIETARIO: string;
   ESTADO: number | boolean;
 }
@@ -166,147 +176,283 @@ interface VisitaProgramada {
   NRO_DPTO: number;
   NOMBRE_VISITANTE: string;
   DNI_VISITANTE: string;
+  ID_TIPO_DOC_VISITANTE: number | null;
   FECHA_LLEGADA: string;
   HORA_LLEGADA: string | null;
   MOTIVO: string;
-  ID_USUARIO_PROPIETARIO: number;
+  ID_RESIDENTE: number;
   NOMBRE_PROPIETARIO: string;
   ESTADO: number | boolean;
 }
 
-// Función para normalizar fechas a YYYY-MM-DD
-const formatDate = (dateInput: string | Date): string => {
-  if (!dateInput) return "-";
-  try {
-    let date: Date;
-    if (typeof dateInput === "string") {
-      if (dateInput.includes("T")) {
-        date = new Date(dateInput);
-      } else {
-        date = new Date(`${dateInput}T00:00:00Z`);
-      }
-    } else {
-      date = dateInput;
-    }
-    if (isNaN(date.getTime())) return "-";
-    const year = date.getUTCFullYear();
-    const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
-    const day = date.getUTCDate().toString().padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  } catch {
-    return "-";
-  }
-};
+interface FilterState {
+  estado: string;
+  nroDpto: string;
+  nombre: string;
+}
 
-// Función para extraer hora en formato HH:MM:SS en hora local de Lima
-const formatTime = (dateInput: string | Date): string => {
-  if (!dateInput) return "-";
-  try {
-    let date: Date;
-    if (typeof dateInput === "string") {
-      if (dateInput.includes("T")) {
-        date = new Date(dateInput);
-      } else {
-        date = new Date(`${dateInput}T00:00:00Z`);
-      }
-    } else {
-      date = dateInput;
-    }
-    if (isNaN(date.getTime())) return "-";
-    return date.toLocaleTimeString("es-PE", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-      timeZone: "America/Lima",
-    });
-  } catch {
-    return "-";
-  }
-};
+interface FilterScheduledState {
+  nroDpto: string;
+  nombre: string;
+  fecha: string;
+}
 
-// Función para formatear fecha y hora combinadas
-const formatDateTime = (dateInput: string | Date): string => {
-  if (!dateInput) return "-";
-  try {
-    let date: Date;
-    if (typeof dateInput === "string") {
-      if (dateInput.includes("T")) {
-        date = new Date(dateInput);
-      } else {
-        date = new Date(`${dateInput}T00:00:00Z`);
-      }
-    } else {
-      date = dateInput;
-    }
-    if (isNaN(date.getTime())) return "-";
-    return date.toLocaleString("es-PE", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-      timeZone: "America/Lima",
-    });
-  } catch {
-    return "-";
-  }
-};
+// URL base de la API
+const API_URL = import.meta.env.VITE_API_URL;
 
+// Componente principal
 const Visits = () => {
-  // Ajustar la fecha actual a UTC-5
-  const now = new Date();
-  const localDate = new Date(
-    now.toLocaleString("en-US", { timeZone: "America/Lima" })
-  );
-  const currentDate = localDate.toISOString().slice(0, 10);
-
+  // Estados
   const [dni, setDni] = useState("");
+  const [tipoDoc, setTipoDoc] = useState<string>("2"); // Default a DNI
   const [nombreVisitante, setNombreVisitante] = useState("");
   const [nroDpto, setNroDpto] = useState("");
   const [motivo, setMotivo] = useState("");
-  const [idUsuarioPropietario, setIdUsuarioPropietario] = useState("");
-  const [propietarios, setPropietarios] = useState<Propietario[]>([]);
+  const [idResidente, setIdResidente] = useState("");
+  const [residentes, setResidentes] = useState<Residente[]>([]);
   const [visitas, setVisitas] = useState<Visitante[]>([]);
   const [visitasProgramadas, setVisitasProgramadas] = useState<
     VisitaProgramada[]
   >([]);
-  const [filter, setFilter] = useState({
-    nombre: "",
-    estado: "activas",
-    nroDpto: "",
-  });
-  const [filterScheduled, setFilterScheduled] = useState({
-    nombre: "",
-    fecha: currentDate,
-    nroDpto: "",
-  });
   const [error, setError] = useState("");
-  const { userId } = useAuth();
-  const [activeTab, setActiveTab] = useState<
-    "create" | "history" | "scheduled"
-  >("create");
+  const [activeTab, setActiveTab] = useState("create");
   const [highlightedVisitId, setHighlightedVisitId] = useState<number | null>(
     null
   );
-
-  // Filtrar visitas programadas
-  const filteredVisitasProgramadas = visitasProgramadas.filter((visita) => {
-    const fechaLlegada = formatDate(visita.FECHA_LLEGADA);
-    return (
-      (filterScheduled.nombre === "" ||
-        visita.NOMBRE_VISITANTE.toLowerCase().includes(
-          filterScheduled.nombre.toLowerCase()
-        )) &&
-      (filterScheduled.fecha === "" || fechaLlegada === filterScheduled.fecha) &&
-      (filterScheduled.nroDpto === "" ||
-        visita.NRO_DPTO.toString() === filterScheduled.nroDpto)
-    );
+  const [filter, setFilter] = useState<FilterState>({
+    estado: "todos",
+    nroDpto: "",
+    nombre: "",
+  });
+  const [filterScheduled, setFilterScheduled] = useState<FilterScheduledState>({
+    nroDpto: "",
+    nombre: "",
+    fecha: "",
   });
 
-  // Fetch visits from backend
+  const userId = 1; // Simulado, reemplazar con autenticación real
+  const currentDate = new Date().toISOString().split("T")[0];
+
+  // Funciones de formato
+  const formatDate = (date: string | Date): string => {
+    try {
+      const d = typeof date === "string" ? new Date(date) : date;
+      if (isNaN(d.getTime())) return "-";
+      return d.toLocaleDateString("es-PE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    } catch {
+      return "-";
+    }
+  };
+
+  const formatTime = (date: Date): string => {
+    try {
+      return date.toLocaleTimeString("es-PE", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: "America/Lima",
+      });
+    } catch {
+      return "-";
+    }
+  };
+
+  // Manejo de cambios en inputs
+  const handleNroDptoChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      if (value === "" || /^[0-9]*$/.test(value)) {
+        setNroDpto(value);
+        setError("");
+        if (value) {
+          fetchResidents(value);
+        } else {
+          setResidentes([]);
+          setIdResidente("");
+        }
+      }
+    },
+    []
+  );
+
+  const handleMotivoChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      if (value.length <= 80) {
+        setMotivo(value);
+        setError("");
+      }
+    },
+    []
+  );
+
+  const handleFilterChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const { name, value } = e.target;
+      setFilter((prev) => ({ ...prev, [name]: value }));
+    },
+    []
+  );
+
+  // Fetch de residentes por número de departamento
+  const fetchResidents = async (nroDpto: string) => {
+    if (!nroDpto || isNaN(parseInt(nroDpto))) {
+      setResidentes([]);
+      setIdResidente("");
+      return;
+    }
+    try {
+      const response = await fetch(`${API_URL}/owners?nro_dpto=${nroDpto}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      if (!response.ok) throw new Error("Error al obtener residentes");
+      const data = await response.json();
+      setResidentes(data);
+      if (data.length === 0) {
+        setIdResidente("");
+        setError("No se encontraron residentes para este departamento");
+      } else {
+        setError("");
+      }
+    } catch (err) {
+      console.error("Error al obtener residentes:", err);
+      setResidentes([]);
+      setIdResidente("");
+      setError("No se pudieron cargar los residentes");
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudieron cargar los residentes",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  };
+
+  // Búsqueda por DNI
+  const handleSearchDni = async () => {
+    if (!/^[a-zA-Z0-9]{8,12}$/.test(dni)) {
+      setError(
+        "El número de documento debe tener entre 8 y 12 caracteres alfanuméricos"
+      );
+      return;
+    }
+    setError("");
+    try {
+      const response = await fetch(`${API_URL}/dni?dni=${dni}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      if (!response.ok) throw new Error("Error al buscar el documento");
+      const data = await response.json();
+      setNombreVisitante(data.nombreCompleto);
+    } catch (err) {
+      setError("No se pudo encontrar el documento");
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo encontrar el documento",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  };
+
+  // Guardar visita
+const handleSaveVisit = async () => {
+  if (!nombreVisitante || !dni || !idResidente || !motivo) {
+    setError("Por favor, complete todos los campos");
+    Swal.fire({
+      icon: "warning",
+      title: "Campos incompletos",
+      text: "Por favor, complete todos los campos",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    return;
+  }
+  if (!userId) {
+    setError("No se encontró el ID del usuario autenticado");
+    Swal.fire({
+      icon: "error",
+      title: "Error de autenticación",
+      text: "Por favor, inicia sesión nuevamente",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    return;
+  }
+  setError("");
+  try {
+    const now = new Date();
+    const localDate = new Date(
+      now.toLocaleString("en-US", { timeZone: "America/Lima" })
+    );
+    const fechaIngreso = localDate.toISOString().slice(0, 19).replace("T", " ");
+
+    const response = await fetch(`${API_URL}/visits`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: JSON.stringify({
+        nombre_visitante: nombreVisitante,
+        nro_doc_visitante: dni,
+        id_residente: idResidente,
+        fecha_ingreso: fechaIngreso,
+        motivo,
+        id_usuario_registro: userId, // Usamos solo userId
+        id_tipo_doc_visitante: tipoDoc || "2",
+        estado: 1,
+      }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Error al grabar la visita");
+    }
+    Swal.fire({
+      icon: "success",
+      title: "Éxito",
+      text: "Visita registrada correctamente",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    await fetchVisits();
+    setDni("");
+    setTipoDoc("2");
+    setNombreVisitante("");
+    setNroDpto("");
+    setMotivo("");
+    setIdResidente("");
+    setResidentes([]);
+    setActiveTab("history");
+    const data = await response.json();
+    setHighlightedVisitId(data.ID_VISITA || null);
+    setTimeout(() => {
+      setHighlightedVisitId(null);
+    }, 10000);
+  } catch (err) {
+    const error = err as Error;
+    setError(error.message || "Error al grabar la visita");
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: error.message || "No se pudo registrar la visita",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+  }
+};
+
+  // Fetch de visitas
   const fetchVisits = async () => {
     try {
       const response = await fetch(`${API_URL}/visits`, {
@@ -343,7 +489,11 @@ const Visits = () => {
           FECHA_SALIDA: fechaSalida,
           HORA_SALIDA: horaSalida,
           ESTADO:
-            visit.ESTADO === true ? 1 : visit.ESTADO === false ? 0 : visit.ESTADO,
+            visit.ESTADO === true
+              ? 1
+              : visit.ESTADO === false
+              ? 0
+              : visit.ESTADO,
         };
       });
       setVisitas(
@@ -363,7 +513,7 @@ const Visits = () => {
     }
   };
 
-  // Fetch scheduled visits from backend
+  // Fetch de visitas programadas
   const fetchScheduledVisits = async () => {
     try {
       const response = await fetch(`${API_URL}/all-scheduled-visits`, {
@@ -399,100 +549,41 @@ const Visits = () => {
     }
   };
 
-  // Fetch owners by department number
-  const fetchOwners = async (nroDpto: string) => {
-    if (!nroDpto || isNaN(parseInt(nroDpto))) {
-      setPropietarios([]);
-      setIdUsuarioPropietario("");
-      return;
-    }
+  // Terminar visita
+  const handleEndVisit = async (idVisita: number) => {
     try {
-      const response = await fetch(`${API_URL}/owners?nro_dpto=${nroDpto}`, {
+      const response = await fetch(`${API_URL}/end-visit/${idVisita}`, {
+        method: "PUT",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
+        body: JSON.stringify({
+          id_usuario_registro: userId || 1,
+        }),
       });
-      if (!response.ok) throw new Error("Error al obtener propietarios");
-      const data = await response.json();
-      setPropietarios(data);
-      if (data.length === 0) {
-        setIdUsuarioPropietario("");
-        setError("No se encontraron propietarios para este departamento");
-      } else {
-        setError("");
-      }
+      if (!response.ok) throw new Error("Error al terminar la visita");
+      Swal.fire({
+        icon: "success",
+        title: "Éxito",
+        text: "Visita terminada correctamente",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      await fetchVisits();
     } catch (err) {
-      console.error("Error al obtener propietarios:", err);
-      setPropietarios([]);
-      setIdUsuarioPropietario("");
-      setError("No se pudieron cargar los propietarios");
+      console.error("Error al terminar la visita:", err);
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "No se pudieron cargar los propietarios",
+        text: "No se pudo terminar la visita",
         timer: 2000,
         showConfirmButton: false,
       });
     }
   };
 
-  // End a visit
-  const handleEndVisit = async (idVisita: number) => {
-    Swal.fire({
-      title: "¿Confirmar?",
-      text: "¿Estás seguro de terminar esta visita?",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#2563eb",
-      cancelButtonColor: "#ef4444",
-      confirmButtonText: "Sí, terminar",
-      cancelButtonText: "Cancelar",
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          const now = new Date();
-          const localDate = new Date(
-            now.toLocaleString("en-US", { timeZone: "America/Lima" })
-          );
-          const fechaSalida = localDate.toISOString().slice(0, 19) + "-05:00";
-
-          const response = await fetch(`${API_URL}/visits/${idVisita}/end`, {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-            body: JSON.stringify({
-              fecha_salida: fechaSalida,
-            }),
-          });
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || "Error al terminar la visita");
-          }
-          Swal.fire({
-            icon: "success",
-            title: "Éxito",
-            text: "Visita terminada correctamente",
-            timer: 2000,
-            showConfirmButton: false,
-          });
-          await fetchVisits();
-        } catch (err) {
-          console.error("Error al terminar la visita:", err);
-          Swal.fire({
-            icon: "error",
-            title: "Error",
-            text: "No se pudo terminar la visita",
-            timer: 2000,
-            showConfirmButton: false,
-          });
-        }
-      }
-    });
-  };
-
-  // Accept a scheduled visit
+  // Aceptar visita programada
   const handleAcceptScheduledVisit = async (
     idVisitaProgramada: number,
     fechaLlegada: string
@@ -500,177 +591,32 @@ const Visits = () => {
     const fechaLlegadaFormatted = formatDate(fechaLlegada);
     if (fechaLlegadaFormatted !== currentDate) {
       Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Solo se pueden registrar visitas programadas para el día de hoy",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
-    }
-
-    Swal.fire({
-      title: "¿Confirmar?",
-      text: "¿Estás seguro de registrar esta visita programada?",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonColor: "#2563eb",
-      cancelButtonColor: "#ef4444",
-      confirmButtonText: "Sí, registrar",
-      cancelButtonText: "Cancelar",
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          const response = await fetch(
-            `${API_URL}/scheduled-visits/${idVisitaProgramada}/accept`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${localStorage.getItem("token")}`,
-              },
-              body: JSON.stringify({
-                id_usuario_registro: userId || 1,
-              }),
-            }
-          );
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(
-              errorData.message || "Error al registrar la visita programada"
-            );
-          }
-          Swal.fire({
-            icon: "success",
-            title: "Éxito",
-            text: "Visita registrada correctamente",
-            timer: 2000,
-            showConfirmButton: false,
-          });
-          await fetchScheduledVisits();
-          await fetchVisits();
-          const data = await response.json();
-          setActiveTab("history");
-          setHighlightedVisitId(data.id_visita || null);
-          setTimeout(() => {
-            setHighlightedVisitId(null);
-          }, 10000);
-        } catch (err) {
-          console.error("Error al registrar la visita programada:", err);
-          Swal.fire({
-            icon: "error",
-            title: "Error",
-            text:
-              (err as Error).message ||
-              "No se pudo registrar la visita programada",
-            timer: 2000,
-            showConfirmButton: false,
-          });
-        }
-      }
-    });
-  };
-
-  useEffect(() => {
-    fetchVisits();
-    fetchScheduledVisits();
-    const interval = setInterval(() => {
-      fetchVisits();
-      fetchScheduledVisits();
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Handle DNI search
-  const handleSearchDni = async () => {
-    if (!/^[a-zA-Z0-9]{8,12}$/.test(dni)) {
-      setError("El DNI debe tener entre 8 y 12 caracteres alfanuméricos");
-      return;
-    }
-    setError("");
-    try {
-      const response = await fetch(`${API_URL}/dni?dni=${dni}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
-      if (!response.ok) throw new Error("Error al buscar el DNI");
-      const data = await response.json();
-      setNombreVisitante(data.nombreCompleto);
-    } catch (err) {
-      setError("No se pudo encontrar el DNI");
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "No se pudo encontrar el DNI",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-    }
-  };
-
-  // Validate and handle department number change
-  const handleNroDptoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    if (value === "" || (/^[0-9]{1,5}$/.test(value) && parseInt(value) >= 0)) {
-      setNroDpto(value);
-      fetchOwners(value);
-    } else {
-      setPropietarios([]);
-      setIdUsuarioPropietario("");
-    }
-  };
-
-  // Validate and handle motivo change
-  const handleMotivoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    if (value.length <= 80) {
-      setMotivo(value);
-    }
-  };
-
-  // Handle saving a visit
-  const handleSaveVisit = async () => {
-    if (!nombreVisitante || !motivo || !nroDpto || !idUsuarioPropietario) {
-      setError("Por favor, complete todos los campos, incluido el propietario");
-      Swal.fire({
         icon: "warning",
-        title: "Campos incompletos",
-        text: "Por favor, complete todos los campos, incluido el propietario",
+        title: "Fecha no válida",
+        text: "La visita solo puede ser aceptada el día de la fecha de llegada programada",
         timer: 2000,
         showConfirmButton: false,
       });
       return;
     }
-    setError("");
-    try {
-      const now = new Date();
-      const localDate = new Date(
-        now.toLocaleString("en-US", { timeZone: "America/Lima" })
-      );
-      //const fechaIngreso = localDate.toISOString().slice(0, 19) + "-05:00";
-      const fechaIngreso = localDate.toISOString().slice(0, 19).replace("T", " ");
 
-      const response = await fetch(`${API_URL}/visits`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({
-          nro_dpto: parseInt(nroDpto),
-          dni_visitante: dni,
-          nombre_visitante: nombreVisitante,
-          fecha_ingreso: fechaIngreso,
-          motivo,
-          id_usuario_registro: userId || 1,
-          id_usuario_propietario: parseInt(idUsuarioPropietario),
-          estado: 1,
-        }),
-      });
+    try {
+      const response = await fetch(
+        `${API_URL}/accept-scheduled-visit/${idVisitaProgramada}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({
+            id_usuario_registro: userId || 1,
+          }),
+        }
+      );
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Error al grabar la visita");
+        throw new Error(errorData.message || "Error al aceptar la visita");
       }
       Swal.fire({
         icon: "success",
@@ -680,109 +626,124 @@ const Visits = () => {
         showConfirmButton: false,
       });
       await fetchVisits();
-      setDni("");
-      setNombreVisitante("");
-      setNroDpto("");
-      setMotivo("");
-      setIdUsuarioPropietario("");
-      setPropietarios([]);
+      await fetchScheduledVisits();
       setActiveTab("history");
       const data = await response.json();
-      setHighlightedVisitId(data.ID_VISITA || null);
+      setHighlightedVisitId(data.id_visita || null);
       setTimeout(() => {
         setHighlightedVisitId(null);
       }, 10000);
     } catch (err) {
-      const error = err as Error;
-      setError(error.message || "Error al grabar la visita");
+      console.error("Error al aceptar la visita programada:", err);
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: error.message || "No se pudo registrar la visita",
+        text: "No se pudo registrar la visita",
         timer: 2000,
         showConfirmButton: false,
       });
     }
   };
 
-  // Handle filter changes
-  const handleFilterChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFilter((prev) => ({ ...prev, [name]: value }));
+  // Exportar a CSV
+  const exportToCSV = () => {
+    const headers = [
+      "ID Visita",
+      "Número Dpto",
+      "Nombre Visitante",
+      "Documento",
+      "Tipo Doc",
+      "Residente",
+      "Fecha Ingreso",
+      "Hora Ingreso",
+      "Fecha Salida",
+      "Hora Salida",
+      "Motivo",
+      "Estado",
+    ];
+
+    const rows = filteredVisitas.map((visita) => [
+      visita.ID_VISITA,
+      visita.NRO_DPTO ?? "-",
+      visita.NOMBRE_VISITANTE,
+      visita.NRO_DOC_VISITANTE,
+      visita.ID_TIPO_DOC_VISITANTE
+        ? {
+            2: "DNI",
+            3: "Carnet de Extranjería",
+            4: "Pasaporte",
+            5: "Partida de Nacimiento",
+            6: "Otros",
+          }[visita.ID_TIPO_DOC_VISITANTE] || "-"
+        : "-",
+      visita.NOMBRE_PROPIETARIO ?? "-",
+      visita.FECHA_INGRESO,
+      visita.HORA_INGRESO,
+      visita.FECHA_SALIDA ?? "-",
+      visita.HORA_SALIDA ?? "-",
+      visita.MOTIVO,
+      visita.ESTADO === 1 ? "Activa" : "Terminada",
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "historial_visitas.csv");
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
+  // Filtrar visitas
   const filteredVisitas = visitas.filter((visita) => {
-    const estadoNum =
-      typeof visita.ESTADO === "boolean"
-        ? visita.ESTADO
-          ? 1
-          : 0
-        : visita.ESTADO;
-
-    const matchEstado =
-      filter.estado === "todos"
-        ? true
-        : filter.estado === "activas"
-        ? estadoNum === 1
-        : estadoNum === 0;
-
-    const matchNombre =
+    const matchesEstado =
+      filter.estado === "todos" ||
+      (filter.estado === "activas" && visita.ESTADO === 1) ||
+      (filter.estado === "terminadas" && visita.ESTADO === 0);
+    const matchesNroDpto =
+      filter.nroDpto === "" ||
+      (visita.NRO_DPTO && visita.NRO_DPTO.toString().includes(filter.nroDpto));
+    const matchesNombre =
       filter.nombre === "" ||
       visita.NOMBRE_VISITANTE.toLowerCase().includes(
         filter.nombre.toLowerCase()
       );
-
-    const matchDpto =
-      filter.nroDpto === "" ||
-      (visita.NRO_DPTO && visita.NRO_DPTO.toString() === filter.nroDpto);
-
-    return matchEstado && matchNombre && matchDpto;
+    return matchesEstado && matchesNroDpto && matchesNombre;
   });
 
-  // Export to CSV
-  const exportToCSV = () => {
-    const headers =
-      "ID Visita,Número Dpto,Nombre Visitante,DNI,Propietario,Fecha Ingreso,Hora Ingreso,Fecha Salida,Hora Salida,Motivo,Estado\n";
-    const rows = filteredVisitas
-      .map((visita) => {
-        const estadoNum =
-          typeof visita.ESTADO === "boolean"
-            ? visita.ESTADO
-              ? 1
-              : 0
-            : visita.ESTADO;
-        return `${visita.ID_VISITA},${visita.NRO_DPTO ?? "-"},${
-          visita.NOMBRE_VISITANTE
-        },${visita.DNI_VISITANTE},${visita.NOMBRE_PROPIETARIO ?? "-"},${
-          visita.FECHA_INGRESO
-        },${visita.HORA_INGRESO},${visita.FECHA_SALIDA ? visita.FECHA_SALIDA : "-"},${
-          visita.HORA_SALIDA ? visita.HORA_SALIDA : "-"
-        },${visita.MOTIVO},${estadoNum === 1 ? "Activa" : "Terminada"}`;
-      })
-      .join("\n");
-    const csv = headers + rows;
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "visitas.csv";
-    a.click();
-    window.URL.revokeObjectURL(url);
-    Swal.fire({
-      icon: "success",
-      title: "Éxito",
-      text: "Archivo CSV exportado correctamente",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-  };
+  // Filtrar visitas programadas
+  const filteredVisitasProgramadas = visitasProgramadas.filter((visita) => {
+    const matchesNroDpto =
+      filterScheduled.nroDpto === "" ||
+      visita.NRO_DPTO.toString().includes(filterScheduled.nroDpto);
+    const matchesNombre =
+      filterScheduled.nombre === "" ||
+      visita.NOMBRE_VISITANTE.toLowerCase().includes(
+        filterScheduled.nombre.toLowerCase()
+      );
+    const matchesFecha =
+      filterScheduled.fecha === "" ||
+      formatDate(visita.FECHA_LLEGADA) === formatDate(filterScheduled.fecha);
+    return matchesNroDpto && matchesNombre && matchesFecha;
+  });
+
+  // Efecto inicial
+  useEffect(() => {
+    if (activeTab === "history") {
+      fetchVisits();
+    } else if (activeTab === "scheduled") {
+      fetchScheduledVisits();
+    }
+  }, [activeTab]);
 
   return (
     <Container>
       <Title>Gestión de Visitas</Title>
-
       {/* Tabs */}
       <div className="mb-6">
         <div className="flex space-x-4 border-b">
@@ -807,9 +768,7 @@ const Visits = () => {
         </div>
       </div>
 
-      {/* Tab Content */}
       <TabContent>
-        {/* Registrar Visita */}
         {activeTab === "create" && (
           <Card>
             <h2 className="text-lg font-semibold mb-4">
@@ -821,11 +780,26 @@ const Visits = () => {
               </p>
             )}
             <div className="space-y-6">
-              {/* DNI y Nombre */}
+              {/* Tipo de Documento y Número de Documento */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                <div className="md:col-span-5">
+                <div className="md:col-span-3">
                   <label className="block text-sm font-medium text-gray-600 mb-1">
-                    DNI del Visitante
+                    Tipo de Documento
+                  </label>
+                  <Select
+                    value={tipoDoc}
+                    onChange={(e) => setTipoDoc(e.target.value)}
+                  >
+                    <option value="2">DNI</option>
+                    <option value="3">Carnet de Extranjería</option>
+                    <option value="4">Pasaporte</option>
+                    <option value="5">Partida de Nacimiento</option>
+                    <option value="6">Otros</option>
+                  </Select>
+                </div>
+                <div className="md:col-span-4">
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    Número de Documento
                   </label>
                   <div className="flex">
                     <Input
@@ -847,10 +821,10 @@ const Visits = () => {
                     </Button>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Ingresa el DNI y haz clic en buscar para verificar.
+                    Ingresa el número y haz clic en buscar para verificar.
                   </p>
                 </div>
-                <div className="md:col-span-7">
+                <div className="md:col-span-5">
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Nombre del Visitante
                   </label>
@@ -861,12 +835,13 @@ const Visits = () => {
                     className="bg-gray-100 text-gray-700"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Este campo se llena automáticamente tras buscar el DNI.
+                    Este campo se llena automáticamente tras buscar el
+                    documento.
                   </p>
                 </div>
               </div>
 
-              {/* Número de Departamento y Propietario */}
+              {/* Número de Departamento y Residente */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                 <div className="md:col-span-3">
                   <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -884,22 +859,22 @@ const Visits = () => {
                 </div>
                 <div className="md:col-span-9">
                   <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Propietario
+                    Residente
                   </label>
                   <Select
-                    value={idUsuarioPropietario}
-                    onChange={(e) => setIdUsuarioPropietario(e.target.value)}
-                    disabled={propietarios.length === 0}
+                    value={idResidente}
+                    onChange={(e) => setIdResidente(e.target.value)}
+                    disabled={residentes.length === 0}
                   >
-                    <option value="">Seleccione un propietario</option>
-                    {propietarios.map((prop) => (
-                      <option key={prop.ID_USUARIO} value={prop.ID_USUARIO}>
-                        {prop.NOMBRE_COMPLETO}
+                    <option value="">Seleccione un residente</option>
+                    {residentes.map((res) => (
+                      <option key={res.ID_RESIDENTE} value={res.ID_RESIDENTE}>
+                        {res.NOMBRE_COMPLETO}
                       </option>
                     ))}
                   </Select>
                   <p className="text-xs text-gray-500 mt-1">
-                    Seleccione el propietario del departamento.
+                    Seleccione el residente del departamento.
                   </p>
                 </div>
               </div>
@@ -1007,10 +982,13 @@ const Visits = () => {
                       Nombre Visitante
                     </th>
                     <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      DNI
+                      Documento
                     </th>
                     <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Propietario
+                      Tipo Doc
+                    </th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                      Residente
                     </th>
                     <th className="py-3 px-4 border-b text-left text-sm font-semibold">
                       Fecha Ingreso
@@ -1039,7 +1017,7 @@ const Visits = () => {
                   {filteredVisitas.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={12}
+                        colSpan={13}
                         className="py-4 text-center text-gray-500"
                       >
                         No hay visitas para mostrar.
@@ -1069,7 +1047,20 @@ const Visits = () => {
                           <td className="py-3 px-4">
                             {visita.NOMBRE_VISITANTE}
                           </td>
-                          <td className="py-3 px-4">{visita.DNI_VISITANTE}</td>
+                          <td className="py-3 px-4">
+                            {visita.NRO_DOC_VISITANTE}
+                          </td>
+                          <td className="py-3 px-4">
+                            {visita.ID_TIPO_DOC_VISITANTE
+                              ? {
+                                  2: "DNI",
+                                  3: "Carnet de Extranjería",
+                                  4: "Pasaporte",
+                                  5: "Partida de Nacimiento",
+                                  6: "Otros",
+                                }[visita.ID_TIPO_DOC_VISITANTE] || "-"
+                              : "-"}
+                          </td>
                           <td className="py-3 px-4">
                             {visita.NOMBRE_PROPIETARIO ?? "-"}
                           </td>
@@ -1191,10 +1182,13 @@ const Visits = () => {
                       Nombre Visitante
                     </th>
                     <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      DNI
+                      Documento
                     </th>
                     <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Propietario
+                      Tipo Doc
+                    </th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                      Residente
                     </th>
                     <th className="py-3 px-4 border-b text-left text-sm font-semibold">
                       Fecha Llegada
@@ -1214,7 +1208,7 @@ const Visits = () => {
                   {filteredVisitasProgramadas.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={9}
+                        colSpan={10}
                         className="py-4 text-center text-gray-500"
                       >
                         No hay visitas programadas para mostrar.
@@ -1228,10 +1222,12 @@ const Visits = () => {
                             ? 1
                             : 0
                           : visita.ESTADO;
-                      const fechaLlegadaFormatted = formatDate(visita.FECHA_LLEGADA);
+                      const fechaLlegadaFormatted = formatDate(
+                        visita.FECHA_LLEGADA
+                      );
+                      const isToday = fechaLlegadaFormatted === currentDate;
                       const currentDateObj = new Date(currentDate);
                       const fechaLlegadaDate = new Date(visita.FECHA_LLEGADA);
-                      const isToday = fechaLlegadaFormatted === currentDate;
                       const isPastDate = fechaLlegadaDate < currentDateObj;
                       const isFutureDate = fechaLlegadaDate > currentDateObj;
 
@@ -1249,6 +1245,17 @@ const Visits = () => {
                             {visita.NOMBRE_VISITANTE}
                           </td>
                           <td className="py-3 px-4">{visita.DNI_VISITANTE}</td>
+                          <td className="py-3 px-4">
+                            {visita.ID_TIPO_DOC_VISITANTE
+                              ? {
+                                  2: "DNI",
+                                  3: "Carnet de Extranjería",
+                                  4: "Pasaporte",
+                                  5: "Partida de Nacimiento",
+                                  6: "Otros",
+                                }[visita.ID_TIPO_DOC_VISITANTE] || "-"
+                              : "-"}
+                          </td>
                           <td className="py-3 px-4">
                             {visita.NOMBRE_PROPIETARIO ?? "-"}
                           </td>
