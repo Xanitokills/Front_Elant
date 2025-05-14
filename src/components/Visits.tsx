@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import styled from "styled-components";
+import Select from "react-select"; // Import react-select
 import {
   FaSearch,
   FaSave,
@@ -72,7 +73,7 @@ const Input = styled.input`
   }
 `;
 
-const Select = styled.select`
+const SelectNative = styled.select`
   width: 100%;
   padding: 8px;
   border: 1px solid #d1d5db;
@@ -148,6 +149,53 @@ const TableRow = styled.tr<{
     }
   }
 `;
+
+// Estilos personalizados para react-select
+const customSelectStyles = {
+  control: (provided: any) => ({
+    ...provided,
+    border: "1px solid #d1d5db",
+    borderRadius: "6px",
+    fontSize: "0.875rem",
+    color: "#1f2937",
+    background: "white",
+    boxShadow: "none",
+    "&:hover": {
+      borderColor: "#2563eb",
+    },
+    "&:focus": {
+      borderColor: "#2563eb",
+      boxShadow: "0 0 0 2px rgba(37, 99, 235, 0.1)",
+    },
+  }),
+  option: (provided: any, state: any) => ({
+    ...provided,
+    fontSize: "0.875rem",
+    color: "#1f2937",
+    background: state.isSelected ? "#2563eb" : state.isFocused ? "#f3f4f6" : "white",
+    "&:hover": {
+      background: "#f3f4f6",
+    },
+  }),
+  menu: (provided: any) => ({
+    ...provided,
+    borderRadius: "6px",
+    border: "1px solid #d1d5db",
+    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+  }),
+  placeholder: (provided: any) => ({
+    ...provided,
+    color: "#9ca3af",
+  }),
+  singleValue: (provided: any) => ({
+    ...provided,
+    color: "#1f2937",
+  }),
+  input: (provided: any) => ({
+    ...provided,
+    color: "#1f2937",
+  }),
+};
 
 // Interfaces
 interface Fase {
@@ -232,14 +280,10 @@ const Visits = () => {
   const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
   const [residentes, setResidentes] = useState<Residente[]>([]);
   const [visitas, setVisitas] = useState<Visitante[]>([]);
-  const [visitasProgramadas, setVisitasProgramadas] = useState<
-    VisitaProgramada[]
-  >([]);
+  const [visitasProgramadas, setVisitasProgramadas] = useState<VisitaProgramada[]>([]);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("create");
-  const [highlightedVisitId, setHighlightedVisitId] = useState<number | null>(
-    null
-  );
+  const [highlightedVisitId, setHighlightedVisitId] = useState<number | null>(null);
   const [filter, setFilter] = useState<FilterState>({
     estado: "todos",
     nroDpto: "",
@@ -300,8 +344,8 @@ const Visits = () => {
   );
 
   const handleNroDptoChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const value = e.target.value;
+    (selectedOption: any) => {
+      const value = selectedOption ? selectedOption.value : "";
       setNroDpto(value);
       setError("");
       setResidentes([]);
@@ -896,6 +940,12 @@ const Visits = () => {
     return matchesFase && matchesNroDpto && matchesNombre && matchesFecha;
   });
 
+  // Opciones para react-select
+  const departamentoOptions = departamentos.map((depto) => ({
+    value: depto.NRO_DPTO.toString(),
+    label: depto.NRO_DPTO.toString(),
+  }));
+
   // Efecto inicial
   useEffect(() => {
     fetchFases();
@@ -949,7 +999,7 @@ const Visits = () => {
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Tipo de Documento *
                   </label>
-                  <Select
+                  <SelectNative
                     value={tipoDoc}
                     onChange={(e) => setTipoDoc(e.target.value)}
                     required
@@ -960,7 +1010,7 @@ const Visits = () => {
                     <option value="4">Pasaporte</option>
                     <option value="5">Partida de Nacimiento</option>
                     <option value="6">Otros</option>
-                  </Select>
+                  </SelectNative>
                 </div>
                 <div className="md:col-span-4">
                   <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -1020,14 +1070,14 @@ const Visits = () => {
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Fase *
                   </label>
-                  <Select value={idFase} onChange={handleIdFaseChange} required>
+                  <SelectNative value={idFase} onChange={handleIdFaseChange} required>
                     <option value="">Seleccione una fase</option>
                     {fases.map((fase) => (
                       <option key={fase.ID_FASE} value={fase.ID_FASE}>
                         {fase.NOMBRE}
                       </option>
                     ))}
-                  </Select>
+                  </SelectNative>
                   <p className="text-xs text-gray-500 mt-1">
                     Seleccione la fase del departamento.
                   </p>
@@ -1037,30 +1087,31 @@ const Visits = () => {
                     Número de Departamento *
                   </label>
                   <Select
-                    value={nroDpto}
+                    options={departamentoOptions}
+                    value={
+                      nroDpto
+                        ? departamentoOptions.find(
+                            (option) => option.value === nroDpto
+                          )
+                        : null
+                    }
                     onChange={handleNroDptoChange}
-                    disabled={!idFase}
+                    placeholder="Escribe o selecciona un departamento"
+                    isClearable
+                    isDisabled={!idFase}
+                    styles={customSelectStyles}
+                    noOptionsMessage={() => "No hay departamentos disponibles"}
                     required
-                  >
-                    <option value="">Seleccione un departamento</option>
-                    {departamentos.map((depto) => (
-                      <option
-                        key={depto.ID_DEPARTAMENTO}
-                        value={depto.NRO_DPTO}
-                      >
-                        {depto.NRO_DPTO}
-                      </option>
-                    ))}
-                  </Select>
+                  />
                   <p className="text-xs text-gray-500 mt-1">
-                    Seleccione el número del departamento visitado.
+                    Escribe para buscar o selecciona el número del departamento.
                   </p>
                 </div>
                 <div className="md:col-span-6">
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Residente *
                   </label>
-                  <Select
+                  <SelectNative
                     value={idResidente}
                     onChange={(e) => setIdResidente(e.target.value)}
                     disabled={residentes.length === 0 || !nroDpto}
@@ -1072,7 +1123,7 @@ const Visits = () => {
                         {res.NOMBRE_COMPLETO}
                       </option>
                     ))}
-                  </Select>
+                  </SelectNative>
                   <p className="text-xs text-gray-500 mt-1">
                     Seleccione el residente del departamento.
                   </p>
@@ -1115,7 +1166,7 @@ const Visits = () => {
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Estado
                   </label>
-                  <Select
+                  <SelectNative
                     name="estado"
                     value={filter.estado}
                     onChange={handleFilterChange}
@@ -1123,7 +1174,7 @@ const Visits = () => {
                     <option value="todos">Todos</option>
                     <option value="activas">Visitas Activas</option>
                     <option value="terminadas">Visitas Terminadas</option>
-                  </Select>
+                  </SelectNative>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
