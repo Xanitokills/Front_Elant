@@ -8,6 +8,7 @@ import {
   FaFileExport,
 } from "react-icons/fa";
 import Swal from "sweetalert2";
+import { useAuth } from "../context/AuthContext";
 
 // Estilos
 const Container = styled.div`
@@ -202,9 +203,12 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 // Componente principal
 const Visits = () => {
+  // Obtener userId desde AuthContext
+  const { userId } = useAuth();
+
   // Estados
   const [dni, setDni] = useState("");
-  const [tipoDoc, setTipoDoc] = useState<string>("2"); // Default a DNI
+  const [tipoDoc, setTipoDoc] = useState<string>("2");
   const [nombreVisitante, setNombreVisitante] = useState("");
   const [nroDpto, setNroDpto] = useState("");
   const [motivo, setMotivo] = useState("");
@@ -230,7 +234,6 @@ const Visits = () => {
     fecha: "",
   });
 
-  const userId = 1; // Simulado, reemplazar con autenticación real
   const currentDate = new Date().toISOString().split("T")[0];
 
   // Funciones de formato
@@ -366,91 +369,94 @@ const Visits = () => {
   };
 
   // Guardar visita
-const handleSaveVisit = async () => {
-  if (!nombreVisitante || !dni || !idResidente || !motivo) {
-    setError("Por favor, complete todos los campos");
-    Swal.fire({
-      icon: "warning",
-      title: "Campos incompletos",
-      text: "Por favor, complete todos los campos",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-  if (!userId) {
-    setError("No se encontró el ID del usuario autenticado");
-    Swal.fire({
-      icon: "error",
-      title: "Error de autenticación",
-      text: "Por favor, inicia sesión nuevamente",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-  setError("");
-  try {
-    const now = new Date();
-    const localDate = new Date(
-      now.toLocaleString("en-US", { timeZone: "America/Lima" })
-    );
-    const fechaIngreso = localDate.toISOString().slice(0, 19).replace("T", " ");
-
-    const response = await fetch(`${API_URL}/visits`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: JSON.stringify({
-        nombre_visitante: nombreVisitante,
-        nro_doc_visitante: dni,
-        id_residente: idResidente,
-        fecha_ingreso: fechaIngreso,
-        motivo,
-        id_usuario_registro: userId, // Usamos solo userId
-        id_tipo_doc_visitante: tipoDoc || "2",
-        estado: 1,
-      }),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Error al grabar la visita");
+  const handleSaveVisit = async () => {
+    if (!nombreVisitante || !dni || !idResidente || !motivo) {
+      setError("Por favor, complete todos los campos");
+      Swal.fire({
+        icon: "warning",
+        title: "Campos incompletos",
+        text: "Por favor, complete todos los campos",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
     }
-    Swal.fire({
-      icon: "success",
-      title: "Éxito",
-      text: "Visita registrada correctamente",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    await fetchVisits();
-    setDni("");
-    setTipoDoc("2");
-    setNombreVisitante("");
-    setNroDpto("");
-    setMotivo("");
-    setIdResidente("");
-    setResidentes([]);
-    setActiveTab("history");
-    const data = await response.json();
-    setHighlightedVisitId(data.ID_VISITA || null);
-    setTimeout(() => {
-      setHighlightedVisitId(null);
-    }, 10000);
-  } catch (err) {
-    const error = err as Error;
-    setError(error.message || "Error al grabar la visita");
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: error.message || "No se pudo registrar la visita",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-  }
-};
+    if (!userId) {
+      setError("No se encontró el ID del usuario autenticado");
+      Swal.fire({
+        icon: "error",
+        title: "Error de autenticación",
+        text: "Por favor, inicia sesión nuevamente",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+
+    console.log("Enviando id_usuario_registro:", userId);
+
+    setError("");
+    try {
+      const now = new Date();
+      const localDate = new Date(
+        now.toLocaleString("en-US", { timeZone: "America/Lima" })
+      );
+      const fechaIngreso = localDate.toISOString().slice(0, 19).replace("T", " ");
+
+      const response = await fetch(`${API_URL}/visits`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          nombre_visitante: nombreVisitante,
+          nro_doc_visitante: dni,
+          id_residente: idResidente,
+          fecha_ingreso: fechaIngreso,
+          motivo,
+          id_usuario_registro: userId,
+          id_tipo_doc_visitante: tipoDoc || "2",
+          estado: 1,
+        }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al grabar la visita");
+      }
+      Swal.fire({
+        icon: "success",
+        title: "Éxito",
+        text: "Visita registrada correctamente",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      await fetchVisits();
+      setDni("");
+      setTipoDoc("2");
+      setNombreVisitante("");
+      setNroDpto("");
+      setMotivo("");
+      setIdResidente("");
+      setResidentes([]);
+      setActiveTab("history");
+      const data = await response.json();
+      setHighlightedVisitId(data.ID_VISITA || null);
+      setTimeout(() => {
+        setHighlightedVisitId(null);
+      }, 10000);
+    } catch (err) {
+      const error = err as Error;
+      setError(error.message || "Error al grabar la visita");
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: error.message || "No se pudo registrar la visita",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  };
 
   // Fetch de visitas
   const fetchVisits = async () => {
@@ -551,6 +557,18 @@ const handleSaveVisit = async () => {
 
   // Terminar visita
   const handleEndVisit = async (idVisita: number) => {
+    if (!userId) {
+      setError("No se encontró el ID del usuario autenticado");
+      Swal.fire({
+        icon: "error",
+        title: "Error de autenticación",
+        text: "Por favor, inicia sesión nuevamente",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+
     try {
       const response = await fetch(`${API_URL}/end-visit/${idVisita}`, {
         method: "PUT",
@@ -559,7 +577,7 @@ const handleSaveVisit = async () => {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify({
-          id_usuario_registro: userId || 1,
+          id_usuario_registro: userId,
         }),
       });
       if (!response.ok) throw new Error("Error al terminar la visita");
@@ -588,6 +606,18 @@ const handleSaveVisit = async () => {
     idVisitaProgramada: number,
     fechaLlegada: string
   ) => {
+    if (!userId) {
+      setError("No se encontró el ID del usuario autenticado");
+      Swal.fire({
+        icon: "error",
+        title: "Error de autenticación",
+        text: "Por favor, inicia sesión nuevamente",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+
     const fechaLlegadaFormatted = formatDate(fechaLlegada);
     if (fechaLlegadaFormatted !== currentDate) {
       Swal.fire({
@@ -610,7 +640,7 @@ const handleSaveVisit = async () => {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
           body: JSON.stringify({
-            id_usuario_registro: userId || 1,
+            id_usuario_registro: userId,
           }),
         }
       );
@@ -744,7 +774,6 @@ const handleSaveVisit = async () => {
   return (
     <Container>
       <Title>Gestión de Visitas</Title>
-      {/* Tabs */}
       <div className="mb-6">
         <div className="flex space-x-4 border-b">
           <TabButton
@@ -780,7 +809,6 @@ const handleSaveVisit = async () => {
               </p>
             )}
             <div className="space-y-6">
-              {/* Tipo de Documento y Número de Documento */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                 <div className="md:col-span-3">
                   <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -841,7 +869,6 @@ const handleSaveVisit = async () => {
                 </div>
               </div>
 
-              {/* Número de Departamento y Residente */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                 <div className="md:col-span-3">
                   <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -879,7 +906,6 @@ const handleSaveVisit = async () => {
                 </div>
               </div>
 
-              {/* Motivo */}
               <div className="grid grid-cols-1">
                 <label className="block text-sm font-medium text-gray-600 mb-1">
                   Motivo de la Visita
@@ -907,7 +933,6 @@ const handleSaveVisit = async () => {
             </div>
           </Card>
         )}
-        {/* Historial de Visitas */}
         {activeTab === "history" && (
           <Card>
             <h2 className="text-lg font-semibold mb-4">Historial de Visitas</h2>
@@ -1106,7 +1131,6 @@ const handleSaveVisit = async () => {
             </div>
           </Card>
         )}
-        {/* Visitas Programadas */}
         {activeTab === "scheduled" && (
           <Card>
             <h2 className="text-lg font-semibold mb-4">Visitas Programadas</h2>
