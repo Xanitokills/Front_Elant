@@ -295,10 +295,11 @@ const Visits = () => {
     nombre: "",
     fase: "",
   });
+  const currentDate = new Date().toISOString().split("T")[0];
   const [filterScheduled, setFilterScheduled] = useState<FilterScheduledState>({
     nroDpto: "",
     nombre: "",
-    fecha: "",
+    fecha: currentDate,
     fase: "",
   });
 
@@ -312,8 +313,6 @@ const Visits = () => {
   const idResidenteRef = useRef<HTMLSelectElement>(null);
   const motivoRef = useRef<HTMLInputElement>(null);
   const saveButtonRef = useRef<HTMLButtonElement>(null);
-
-  const currentDate = new Date().toISOString().split("T")[0];
 
   // Funciones de formato
   const formatDate = (date: string | Date): string => {
@@ -464,7 +463,7 @@ const Visits = () => {
     setFilterScheduled({
       nroDpto: "",
       nombre: "",
-      fecha: "",
+      fecha: currentDate,
       fase: "",
     });
   };
@@ -809,55 +808,55 @@ const Visits = () => {
     }
   };
 
-const handleEndVisit = async (idVisita: number) => {
-  if (!userId) {
-    setError("No se encontró el ID del usuario autenticado");
-    Swal.fire({
-      icon: "error",
-      title: "Error de autenticación",
-      text: "Por favor, inicia sesión nuevamente",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-
-  try {
-    const response = await fetch(`${API_URL}/visits/${idVisita}/end`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: JSON.stringify({
-        id_usuario_registro: userId,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Error al terminar la visita");
+  const handleEndVisit = async (idVisita: number) => {
+    if (!userId) {
+      setError("No se encontró el ID del usuario autenticado");
+      Swal.fire({
+        icon: "error",
+        title: "Error de autenticación",
+        text: "Por favor, inicia sesión nuevamente",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
     }
 
-    Swal.fire({
-      icon: "success",
-      title: "Éxito",
-      text: "Visita terminada correctamente",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    await fetchVisits();
-  } catch (err) {
-    console.error("Error al terminar la visita:", err);
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: err.message || "No se pudo terminar la visita",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-  }
-};
+    try {
+      const response = await fetch(`${API_URL}/visits/${idVisita}/end`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          id_usuario_registro: userId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al terminar la visita");
+      }
+
+      Swal.fire({
+        icon: "success",
+        title: "Éxito",
+        text: "Visita terminada correctamente",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      await fetchVisits();
+    } catch (err) {
+      console.error("Error al terminar la visita:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: err.message || "No se pudo terminar la visita",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  };
 
   const handleAcceptScheduledVisit = async (
     idVisitaProgramada: number,
