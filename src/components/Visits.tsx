@@ -11,7 +11,7 @@ import {
 import Swal from "sweetalert2";
 import { useAuth } from "../context/AuthContext";
 
-// Estilos (unchanged, included for completeness)
+// Estilos
 const Container = styled.div`
   max-width: 100%;
   margin: 0 auto;
@@ -150,6 +150,14 @@ const TableRow = styled.tr<{
   }
 `;
 
+const MotivoCell = styled.td`
+  cursor: pointer;
+  &:hover {
+    text-decoration: underline;
+    color: #2563eb;
+  }
+`;
+
 const customSelectStyles = {
   control: (provided: any) => ({
     ...provided,
@@ -196,7 +204,7 @@ const customSelectStyles = {
   }),
 };
 
-// Interfaces (unchanged)
+// Interfaces
 interface Fase {
   ID_FASE: number;
   NOMBRE: string;
@@ -264,7 +272,7 @@ const API_URL = import.meta.env.VITE_API_URL;
 const Visits = () => {
   const { userId } = useAuth();
 
-  // Estados (unchanged)
+  // Estados
   const [dni, setDni] = useState("");
   const [tipoDoc, setTipoDoc] = useState<string>("");
   const [nombreVisitante, setNombreVisitante] = useState("");
@@ -306,7 +314,7 @@ const Visits = () => {
 
   const currentDate = new Date().toISOString().split("T")[0];
 
-  // Funciones de formato (unchanged)
+  // Funciones de formato
   const formatDate = (date: string | Date): string => {
     try {
       const d = typeof date === "string" ? new Date(date) : date;
@@ -337,29 +345,37 @@ const Visits = () => {
   // Handle Enter key press
   const handleEnterKey = (e: React.KeyboardEvent, nextField: React.RefObject<any>) => {
     if (e.key === "Enter") {
-      e.preventDefault(); // Prevent form submission
+      e.preventDefault();
       if (nextField.current) {
         if (nextField === nroDptoRef) {
-          // For react-select, focus the control
           nextField.current.focus();
         } else if (nextField === searchButtonRef) {
-          // For the search button, trigger click
           nextField.current.click();
         } else if (nextField === saveButtonRef) {
-          // For the save button, trigger click
           nextField.current.click();
         } else {
-          // For native inputs/selects, focus the element
           nextField.current.focus();
           if (nextField.current.tagName === "SELECT") {
-            nextField.current.click(); // Open dropdown
+            nextField.current.click();
           }
         }
       }
     }
   };
 
-  // Manejo de cambios en inputs (modified to include Enter handling)
+  // Mostrar modal con motivo completo
+  const showMotivoModal = (motivo: string) => {
+    Swal.fire({
+      title: "Motivo de la Visita",
+      text: motivo,
+      confirmButtonText: "Cerrar",
+      customClass: {
+        confirmButton: "bg-blue-600 text-white hover:bg-blue-700",
+      },
+    });
+  };
+
+  // Manejo de cambios en inputs
   const handleIdFaseChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const value = e.target.value;
@@ -417,7 +433,7 @@ const Visits = () => {
     []
   );
 
-  // Fetch functions (unchanged)
+  // Fetch functions
   const fetchFases = async () => {
     try {
       const response = await fetch(`${API_URL}/fases`, {
@@ -532,7 +548,6 @@ const Visits = () => {
         if (!response.ok) throw new Error("Error al buscar el documento");
         const data = await response.json();
         setNombreVisitante(data.nombreCompleto.toUpperCase());
-        // Move focus to next field after successful search
         idFaseRef.current?.focus();
       } catch (err) {
         setError("No se pudo encontrar el documento");
@@ -545,7 +560,6 @@ const Visits = () => {
         });
       }
     } else {
-      // For non-DNI types, move to next field
       nombreVisitanteRef.current?.focus();
     }
   };
@@ -637,7 +651,6 @@ const Visits = () => {
       setTimeout(() => {
         setHighlightedVisitId(null);
       }, 10000);
-      // Reset focus to first field
       tipoDocRef.current?.focus();
     } catch (err) {
       const error = err as Error;
@@ -652,7 +665,6 @@ const Visits = () => {
     }
   };
 
-  // Fetch visits, scheduled visits, end visit, accept scheduled visit, export CSV, filtering (unchanged)
   const fetchVisits = async () => {
     try {
       const response = await fetch(`${API_URL}/visits`, {
@@ -929,7 +941,7 @@ const Visits = () => {
     const matchesFase =
       filter.fase === "" ||
       (visita.NOMBRE_FASE &&
-        visita.NOMBRE_FASE.toLowerCase().includes(filter.fase.toLowerCase()));
+        visita.NOMBRE_FASE === fases.find((f) => f.ID_FASE.toString() === filter.fase)?.NOMBRE);
     const matchesNroDpto =
       filter.nroDpto === "" ||
       (visita.NRO_DPTO && visita.NRO_DPTO.toString().includes(filter.nroDpto));
@@ -1228,13 +1240,18 @@ const Visits = () => {
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Fase
                   </label>
-                  <Input
-                    type="text"
+                  <SelectNative
                     name="fase"
                     value={filter.fase}
                     onChange={handleFilterChange}
-                    placeholder="Ejemplo: Fase1"
-                  />
+                  >
+                    <option value="">Todas</option>
+                    {fases.map((fase) => (
+                      <option key={fase.ID_FASE} value={fase.ID_FASE}>
+                        {fase.NOMBRE}
+                      </option>
+                    ))}
+                  </SelectNative>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -1387,7 +1404,16 @@ const Visits = () => {
                           <td className="py-3 px-4">
                             {visita.HORA_SALIDA ? visita.HORA_SALIDA : "-"}
                           </td>
-                          <td className="py-3 px-4">{visita.MOTIVO}</td>
+                          {visita.MOTIVO.length > 16 ? (
+                            <MotivoCell
+                              className="py-3 px-4"
+                              onClick={() => showMotivoModal(visita.MOTIVO)}
+                            >
+                              {visita.MOTIVO.slice(0, 16) + "..."}
+                            </MotivoCell>
+                          ) : (
+                            <td className="py-3 px-4">{visita.MOTIVO}</td>
+                          )}
                           <td className="py-3 px-4">
                             <span
                               className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
@@ -1628,7 +1654,16 @@ const Visits = () => {
                               }
                             })()}
                           </td>
-                          <td className="py-3 px-4">{visita.MOTIVO}</td>
+                          {visita.MOTIVO.length > 16 ? (
+                            <MotivoCell
+                              className="py-3 px-4"
+                              onClick={() => showMotivoModal(visita.MOTIVO)}
+                            >
+                              {visita.MOTIVO.slice(0, 16) + "..."}
+                            </MotivoCell>
+                          ) : (
+                            <td className="py-3 px-4">{visita.MOTIVO}</td>
+                          )}
                           <td className="py-3 px-4">
                             {estadoNum === 1 && isToday ? (
                               <Button
