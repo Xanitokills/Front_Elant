@@ -334,7 +334,9 @@ const VisitasProgramadas = () => {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       if (!userResponse.ok) {
-        throw new Error(`Error al obtener datos del usuario: ${userResponse.statusText}`);
+        throw new Error(
+          `Error al obtener datos del usuario: ${userResponse.statusText}`
+        );
       }
       const userData = await userResponse.json();
       console.log("fetchResidentId - userData:", userData);
@@ -350,7 +352,9 @@ const VisitasProgramadas = () => {
         }
       );
       if (!deptResponse.ok) {
-        throw new Error(`Error al obtener datos del departamento: ${deptResponse.statusText}`);
+        throw new Error(
+          `Error al obtener datos del departamento: ${deptResponse.statusText}`
+        );
       }
       const deptData = await deptResponse.json();
       console.log("fetchResidentId - deptData:", deptData);
@@ -367,12 +371,18 @@ const VisitasProgramadas = () => {
       );
       if (!residentResponse.ok) {
         const errorData = await residentResponse.json();
-        throw new Error(`Error al obtener datos del residente: ${errorData.message || residentResponse.statusText}`);
+        throw new Error(
+          `Error al obtener datos del residente: ${
+            errorData.message || residentResponse.statusText
+          }`
+        );
       }
       const residentData = await residentResponse.json();
       console.log("fetchResidentId - residentData:", residentData);
       if (!residentData.ID_RESIDENTE) {
-        throw new Error(`No se encontró un residente asociado para NRO_DPTO=${nroDpto}, ID_PERSONA=${idPersona}`);
+        throw new Error(
+          `No se encontró un residente asociado para NRO_DPTO=${nroDpto}, ID_PERSONA=${idPersona}`
+        );
       }
       return residentData.ID_RESIDENTE;
     } catch (err) {
@@ -401,19 +411,21 @@ const VisitasProgramadas = () => {
       }
       const data: VisitaProgramada[] = JSON.parse(text);
       console.log("Datos recibidos de /scheduled-visits:", data);
-      const normalizedData = data
-        .filter((visit: VisitaProgramada) => visit.ESTADO !== 3) // Excluir Cancelada
-        .map((visit: VisitaProgramada) => {
-          const estadoValidado = [1, 2, 3].includes(visit.ESTADO) ? visit.ESTADO : 1;
-          console.log(`Visita ${visit.ID_VISITA_PROGRAMADA} - ESTADO: ${visit.ESTADO} -> ${estadoValidado}`);
-          return {
-            ...visit,
-            NOMBRE_VISITANTE: visit.NOMBRE_VISITANTE.toUpperCase(),
-            FECHA_LLEGADA: formatDate(visit.FECHA_LLEGADA),
-            HORA_LLEGADA: visit.HORA_LLEGADA || null,
-            ESTADO: estadoValidado,
-          };
-        });
+      const normalizedData = data.map((visit: VisitaProgramada) => {
+        const estadoValidado = [1, 2, 3].includes(visit.ESTADO)
+          ? visit.ESTADO
+          : 1;
+        console.log(
+          `Visita ${visit.ID_VISITA_PROGRAMADA} - ESTADO: ${visit.ESTADO} -> ${estadoValidado}`
+        );
+        return {
+          ...visit,
+          NOMBRE_VISITANTE: visit.NOMBRE_VISITANTE.toUpperCase(),
+          FECHA_LLEGADA: formatDate(visit.FECHA_LLEGADA),
+          HORA_LLEGADA: visit.HORA_LLEGADA || null,
+          ESTADO: estadoValidado,
+        };
+      });
 
       const uniqueData = Array.from(
         new Map(
@@ -633,7 +645,9 @@ const VisitasProgramadas = () => {
       console.log("Respuesta del servidor:", responseData);
       if (!response.ok) {
         console.error("Error del servidor:", responseData);
-        throw new Error(responseData.message || "Error al registrar la visita programada");
+        throw new Error(
+          responseData.message || "Error al registrar la visita programada"
+        );
       }
       Swal.fire({
         icon: "success",
@@ -758,7 +772,13 @@ const VisitasProgramadas = () => {
             : visita.ESTADO === 2
             ? "Procesada"
             : "Cancelada";
-        return `${visita.ID_VISITA_PROGRAMADA},${visita.NRO_DPTO},${visita.NOMBRE_VISITANTE},${visita.DNI_VISITANTE},${visita.NOMBRE_PROPIETARIO || "-"},${formatDateForDisplay(visita.FECHA_LLEGADA)},${formatTime(visita.HORA_LLEGADA)},${visita.MOTIVO},${estadoLabel}`;
+        return `${visita.ID_VISITA_PROGRAMADA},${visita.NRO_DPTO},${
+          visita.NOMBRE_VISITANTE
+        },${visita.DNI_VISITANTE},${
+          visita.NOMBRE_PROPIETARIO || "-"
+        },${formatDateForDisplay(visita.FECHA_LLEGADA)},${formatTime(
+          visita.HORA_LLEGADA
+        )},${visita.MOTIVO},${estadoLabel}`;
       })
       .join("\n");
     const csv = headers + rows;
