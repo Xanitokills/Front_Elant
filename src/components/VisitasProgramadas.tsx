@@ -330,6 +330,7 @@ const VisitasProgramadas = () => {
       if (!userResponse.ok)
         throw new Error("Error al obtener datos del usuario");
       const userData = await userResponse.json();
+      console.log("userData:", userData); // Depuración: Verificar ID_PERSONA
       const idPersona = userData.ID_PERSONA;
 
       const deptResponse = await fetch(
@@ -341,6 +342,7 @@ const VisitasProgramadas = () => {
       if (!deptResponse.ok)
         throw new Error("Error al obtener datos del departamento");
       const deptData = await deptResponse.json();
+      console.log("deptData:", deptData); // Depuración: Verificar ID_DEPARTAMENTO
       const idDepartamento = deptData.ID_DEPARTAMENTO;
 
       const residentResponse = await fetch(
@@ -352,12 +354,13 @@ const VisitasProgramadas = () => {
       if (!residentResponse.ok)
         throw new Error("Error al obtener datos del residente");
       const residentData = await residentResponse.json();
+      console.log("residentData:", residentData); // Depuración: Verificar ID_RESIDENTE
       if (!residentData.ID_RESIDENTE) {
         throw new Error("No se encontró un residente asociado");
       }
       return residentData.ID_RESIDENTE;
     } catch (err) {
-      console.error("Error al obtener ID_RESIDENTE:", err);
+      console.error("Error en fetchResidentId:", err);
       throw err;
     }
   };
@@ -403,6 +406,7 @@ const VisitasProgramadas = () => {
       });
     }
   };
+
   useEffect(() => {
     fetchOwnerDepartments();
     fetchScheduledVisits();
@@ -561,28 +565,29 @@ const VisitasProgramadas = () => {
     const horaLlegadaFormatted = `${horaLlegada}:00`;
     try {
       const idResidente = await fetchResidentId(parseInt(nroDpto));
+      const payload = {
+        nro_dpto: parseInt(nroDpto),
+        dni_visitante: dni,
+        id_tipo_doc_visitante: parseInt(tipoDoc),
+        nombre_visitante: nombreVisitante.toUpperCase(),
+        fecha_llegada: fechaLlegada,
+        hora_llegada: horaLlegadaFormatted,
+        motivo,
+        id_residente: idResidente,
+      };
+      console.log("Enviando payload:", payload); // Depuración: Ver datos enviados
       const response = await fetch(`${API_URL}/scheduled-visits`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({
-          nro_dpto: parseInt(nroDpto),
-          dni_visitante: dni,
-          id_tipo_doc_visitante: parseInt(tipoDoc),
-          nombre_visitante: nombreVisitante.toUpperCase(),
-          fecha_llegada: fechaLlegada,
-          hora_llegada: horaLlegadaFormatted,
-          motivo,
-          id_residente: idResidente,
-        }),
+          Authorization: `Bearer ${localStorage.getItem("token")}` },
+        body: JSON.stringify(payload),
       });
+      const responseData = await response.json();
+      console.log("Respuesta del servidor:", responseData); // Depuración: Ver respuesta
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.message || "Error al registrar la visita programada"
-        );
+        console.error("Error del servidor:", responseData);
+        throw new Error(responseData.message || "Error al registrar la visita programada");
       }
       Swal.fire({
         icon: "success",
@@ -608,6 +613,7 @@ const VisitasProgramadas = () => {
       setActiveTab("history");
     } catch (err) {
       const error = err as Error;
+      console.error("Error en handleSaveScheduledVisit:", error);
       setError(error.message || "Error al registrar la visita programada");
       Swal.fire({
         icon: "error",
