@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import styled from "styled-components";
-import Select from "react-select"; // Import react-select
+import Select from "react-select";
 import {
   FaSearch,
   FaSave,
@@ -11,7 +11,7 @@ import {
 import Swal from "sweetalert2";
 import { useAuth } from "../context/AuthContext";
 
-// Estilos
+// Estilos (unchanged, included for completeness)
 const Container = styled.div`
   max-width: 100%;
   margin: 0 auto;
@@ -150,7 +150,6 @@ const TableRow = styled.tr<{
   }
 `;
 
-// Estilos personalizados para react-select
 const customSelectStyles = {
   control: (provided: any) => ({
     ...provided,
@@ -197,7 +196,7 @@ const customSelectStyles = {
   }),
 };
 
-// Interfaces
+// Interfaces (unchanged)
 interface Fase {
   ID_FASE: number;
   NOMBRE: string;
@@ -260,15 +259,12 @@ interface FilterScheduledState {
   fase: string;
 }
 
-// URL base de la API
 const API_URL = import.meta.env.VITE_API_URL;
 
-// Componente principal
 const Visits = () => {
-  // Obtener userId desde AuthContext
   const { userId } = useAuth();
 
-  // Estados
+  // Estados (unchanged)
   const [dni, setDni] = useState("");
   const [tipoDoc, setTipoDoc] = useState<string>("");
   const [nombreVisitante, setNombreVisitante] = useState("");
@@ -297,9 +293,20 @@ const Visits = () => {
     fase: "",
   });
 
+  // Refs for form fields
+  const tipoDocRef = useRef<HTMLSelectElement>(null);
+  const dniRef = useRef<HTMLInputElement>(null);
+  const searchButtonRef = useRef<HTMLButtonElement>(null);
+  const nombreVisitanteRef = useRef<HTMLInputElement>(null);
+  const idFaseRef = useRef<HTMLSelectElement>(null);
+  const nroDptoRef = useRef<any>(null); // react-select ref
+  const idResidenteRef = useRef<HTMLSelectElement>(null);
+  const motivoRef = useRef<HTMLInputElement>(null);
+  const saveButtonRef = useRef<HTMLButtonElement>(null);
+
   const currentDate = new Date().toISOString().split("T")[0];
 
-  // Funciones de formato
+  // Funciones de formato (unchanged)
   const formatDate = (date: string | Date): string => {
     try {
       const d = typeof date === "string" ? new Date(date) : date;
@@ -327,7 +334,32 @@ const Visits = () => {
     }
   };
 
-  // Manejo de cambios en inputs
+  // Handle Enter key press
+  const handleEnterKey = (e: React.KeyboardEvent, nextField: React.RefObject<any>) => {
+    if (e.key === "Enter") {
+      e.preventDefault(); // Prevent form submission
+      if (nextField.current) {
+        if (nextField === nroDptoRef) {
+          // For react-select, focus the control
+          nextField.current.focus();
+        } else if (nextField === searchButtonRef) {
+          // For the search button, trigger click
+          nextField.current.click();
+        } else if (nextField === saveButtonRef) {
+          // For the save button, trigger click
+          nextField.current.click();
+        } else {
+          // For native inputs/selects, focus the element
+          nextField.current.focus();
+          if (nextField.current.tagName === "SELECT") {
+            nextField.current.click(); // Open dropdown
+          }
+        }
+      }
+    }
+  };
+
+  // Manejo de cambios en inputs (modified to include Enter handling)
   const handleIdFaseChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const value = e.target.value;
@@ -385,7 +417,7 @@ const Visits = () => {
     []
   );
 
-  // Fetch de fases
+  // Fetch functions (unchanged)
   const fetchFases = async () => {
     try {
       const response = await fetch(`${API_URL}/fases`, {
@@ -408,15 +440,11 @@ const Visits = () => {
     }
   };
 
-  // Fetch de departamentos por fase
   const fetchDepartamentos = async (idFase: string) => {
-    console.log("entro al metodo fetchDepartamentos");
     if (!idFase) {
-      console.log("No se proporcionó ID de fase, limpiando departamentos");
       setDepartamentos([]);
       return;
     }
-    console.log(`Solicitando departamentos para ID_FASE: ${idFase}`);
     try {
       const response = await fetch(
         `${API_URL}/departamentosFase?id_fase=${idFase}`,
@@ -426,12 +454,8 @@ const Visits = () => {
           },
         }
       );
-      console.log(
-        `Respuesta del servidor: ${response.status} ${response.statusText}`
-      );
       if (!response.ok) throw new Error("Error al obtener departamentos");
       const data = await response.json();
-      console.log("Departamentos recibidos:", data);
       setDepartamentos(data);
     } catch (err) {
       console.error("Error al obtener departamentos:", err);
@@ -446,7 +470,6 @@ const Visits = () => {
     }
   };
 
-  // Fetch de residentes por número de departamento
   const fetchResidents = async (nroDpto: string) => {
     if (!nroDpto || isNaN(parseInt(nroDpto))) {
       setResidentes([]);
@@ -483,7 +506,6 @@ const Visits = () => {
     }
   };
 
-  // Búsqueda por DNI
   const handleSearchDni = async () => {
     if (!tipoDoc) {
       setError("Por favor, seleccione el tipo de documento");
@@ -510,6 +532,8 @@ const Visits = () => {
         if (!response.ok) throw new Error("Error al buscar el documento");
         const data = await response.json();
         setNombreVisitante(data.nombreCompleto.toUpperCase());
+        // Move focus to next field after successful search
+        idFaseRef.current?.focus();
       } catch (err) {
         setError("No se pudo encontrar el documento");
         Swal.fire({
@@ -520,10 +544,12 @@ const Visits = () => {
           showConfirmButton: false,
         });
       }
+    } else {
+      // For non-DNI types, move to next field
+      nombreVisitanteRef.current?.focus();
     }
   };
 
-  // Guardar visita
   const handleSaveVisit = async () => {
     if (
       !tipoDoc ||
@@ -611,6 +637,8 @@ const Visits = () => {
       setTimeout(() => {
         setHighlightedVisitId(null);
       }, 10000);
+      // Reset focus to first field
+      tipoDocRef.current?.focus();
     } catch (err) {
       const error = err as Error;
       setError(error.message || "Error al grabar la visita");
@@ -624,7 +652,7 @@ const Visits = () => {
     }
   };
 
-  // Fetch de visitas
+  // Fetch visits, scheduled visits, end visit, accept scheduled visit, export CSV, filtering (unchanged)
   const fetchVisits = async () => {
     try {
       const response = await fetch(`${API_URL}/visits`, {
@@ -685,7 +713,6 @@ const Visits = () => {
     }
   };
 
-  // Fetch de visitas programadas
   const fetchScheduledVisits = async () => {
     try {
       const response = await fetch(`${API_URL}/all-scheduled-visits`, {
@@ -721,7 +748,6 @@ const Visits = () => {
     }
   };
 
-  // Terminar visita
   const handleEndVisit = async (idVisita: number) => {
     if (!userId) {
       setError("No se encontró el ID del usuario autenticado");
@@ -767,7 +793,6 @@ const Visits = () => {
     }
   };
 
-  // Aceptar visita programada
   const handleAcceptScheduledVisit = async (
     idVisitaProgramada: number,
     fechaLlegada: string
@@ -841,7 +866,6 @@ const Visits = () => {
     }
   };
 
-  // Exportar a CSV
   const exportToCSV = () => {
     const headers = [
       "ID Visita",
@@ -897,7 +921,6 @@ const Visits = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Filtrar visitas
   const filteredVisitas = visitas.filter((visita) => {
     const matchesEstado =
       filter.estado === "todos" ||
@@ -918,7 +941,6 @@ const Visits = () => {
     return matchesEstado && matchesFase && matchesNroDpto && matchesNombre;
   });
 
-  // Filtrar visitas programadas
   const filteredVisitasProgramadas = visitasProgramadas.filter((visita) => {
     const matchesFase =
       filterScheduled.fase === "" ||
@@ -940,13 +962,11 @@ const Visits = () => {
     return matchesFase && matchesNroDpto && matchesNombre && matchesFecha;
   });
 
-  // Opciones para react-select
   const departamentoOptions = departamentos.map((depto) => ({
     value: depto.NRO_DPTO.toString(),
     label: depto.NRO_DPTO.toString(),
   }));
 
-  // Efecto inicial
   useEffect(() => {
     fetchFases();
     if (activeTab === "history") {
@@ -1000,8 +1020,10 @@ const Visits = () => {
                     Tipo de Documento *
                   </label>
                   <SelectNative
+                    ref={tipoDocRef}
                     value={tipoDoc}
                     onChange={(e) => setTipoDoc(e.target.value)}
+                    onKeyDown={(e) => handleEnterKey(e, dniRef)}
                     required
                   >
                     <option value="">Seleccione un tipo</option>
@@ -1018,6 +1040,7 @@ const Visits = () => {
                   </label>
                   <div className="flex">
                     <Input
+                      ref={dniRef}
                       type="text"
                       value={dni}
                       onChange={(e) => {
@@ -1026,12 +1049,17 @@ const Visits = () => {
                           setDni(value);
                         }
                       }}
+                      onKeyDown={(e) =>
+                        handleEnterKey(e, tipoDoc === "2" ? searchButtonRef : nombreVisitanteRef)
+                      }
                       placeholder="Ejemplo: 7123XXXX o CE123456789"
                     />
                     {tipoDoc === "2" && (
                       <Button
+                        ref={searchButtonRef}
                         className="ml-2 bg-blue-600 text-white hover:bg-blue-700"
                         onClick={handleSearchDni}
+                        onKeyDown={(e) => handleEnterKey(e, idFaseRef)}
                       >
                         <FaSearch />
                       </Button>
@@ -1048,9 +1076,11 @@ const Visits = () => {
                     Nombre del Visitante *
                   </label>
                   <Input
+                    ref={nombreVisitanteRef}
                     type="text"
                     value={nombreVisitante}
                     onChange={handleNombreVisitanteChange}
+                    onKeyDown={(e) => handleEnterKey(e, idFaseRef)}
                     readOnly={tipoDoc === "2"}
                     placeholder="Ingrese el nombre en mayúsculas"
                     className={
@@ -1070,7 +1100,13 @@ const Visits = () => {
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Fase *
                   </label>
-                  <SelectNative value={idFase} onChange={handleIdFaseChange} required>
+                  <SelectNative
+                    ref={idFaseRef}
+                    value={idFase}
+                    onChange={handleIdFaseChange}
+                    onKeyDown={(e) => handleEnterKey(e, nroDptoRef)}
+                    required
+                  >
                     <option value="">Seleccione una fase</option>
                     {fases.map((fase) => (
                       <option key={fase.ID_FASE} value={fase.ID_FASE}>
@@ -1087,6 +1123,7 @@ const Visits = () => {
                     Número de Departamento *
                   </label>
                   <Select
+                    ref={nroDptoRef}
                     options={departamentoOptions}
                     value={
                       nroDpto
@@ -1096,6 +1133,12 @@ const Visits = () => {
                         : null
                     }
                     onChange={handleNroDptoChange}
+                    onKeyDown={(e: React.KeyboardEvent) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        idResidenteRef.current?.focus();
+                      }
+                    }}
                     placeholder="Escribe o selecciona un departamento"
                     isClearable
                     isDisabled={!idFase}
@@ -1112,8 +1155,10 @@ const Visits = () => {
                     Residente *
                   </label>
                   <SelectNative
+                    ref={idResidenteRef}
                     value={idResidente}
                     onChange={(e) => setIdResidente(e.target.value)}
+                    onKeyDown={(e) => handleEnterKey(e, motivoRef)}
                     disabled={residentes.length === 0 || !nroDpto}
                     required
                   >
@@ -1135,9 +1180,11 @@ const Visits = () => {
                   Motivo de la Visita *
                 </label>
                 <Input
+                  ref={motivoRef}
                   type="text"
                   value={motivo}
                   onChange={handleMotivoChange}
+                  onKeyDown={(e) => handleEnterKey(e, saveButtonRef)}
                   placeholder="Ejemplo: Reunión familiar"
                 />
                 <p className="text-xs text-gray-500 mt-1">
@@ -1148,6 +1195,7 @@ const Visits = () => {
 
             <div className="mt-6 flex justify-end">
               <Button
+                ref={saveButtonRef}
                 className="bg-green-600 text-white hover:bg-green-700"
                 onClick={handleSaveVisit}
               >
