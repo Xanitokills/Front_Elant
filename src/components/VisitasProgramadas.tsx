@@ -174,6 +174,7 @@ interface VisitaProgramada {
   ID_RESIDENTE: number;
   NOMBRE_PROPIETARIO?: string;
   ESTADO: number;
+  ID_TIPO_DOC_VISITANTE: number | null;
 }
 
 interface Departamento {
@@ -384,47 +385,58 @@ const fetchResidentId = async (nroDpto: number): Promise<number> => {
     throw err;
   }
 };
-  const fetchScheduledVisits = async () => {
-    if (isCanceling) return;
-    try {
-      const token = localStorage.getItem("token");
-      console.log(
-        "Enviando solicitud con token:",
-        token ? "Presente" : "No presente"
-      );
-      const response = await fetch(`${API_URL}/scheduled-visits`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const text = await response.text();
-      console.log("Respuesta del servidor:", response.status, text);
-      if (!response.ok) {
-        throw new Error("Error al obtener las visitas programadas");
-      }
-      const data = JSON.parse(text);
-      const normalizedData = data.map((visit: VisitaProgramada) => ({
+const fetchScheduledVisits = async () => {
+  if (isCanceling) return;
+  try {
+    const token = localStorage.getItem("token");
+    const response = await fetch(`${API_URL}/scheduled-visits`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const text = await response.text();
+    if (!response.ok) {
+      throw new Error("Error al obtener las visitas programadas");
+    }
+    const data: VisitaProgramada[] = JSON.parse(text); // Aserción de tipo
+    console.log("Datos recibidos de /scheduled-visits:", data); // Log para depuración
+    const normalizedData = data.map((visit: VisitaProgramada) => {
+      // Validar y corregir el campo ESTADO
+      const estadoValidado = visit.ESTADO === 1 || visit.ESTADO === 0 ? visit.ESTADO : 1; // Por defecto Pendiente si no es válido
+      console.log(`Visita ${visit.ID_VISITA_PROGRAMADA} - ESTADO: ${visit.ESTADO} -> ${estadoValidado}`); // Log para depuración
+      return {
         ...visit,
         NOMBRE_VISITANTE: visit.NOMBRE_VISITANTE.toUpperCase(),
         FECHA_LLEGADA: formatDate(visit.FECHA_LLEGADA),
         HORA_LLEGADA: visit.HORA_LLEGADA || null,
-      }));
-      setVisitasProgramadas(
-        normalizedData.sort(
-          (a: VisitaProgramada, b: VisitaProgramada) =>
-            new Date(b.FECHA_LLEGADA).getTime() -
-            new Date(a.FECHA_LLEGADA).getTime()
-        )
-      );
-    } catch (err) {
-      console.error("Error al obtener las visitas programadas:", err);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "No se pudieron cargar las visitas programadas",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-    }
-  };
+        ESTADO: estadoValidado, // Usar el estado validado
+      };
+    });
+
+    // Filtrar duplicados basados en ID_VISITA_PROGRAMADA
+    const uniqueData = Array.from(
+      new Map(
+        normalizedData.map((item) => [item.ID_VISITA_PROGRAMADA, item])
+      ).values()
+    );
+
+    console.log("Visitas normalizadas y sin duplicados:", uniqueData); // Log para depuración
+    setVisitasProgramadas(
+      uniqueData.sort(
+        (a: VisitaProgramada, b: VisitaProgramada) =>
+          new Date(b.FECHA_LLEGADA).getTime() -
+          new Date(a.FECHA_LLEGADA).getTime()
+      )
+    );
+  } catch (err) {
+    console.error("Error al obtener las visitas programadas:", err);
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: "No se pudieron cargar las visitas programadas",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+  }
+}
 
   useEffect(() => {
     fetchOwnerDepartments();
