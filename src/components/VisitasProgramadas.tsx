@@ -180,10 +180,12 @@ interface VisitaProgramada {
   NOMBRE_PROPIETARIO?: string;
   ESTADO: number;
   ID_TIPO_DOC_VISITANTE: number | null;
+  NOMBRE_FASE?: string;
 }
 
 interface Departamento {
   NRO_DPTO: number;
+  NOMBRE_FASE?: string;
   IS_PRINCIPAL?: boolean;
 }
 
@@ -300,6 +302,7 @@ const VisitasProgramadas = () => {
       const data = await response.json();
       const departments = data.map((d: Departamento, index: number) => ({
         NRO_DPTO: d.NRO_DPTO,
+        NOMBRE_FASE: d.NOMBRE_FASE,
         IS_PRINCIPAL: index === 0,
       }));
       setDepartamentos(departments);
@@ -763,7 +766,7 @@ const VisitasProgramadas = () => {
 
   const exportToCSV = () => {
     const headers =
-      "ID Visita,Número Dpto,Nombre Visitante,DNI/CE,Propietario,Fecha Llegada,Hora Tent jugada,Motivo,Estado\n";
+      "ID Visita,Fase,Número Dpto,Nombre Visitante,DNI/CE,Propietario,Fecha Llegada,Hora Tentativa,Motivo,Estado\n";
     const rows = filteredVisitasProgramadas
       .map((visita) => {
         const estadoLabel =
@@ -772,13 +775,7 @@ const VisitasProgramadas = () => {
             : visita.ESTADO === 2
             ? "Procesada"
             : "Cancelada";
-        return `${visita.ID_VISITA_PROGRAMADA},${visita.NRO_DPTO},${
-          visita.NOMBRE_VISITANTE
-        },${visita.DNI_VISITANTE},${
-          visita.NOMBRE_PROPIETARIO || "-"
-        },${formatDateForDisplay(visita.FECHA_LLEGADA)},${formatTime(
-          visita.HORA_LLEGADA
-        )},${visita.MOTIVO},${estadoLabel}`;
+        return `${visita.ID_VISITA_PROGRAMADA},${visita.NOMBRE_FASE || "-"},${visita.NRO_DPTO},${visita.NOMBRE_VISITANTE},${visita.DNI_VISITANTE},${visita.NOMBRE_PROPIETARIO || "-"},${formatDateForDisplay(visita.FECHA_LLEGADA)},${formatTime(visita.HORA_LLEGADA)},${visita.MOTIVO},${estadoLabel}`;
       })
       .join("\n");
     const csv = headers + rows;
@@ -917,7 +914,7 @@ const VisitasProgramadas = () => {
                   {departamentos.length === 1 ? (
                     <Input
                       type="text"
-                      value={nroDpto}
+                      value={`${departamentos[0].NOMBRE_FASE} - ${departamentos[0].NRO_DPTO}`}
                       readOnly
                       className="bg-gray-100 text-gray-700"
                       required
@@ -931,7 +928,7 @@ const VisitasProgramadas = () => {
                       <option value="">Seleccione un departamento</option>
                       {departamentos.map((depto) => (
                         <option key={depto.NRO_DPTO} value={depto.NRO_DPTO}>
-                          {depto.NRO_DPTO}{" "}
+                          {depto.NOMBRE_FASE} - {depto.NRO_DPTO}{" "}
                           {depto.IS_PRINCIPAL ? "(Principal)" : ""}
                         </option>
                       ))}
@@ -940,7 +937,7 @@ const VisitasProgramadas = () => {
                   <p className="text-xs text-gray-500 mt-1">
                     {departamentos.length === 1
                       ? "Departamento asociado al propietario."
-                      : "Seleccione el departamento para la visita."}
+                      : "Seleccione la fase y departamento para la visita."}
                   </p>
                 </div>
               </div>
@@ -1118,6 +1115,9 @@ const VisitasProgramadas = () => {
                       ID Visita
                     </th>
                     <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                      Fase
+                    </th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
                       Número Dpto
                     </th>
                     <th className="py-3 px-4 border-b text-left text-sm font-semibold">
@@ -1150,7 +1150,7 @@ const VisitasProgramadas = () => {
                   {filteredVisitasProgramadas.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={10}
+                        colSpan={11}
                         className="py-4 text-center text-gray-500"
                       >
                         No hay visitas programadas para mostrar.
@@ -1166,6 +1166,7 @@ const VisitasProgramadas = () => {
                         <td className="py-3 px-4">
                           {visita.ID_VISITA_PROGRAMADA}
                         </td>
+                        <td className="py-3 px-4">{visita.NOMBRE_FASE || "-"}</td>
                         <td className="py-3 px-4">{visita.NRO_DPTO}</td>
                         <td className="py-3 px-4">{visita.NOMBRE_VISITANTE}</td>
                         <td className="py-3 px-4">{visita.DNI_VISITANTE}</td>
