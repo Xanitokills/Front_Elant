@@ -7,6 +7,7 @@ import {
   FaSignOutAlt,
   FaCheck,
   FaFileExport,
+  FaTimes,
 } from "react-icons/fa";
 import Swal from "sweetalert2";
 import { useAuth } from "../context/AuthContext";
@@ -289,7 +290,7 @@ const Visits = () => {
   const [activeTab, setActiveTab] = useState("create");
   const [highlightedVisitId, setHighlightedVisitId] = useState<number | null>(null);
   const [filter, setFilter] = useState<FilterState>({
-    estado: "todos",
+    estado: "activas",
     nroDpto: "",
     nombre: "",
     fase: "",
@@ -340,6 +341,15 @@ const Visits = () => {
     } catch {
       return "-";
     }
+  };
+
+  const formatName = (name: string): string => {
+    if (!name) return "";
+    return name
+      .toLowerCase()
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
   };
 
   // Handle Enter key press
@@ -418,7 +428,7 @@ const Visits = () => {
 
   const handleNombreVisitanteChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value.toUpperCase();
+      const value = e.target.value;
       setNombreVisitante(value);
       setError("");
     },
@@ -432,6 +442,32 @@ const Visits = () => {
     },
     []
   );
+
+  const handleFilterScheduledChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const { name, value } = e.target;
+      setFilterScheduled((prev) => ({ ...prev, [name]: value }));
+    },
+    []
+  );
+
+  const clearFilters = () => {
+    setFilter({
+      estado: "activas",
+      nroDpto: "",
+      nombre: "",
+      fase: "",
+    });
+  };
+
+  const clearScheduledFilters = () => {
+    setFilterScheduled({
+      nroDpto: "",
+      nombre: "",
+      fecha: "",
+      fase: "",
+    });
+  };
 
   // Fetch functions
   const fetchFases = async () => {
@@ -500,7 +536,12 @@ const Visits = () => {
       });
       if (!response.ok) throw new Error("Error al obtener residentes");
       const data = await response.json();
-      setResidentes(data);
+      setResidentes(
+        data.map((res: Residente) => ({
+          ...res,
+          NOMBRE_COMPLETO: formatName(res.NOMBRE_COMPLETO),
+        }))
+      );
       if (data.length === 0) {
         setIdResidente("");
         setError("No se encontraron residentes para este departamento");
@@ -547,7 +588,7 @@ const Visits = () => {
         });
         if (!response.ok) throw new Error("Error al buscar el documento");
         const data = await response.json();
-        setNombreVisitante(data.nombreCompleto.toUpperCase());
+        setNombreVisitante(formatName(data.nombreCompleto));
         idFaseRef.current?.focus();
       } catch (err) {
         setError("No se pudo encontrar el documento");
@@ -614,7 +655,7 @@ const Visits = () => {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify({
-          nombre_visitante: nombreVisitante,
+          nombre_visitante: formatName(nombreVisitante),
           nro_doc_visitante: dni,
           id_residente: idResidente,
           fecha_ingreso: fechaIngreso,
@@ -696,6 +737,10 @@ const Visits = () => {
 
         return {
           ...visit,
+          NOMBRE_VISITANTE: formatName(visit.NOMBRE_VISITANTE),
+          NOMBRE_PROPIETARIO: visit.NOMBRE_PROPIETARIO
+            ? formatName(visit.NOMBRE_PROPIETARIO)
+            : visit.NOMBRE_PROPIETARIO,
           FECHA_INGRESO: fechaIngreso,
           HORA_INGRESO: horaIngreso,
           FECHA_SALIDA: fechaSalida,
@@ -737,6 +782,10 @@ const Visits = () => {
       const data = await response.json();
       const normalizedData = data.map((visit: VisitaProgramada) => ({
         ...visit,
+        NOMBRE_VISITANTE: formatName(visit.NOMBRE_VISITANTE),
+        NOMBRE_PROPIETARIO: visit.NOMBRE_PROPIETARIO
+          ? formatName(visit.NOMBRE_PROPIETARIO)
+          : visit.NOMBRE_PROPIETARIO,
         FECHA_LLEGADA: formatDate(visit.FECHA_LLEGADA),
         ESTADO:
           visit.ESTADO === true ? 1 : visit.ESTADO === false ? 0 : visit.ESTADO,
@@ -899,7 +948,7 @@ const Visits = () => {
       visita.ID_VISITA,
       visita.NOMBRE_FASE ?? "-",
       visita.NRO_DPTO ?? "-",
-      visita.NOMBRE_VISITANTE,
+      formatName(visita.NOMBRE_VISITANTE),
       visita.NRO_DOC_VISITANTE,
       visita.ID_TIPO_DOC_VISITANTE
         ? {
@@ -910,7 +959,7 @@ const Visits = () => {
             6: "Otros",
           }[visita.ID_TIPO_DOC_VISITANTE] || "-"
         : "-",
-      visita.NOMBRE_PROPIETARIO ?? "-",
+      visita.NOMBRE_PROPIETARIO ? formatName(visita.NOMBRE_PROPIETARIO) : "-",
       visita.FECHA_INGRESO,
       visita.HORA_INGRESO,
       visita.FECHA_SALIDA ?? "-",
@@ -947,9 +996,9 @@ const Visits = () => {
       (visita.NRO_DPTO && visita.NRO_DPTO.toString().includes(filter.nroDpto));
     const matchesNombre =
       filter.nombre === "" ||
-      visita.NOMBRE_VISITANTE.toLowerCase().includes(
-        filter.nombre.toLowerCase()
-      );
+      formatName(visita.NOMBRE_VISITANTE)
+        .toLowerCase()
+        .includes(filter.nombre.toLowerCase());
     return matchesEstado && matchesFase && matchesNroDpto && matchesNombre;
   });
 
@@ -957,17 +1006,17 @@ const Visits = () => {
     const matchesFase =
       filterScheduled.fase === "" ||
       (visita.NOMBRE_FASE &&
-        visita.NOMBRE_FASE.toLowerCase().includes(
-          filterScheduled.fase.toLowerCase()
-        ));
+        visita.NOMBRE_FASE ===
+          fases.find((f) => f.ID_FASE.toString() === filterScheduled.fase)
+            ?.NOMBRE);
     const matchesNroDpto =
       filterScheduled.nroDpto === "" ||
       visita.NRO_DPTO.toString().includes(filterScheduled.nroDpto);
     const matchesNombre =
       filterScheduled.nombre === "" ||
-      visita.NOMBRE_VISITANTE.toLowerCase().includes(
-        filterScheduled.nombre.toLowerCase()
-      );
+      formatName(visita.NOMBRE_VISITANTE)
+        .toLowerCase()
+        .includes(filterScheduled.nombre.toLowerCase());
     const matchesFecha =
       filterScheduled.fecha === "" ||
       formatDate(visita.FECHA_LLEGADA) === formatDate(filterScheduled.fecha);
@@ -1094,7 +1143,7 @@ const Visits = () => {
                     onChange={handleNombreVisitanteChange}
                     onKeyDown={(e) => handleEnterKey(e, idFaseRef)}
                     readOnly={tipoDoc === "2"}
-                    placeholder="Ingrese el nombre en mayúsculas"
+                    placeholder="Ejemplo: Jorge Gonzales Perez"
                     className={
                       tipoDoc === "2" ? "bg-gray-100 text-gray-700" : ""
                     }
@@ -1102,7 +1151,7 @@ const Visits = () => {
                   <p className="text-xs text-gray-500 mt-1">
                     {tipoDoc === "2"
                       ? "Este campo se llena automáticamente tras buscar el documento."
-                      : "Ingrese el nombre completo en mayúsculas."}
+                      : "Ingrese el nombre completo."}
                   </p>
                 </div>
               </div>
@@ -1283,7 +1332,14 @@ const Visits = () => {
                   />
                 </div>
               </div>
-              <div className="flex justify-end mt-4 md:mt-0">
+              <div className="flex justify-end space-x-2 mt-4 md:mt-0">
+                <Button
+                  className="bg-gray-600 text-white hover:bg-gray-700"
+                  onClick={clearFilters}
+                >
+                  <FaTimes className="mr-2" />
+                  Eliminar Filtros
+                </Button>
                 <Button
                   className="bg-green-600 text-white hover:bg-green-700"
                   onClick={exportToCSV}
@@ -1377,7 +1433,7 @@ const Visits = () => {
                             {visita.NRO_DPTO ?? "-"}
                           </td>
                           <td className="py-3 px-4">
-                            {visita.NOMBRE_VISITANTE}
+                            {formatName(visita.NOMBRE_VISITANTE)}
                           </td>
                           <td className="py-3 px-4">
                             {visita.NRO_DOC_VISITANTE}
@@ -1394,7 +1450,9 @@ const Visits = () => {
                               : "-"}
                           </td>
                           <td className="py-3 px-4">
-                            {visita.NOMBRE_PROPIETARIO ?? "-"}
+                            {visita.NOMBRE_PROPIETARIO
+                              ? formatName(visita.NOMBRE_PROPIETARIO)
+                              : "-"}
                           </td>
                           <td className="py-3 px-4">{visita.FECHA_INGRESO}</td>
                           <td className="py-3 px-4">{visita.HORA_INGRESO}</td>
@@ -1456,18 +1514,18 @@ const Visits = () => {
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Fase
                   </label>
-                  <Input
-                    type="text"
+                  <SelectNative
                     name="fase"
                     value={filterScheduled.fase}
-                    onChange={(e) =>
-                      setFilterScheduled((prev) => ({
-                        ...prev,
-                        fase: e.target.value,
-                      }))
-                    }
-                    placeholder="Ejemplo: Fase1"
-                  />
+                    onChange={handleFilterScheduledChange}
+                  >
+                    <option value="">Todas</option>
+                    {fases.map((fase) => (
+                      <option key={fase.ID_FASE} value={fase.ID_FASE}>
+                        {fase.NOMBRE}
+                      </option>
+                    ))}
+                  </SelectNative>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -1497,12 +1555,7 @@ const Visits = () => {
                     type="text"
                     name="nombre"
                     value={filterScheduled.nombre}
-                    onChange={(e) =>
-                      setFilterScheduled((prev) => ({
-                        ...prev,
-                        nombre: e.target.value,
-                      }))
-                    }
+                    onChange={handleFilterScheduledChange}
                     placeholder="Filtrar por nombre"
                   />
                 </div>
@@ -1514,15 +1567,19 @@ const Visits = () => {
                     type="date"
                     name="fecha"
                     value={filterScheduled.fecha}
-                    onChange={(e) =>
-                      setFilterScheduled((prev) => ({
-                        ...prev,
-                        fecha: e.target.value,
-                      }))
-                    }
+                    onChange={handleFilterScheduledChange}
                     min={currentDate}
                   />
                 </div>
+              </div>
+              <div className="flex justify-end space-x-2 mt-4 md:mt-0">
+                <Button
+                  className="bg-gray-600 text-white hover:bg-gray-700"
+                  onClick={clearScheduledFilters}
+                >
+                  <FaTimes className="mr-2" />
+                  Eliminar Filtros
+                </Button>
               </div>
             </div>
             <div className="overflow-x-auto">
@@ -1605,7 +1662,7 @@ const Visits = () => {
                           </td>
                           <td className="py-3 px-4">{visita.NRO_DPTO}</td>
                           <td className="py-3 px-4">
-                            {visita.NOMBRE_VISITANTE}
+                            {formatName(visita.NOMBRE_VISITANTE)}
                           </td>
                           <td className="py-3 px-4">{visita.DNI_VISITANTE}</td>
                           <td className="py-3 px-4">
@@ -1620,7 +1677,9 @@ const Visits = () => {
                               : "-"}
                           </td>
                           <td className="py-3 px-4">
-                            {visita.NOMBRE_PROPIETARIO ?? "-"}
+                            {visita.NOMBRE_PROPIETARIO
+                              ? formatName(visita.NOMBRE_PROPIETARIO)
+                              : "-"}
                           </td>
                           <td className="py-3 px-4">{fechaLlegadaFormatted}</td>
                           <td className="py-3 px-4">
