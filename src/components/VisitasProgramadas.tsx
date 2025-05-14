@@ -146,9 +146,7 @@ const AMPMButton = styled.button<{ selected: boolean }>`
   &:hover {
     transform: translateY(-1px);
     background: ${(props) =>
-      props.selected
-        ? "linear-gradient(145deg, #1e40af, #2563eb)"
-        : "#e5e7eb"};
+      props.selected ? "linear-gradient(145deg, #1e40af, #2563eb)" : "#e5e7eb"};
   }
   &:focus {
     outline: none;
@@ -258,7 +256,9 @@ const VisitasProgramadas = () => {
   const [hour, setHour] = useState<string>("12");
   const [minute, setMinute] = useState<string>("00");
   const [period, setPeriod] = useState<"AM" | "PM">("AM");
-  const [visitasProgramadas, setVisitasProgramadas] = useState<VisitaProgramada[]>([]);
+  const [visitasProgramadas, setVisitasProgramadas] = useState<
+    VisitaProgramada[]
+  >([]);
   const [filter, setFilter] = useState({
     nombre: "",
     fecha: currentDate,
@@ -327,7 +327,8 @@ const VisitasProgramadas = () => {
       const userResponse = await fetch(`${API_URL}/users/${userId}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
-      if (!userResponse.ok) throw new Error("Error al obtener datos del usuario");
+      if (!userResponse.ok)
+        throw new Error("Error al obtener datos del usuario");
       const userData = await userResponse.json();
       const idPersona = userData.ID_PERSONA;
 
@@ -364,12 +365,20 @@ const VisitasProgramadas = () => {
   const fetchScheduledVisits = async () => {
     if (isCanceling) return;
     try {
+      const token = localStorage.getItem("token");
+      console.log(
+        "Enviando solicitud con token:",
+        token ? "Presente" : "No presente"
+      );
       const response = await fetch(`${API_URL}/scheduled-visits`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok)
+      const text = await response.text(); // Leer el cuerpo una sola vez
+      console.log("Respuesta del servidor:", response.status, text);
+      if (!response.ok) {
         throw new Error("Error al obtener las visitas programadas");
-      const data = await response.json();
+      }
+      const data = JSON.parse(text); // Parsear el texto a JSON
       const normalizedData = data.map((visit: VisitaProgramada) => ({
         ...visit,
         NOMBRE_VISITANTE: visit.NOMBRE_VISITANTE.toUpperCase(),
@@ -394,7 +403,6 @@ const VisitasProgramadas = () => {
       });
     }
   };
-
   useEffect(() => {
     fetchOwnerDepartments();
     fetchScheduledVisits();
@@ -649,10 +657,13 @@ const VisitasProgramadas = () => {
         if (response.status === 400) {
           if (
             errorData.message === "La visita ya está procesada o cancelada" ||
-            errorData.message === "No se pudo cancelar la visita: estado no válido"
+            errorData.message ===
+              "No se pudo cancelar la visita: estado no válido"
           ) {
             const visitResponse = await fetch(`${API_URL}/scheduled-visits`, {
-              headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
             });
             if (!visitResponse.ok)
               throw new Error("Error al verificar el estado de la visita");
@@ -670,7 +681,9 @@ const VisitasProgramadas = () => {
                 showConfirmButton: false,
               });
             } else {
-              throw new Error(errorData.message || "Error al cancelar la visita");
+              throw new Error(
+                errorData.message || "Error al cancelar la visita"
+              );
             }
           } else {
             throw new Error(errorData.message || "Error al cancelar la visita");
@@ -822,9 +835,13 @@ const VisitasProgramadas = () => {
                     required
                   >
                     <option value="2">DNI (8 dígitos)</option>
-                    <option value="3">Carnet de Extranjería (12 dígitos)</option>
+                    <option value="3">
+                      Carnet de Extranjería (12 dígitos)
+                    </option>
                     <option value="4">Pasaporte (12 dígitos)</option>
-                    <option value="5">Partida de Nacimiento (15 dígitos)</option>
+                    <option value="5">
+                      Partida de Nacimiento (15 dígitos)
+                    </option>
                     <option value="6">Otros (15 dígitos)</option>
                   </Select>
                   <p className="text-xs text-gray-500 mt-1">
