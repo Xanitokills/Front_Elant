@@ -150,9 +150,19 @@ const TableRow = styled.tr<{
 `;
 
 // Interfaces
+interface Fase {
+  ID_FASE: number;
+  NOMBRE: string;
+}
+
 interface Residente {
   ID_RESIDENTE: number;
   NOMBRE_COMPLETO: string;
+}
+
+interface Departamento {
+  ID_DEPARTAMENTO: number;
+  NRO_DPTO: number;
 }
 
 interface Visitante {
@@ -170,6 +180,7 @@ interface Visitante {
   ID_RESIDENTE: number;
   NOMBRE_PROPIETARIO: string;
   ESTADO: number | boolean;
+  NOMBRE_FASE: string;
 }
 
 interface VisitaProgramada {
@@ -184,18 +195,21 @@ interface VisitaProgramada {
   ID_RESIDENTE: number;
   NOMBRE_PROPIETARIO: string;
   ESTADO: number | boolean;
+  NOMBRE_FASE: string;
 }
 
 interface FilterState {
   estado: string;
   nroDpto: string;
   nombre: string;
+  fase: string;
 }
 
 interface FilterScheduledState {
   nroDpto: string;
   nombre: string;
   fecha: string;
+  fase: string;
 }
 
 // URL base de la API
@@ -208,30 +222,31 @@ const Visits = () => {
 
   // Estados
   const [dni, setDni] = useState("");
-  const [tipoDoc, setTipoDoc] = useState<string>("2");
+  const [tipoDoc, setTipoDoc] = useState<string>("");
   const [nombreVisitante, setNombreVisitante] = useState("");
+  const [idFase, setIdFase] = useState("");
   const [nroDpto, setNroDpto] = useState("");
   const [motivo, setMotivo] = useState("");
   const [idResidente, setIdResidente] = useState("");
+  const [fases, setFases] = useState<Fase[]>([]);
+  const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
   const [residentes, setResidentes] = useState<Residente[]>([]);
   const [visitas, setVisitas] = useState<Visitante[]>([]);
-  const [visitasProgramadas, setVisitasProgramadas] = useState<
-    VisitaProgramada[]
-  >([]);
+  const [visitasProgramadas, setVisitasProgramadas] = useState<VisitaProgramada[]>([]);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("create");
-  const [highlightedVisitId, setHighlightedVisitId] = useState<number | null>(
-    null
-  );
+  const [highlightedVisitId, setHighlightedVisitId] = useState<number | null>(null);
   const [filter, setFilter] = useState<FilterState>({
     estado: "todos",
     nroDpto: "",
     nombre: "",
+    fase: "",
   });
   const [filterScheduled, setFilterScheduled] = useState<FilterScheduledState>({
     nroDpto: "",
     nombre: "",
     fecha: "",
+    fase: "",
   });
 
   const currentDate = new Date().toISOString().split("T")[0];
@@ -265,33 +280,42 @@ const Visits = () => {
   };
 
   // Manejo de cambios en inputs
-  const handleNroDptoChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value;
-      if (value === "" || /^[0-9]*$/.test(value)) {
-        setNroDpto(value);
-        setError("");
-        if (value) {
-          fetchResidents(value);
-        } else {
-          setResidentes([]);
-          setIdResidente("");
-        }
-      }
-    },
-    []
-  );
+  const handleIdFaseChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setIdFase(value);
+    setNroDpto("");
+    setDepartamentos([]);
+    setResidentes([]);
+    setIdResidente("");
+    if (value) {
+      fetchDepartamentos(value);
+    }
+  }, []);
 
-  const handleMotivoChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value;
-      if (value.length <= 80) {
-        setMotivo(value);
-        setError("");
-      }
-    },
-    []
-  );
+  const handleNroDptoChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setNroDpto(value);
+    setError("");
+    setResidentes([]);
+    setIdResidente("");
+    if (value) {
+      fetchResidents(value);
+    }
+  }, []);
+
+  const handleMotivoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (value.length <= 80) {
+      setMotivo(value);
+      setError("");
+    }
+  }, []);
+
+  const handleNombreVisitanteChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.toUpperCase();
+    setNombreVisitante(value);
+    setError("");
+  }, []);
 
   const handleFilterChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -300,6 +324,57 @@ const Visits = () => {
     },
     []
   );
+
+  // Fetch de fases
+  const fetchFases = async () => {
+    try {
+      const response = await fetch(`${API_URL}/fases`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      if (!response.ok) throw new Error("Error al obtener fases");
+      const data = await response.json();
+      setFases(data);
+    } catch (err) {
+      console.error("Error al obtener fases:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudieron cargar las fases",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  };
+
+  // Fetch de departamentos por fase
+  const fetchDepartamentos = async (idFase: string) => {
+    if (!idFase) {
+      setDepartamentos([]);
+      return;
+    }
+    try {
+      const response = await fetch(`${API_URL}/departamentos?id_fase=${idFase}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      if (!response.ok) throw new Error("Error al obtener departamentos");
+      const data = await response.json();
+      setDepartamentos(data);
+    } catch (err) {
+      console.error("Error al obtener departamentos:", err);
+      setDepartamentos([]);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudieron cargar los departamentos",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  };
 
   // Fetch de residentes por número de departamento
   const fetchResidents = async (nroDpto: string) => {
@@ -340,37 +415,45 @@ const Visits = () => {
 
   // Búsqueda por DNI
   const handleSearchDni = async () => {
+    if (!tipoDoc) {
+      setError("Por favor, seleccione el tipo de documento");
+      return;
+    }
+    if (tipoDoc === "2" && !/^[0-9]{8}$/.test(dni)) {
+      setError("El DNI debe tener exactamente 8 dígitos numéricos");
+      return;
+    }
     if (!/^[a-zA-Z0-9]{8,12}$/.test(dni)) {
-      setError(
-        "El número de documento debe tener entre 8 y 12 caracteres alfanuméricos"
-      );
+      setError("El número de documento debe tener entre 8 y 12 caracteres alfanuméricos");
       return;
     }
     setError("");
-    try {
-      const response = await fetch(`${API_URL}/dni?dni=${dni}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
-      if (!response.ok) throw new Error("Error al buscar el documento");
-      const data = await response.json();
-      setNombreVisitante(data.nombreCompleto);
-    } catch (err) {
-      setError("No se pudo encontrar el documento");
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "No se pudo encontrar el documento",
-        timer: 2000,
-        showConfirmButton: false,
-      });
+    if (tipoDoc === "2") {
+      try {
+        const response = await fetch(`${API_URL}/dni?dni=${dni}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        if (!response.ok) throw new Error("Error al buscar el documento");
+        const data = await response.json();
+        setNombreVisitante(data.nombreCompleto.toUpperCase());
+      } catch (err) {
+        setError("No se pudo encontrar el documento");
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "No se pudo encontrar el documento",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      }
     }
   };
 
   // Guardar visita
   const handleSaveVisit = async () => {
-    if (!nombreVisitante || !dni || !idResidente || !motivo) {
+    if (!tipoDoc || !nombreVisitante || !dni || !idFase || !nroDpto || !idResidente || !motivo) {
       setError("Por favor, complete todos los campos");
       Swal.fire({
         icon: "warning",
@@ -393,14 +476,10 @@ const Visits = () => {
       return;
     }
 
-    console.log("Enviando id_usuario_registro:", userId);
-
     setError("");
     try {
       const now = new Date();
-      const localDate = new Date(
-        now.toLocaleString("en-US", { timeZone: "America/Lima" })
-      );
+      const localDate = new Date(now.toLocaleString("en-US", { timeZone: "America/Lima" }));
       const fechaIngreso = localDate.toISOString().slice(0, 19).replace("T", " ");
 
       const response = await fetch(`${API_URL}/visits`, {
@@ -416,7 +495,7 @@ const Visits = () => {
           fecha_ingreso: fechaIngreso,
           motivo,
           id_usuario_registro: userId,
-          id_tipo_doc_visitante: tipoDoc || "2",
+          id_tipo_doc_visitante: tipoDoc,
           estado: 1,
         }),
       });
@@ -433,11 +512,13 @@ const Visits = () => {
       });
       await fetchVisits();
       setDni("");
-      setTipoDoc("2");
+      setTipoDoc("");
       setNombreVisitante("");
+      setIdFase("");
       setNroDpto("");
       setMotivo("");
       setIdResidente("");
+      setDepartamentos([]);
       setResidentes([]);
       setActiveTab("history");
       const data = await response.json();
@@ -494,19 +575,10 @@ const Visits = () => {
           HORA_INGRESO: horaIngreso,
           FECHA_SALIDA: fechaSalida,
           HORA_SALIDA: horaSalida,
-          ESTADO:
-            visit.ESTADO === true
-              ? 1
-              : visit.ESTADO === false
-              ? 0
-              : visit.ESTADO,
+          ESTADO: visit.ESTADO === true ? 1 : visit.ESTADO === false ? 0 : visit.ESTADO,
         };
       });
-      setVisitas(
-        normalizedData.sort(
-          (a: Visitante, b: Visitante) => b.ID_VISITA - a.ID_VISITA
-        )
-      );
+      setVisitas(normalizedData.sort((a: Visitante, b: Visitante) => b.ID_VISITA - a.ID_VISITA));
     } catch (err) {
       console.error("Error al obtener las visitas:", err);
       Swal.fire({
@@ -527,20 +599,17 @@ const Visits = () => {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
-      if (!response.ok)
-        throw new Error("Error al obtener las visitas programadas");
+      if (!response.ok) throw new Error("Error al obtener las visitas programadas");
       const data = await response.json();
       const normalizedData = data.map((visit: VisitaProgramada) => ({
         ...visit,
         FECHA_LLEGADA: formatDate(visit.FECHA_LLEGADA),
-        ESTADO:
-          visit.ESTADO === true ? 1 : visit.ESTADO === false ? 0 : visit.ESTADO,
+        ESTADO: visit.ESTADO === true ? 1 : visit.ESTADO === false ? 0 : visit.ESTADO,
       }));
       setVisitasProgramadas(
         normalizedData.sort(
           (a: VisitaProgramada, b: VisitaProgramada) =>
-            new Date(a.FECHA_LLEGADA).getTime() -
-            new Date(b.FECHA_LLEGADA).getTime()
+            new Date(a.FECHA_LLEGADA).getTime() - new Date(b.FECHA_LLEGADA).getTime()
         )
       );
     } catch (err) {
@@ -602,10 +671,7 @@ const Visits = () => {
   };
 
   // Aceptar visita programada
-  const handleAcceptScheduledVisit = async (
-    idVisitaProgramada: number,
-    fechaLlegada: string
-  ) => {
+  const handleAcceptScheduledVisit = async (idVisitaProgramada: number, fechaLlegada: string) => {
     if (!userId) {
       setError("No se encontró el ID del usuario autenticado");
       Swal.fire({
@@ -631,19 +697,16 @@ const Visits = () => {
     }
 
     try {
-      const response = await fetch(
-        `${API_URL}/accept-scheduled-visit/${idVisitaProgramada}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify({
-            id_usuario_registro: userId,
-          }),
-        }
-      );
+      const response = await fetch(`${API_URL}/accept-scheduled-visit/${idVisitaProgramada}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          id_usuario_registro: userId,
+        }),
+      });
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Error al aceptar la visita");
@@ -679,6 +742,7 @@ const Visits = () => {
   const exportToCSV = () => {
     const headers = [
       "ID Visita",
+      "Fase",
       "Número Dpto",
       "Nombre Visitante",
       "Documento",
@@ -694,6 +758,7 @@ const Visits = () => {
 
     const rows = filteredVisitas.map((visita) => [
       visita.ID_VISITA,
+      visita.NOMBRE_FASE ?? "-",
       visita.NRO_DPTO ?? "-",
       visita.NOMBRE_VISITANTE,
       visita.NRO_DOC_VISITANTE,
@@ -715,10 +780,7 @@ const Visits = () => {
       visita.ESTADO === 1 ? "Activa" : "Terminada",
     ]);
 
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((row) => row.join(",")),
-    ].join("\n");
+    const csvContent = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
@@ -735,35 +797,38 @@ const Visits = () => {
       filter.estado === "todos" ||
       (filter.estado === "activas" && visita.ESTADO === 1) ||
       (filter.estado === "terminadas" && visita.ESTADO === 0);
+    const matchesFase =
+      filter.fase === "" ||
+      (visita.NOMBRE_FASE && visita.NOMBRE_FASE.toLowerCase().includes(filter.fase.toLowerCase()));
     const matchesNroDpto =
       filter.nroDpto === "" ||
       (visita.NRO_DPTO && visita.NRO_DPTO.toString().includes(filter.nroDpto));
     const matchesNombre =
       filter.nombre === "" ||
-      visita.NOMBRE_VISITANTE.toLowerCase().includes(
-        filter.nombre.toLowerCase()
-      );
-    return matchesEstado && matchesNroDpto && matchesNombre;
+      visita.NOMBRE_VISITANTE.toLowerCase().includes(filter.nombre.toLowerCase());
+    return matchesEstado && matchesFase && matchesNroDpto && matchesNombre;
   });
 
   // Filtrar visitas programadas
   const filteredVisitasProgramadas = visitasProgramadas.filter((visita) => {
+    const matchesFase =
+      filterScheduled.fase === "" ||
+      (visita.NOMBRE_FASE && visita.NOMBRE_FASE.toLowerCase().includes(filterScheduled.fase.toLowerCase()));
     const matchesNroDpto =
       filterScheduled.nroDpto === "" ||
       visita.NRO_DPTO.toString().includes(filterScheduled.nroDpto);
     const matchesNombre =
       filterScheduled.nombre === "" ||
-      visita.NOMBRE_VISITANTE.toLowerCase().includes(
-        filterScheduled.nombre.toLowerCase()
-      );
+      visita.NOMBRE_VISITANTE.toLowerCase().includes(filterScheduled.nombre.toLowerCase());
     const matchesFecha =
       filterScheduled.fecha === "" ||
       formatDate(visita.FECHA_LLEGADA) === formatDate(filterScheduled.fecha);
-    return matchesNroDpto && matchesNombre && matchesFecha;
+    return matchesFase && matchesNroDpto && matchesNombre && matchesFecha;
   });
 
   // Efecto inicial
   useEffect(() => {
+    fetchFases();
     if (activeTab === "history") {
       fetchVisits();
     } else if (activeTab === "scheduled") {
@@ -776,22 +841,13 @@ const Visits = () => {
       <Title>Gestión de Visitas</Title>
       <div className="mb-6">
         <div className="flex space-x-4 border-b">
-          <TabButton
-            active={activeTab === "create"}
-            onClick={() => setActiveTab("create")}
-          >
+          <TabButton active={activeTab === "create"} onClick={() => setActiveTab("create")}>
             Registrar Visita
           </TabButton>
-          <TabButton
-            active={activeTab === "history"}
-            onClick={() => setActiveTab("history")}
-          >
+          <TabButton active={activeTab === "history"} onClick={() => setActiveTab("history")}>
             Historial de Visitas
           </TabButton>
-          <TabButton
-            active={activeTab === "scheduled"}
-            onClick={() => setActiveTab("scheduled")}
-          >
+          <TabButton active={activeTab === "scheduled"} onClick={() => setActiveTab("scheduled")}>
             Visitas Programadas
           </TabButton>
         </div>
@@ -800,24 +856,18 @@ const Visits = () => {
       <TabContent>
         {activeTab === "create" && (
           <Card>
-            <h2 className="text-lg font-semibold mb-4">
-              Registrar Nueva Visita
-            </h2>
+            <h2 className="text-lg font-semibold mb-4">Registrar Nueva Visita</h2>
             {error && (
-              <p className="text-red-500 mb-4 bg-red-50 p-2 rounded-lg">
-                {error}
-              </p>
+              <p className="text-red-500 mb-4 bg-red-50 p-2 rounded-lg">{error}</p>
             )}
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                 <div className="md:col-span-3">
                   <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Tipo de Documento
+                    Tipo de Documento *
                   </label>
-                  <Select
-                    value={tipoDoc}
-                    onChange={(e) => setTipoDoc(e.target.value)}
-                  >
+                  <Select value={tipoDoc} onChange={(e) => setTipoDoc(e.target.value)} required>
+                    <option value="">Seleccione un tipo</option>
                     <option value="2">DNI</option>
                     <option value="3">Carnet de Extranjería</option>
                     <option value="4">Pasaporte</option>
@@ -827,7 +877,7 @@ const Visits = () => {
                 </div>
                 <div className="md:col-span-4">
                   <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Número de Documento
+                    Número de Documento *
                   </label>
                   <div className="flex">
                     <Input
@@ -841,30 +891,37 @@ const Visits = () => {
                       }}
                       placeholder="Ejemplo: 7123XXXX o CE123456789"
                     />
-                    <Button
-                      className="ml-2 bg-blue-600 text-white hover:bg-blue-700"
-                      onClick={handleSearchDni}
-                    >
-                      <FaSearch />
-                    </Button>
+                    {tipoDoc === "2" && (
+                      <Button
+                        className="ml-2 bg-blue-600 text-white hover:bg-blue-700"
+                        onClick={handleSearchDni}
+                      >
+                        <FaSearch />
+                      </Button>
+                    )}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Ingresa el número y haz clic en buscar para verificar.
+                    {tipoDoc === "2"
+                      ? "Ingresa el número y haz clic en buscar para verificar."
+                      : "Ingresa el número de documento."}
                   </p>
                 </div>
                 <div className="md:col-span-5">
                   <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Nombre del Visitante
+                    Nombre del Visitante *
                   </label>
                   <Input
                     type="text"
                     value={nombreVisitante}
-                    readOnly
-                    className="bg-gray-100 text-gray-700"
+                    onChange={handleNombreVisitanteChange}
+                    readOnly={tipoDoc === "2"}
+                    placeholder="Ingrese el nombre en mayúsculas"
+                    className={tipoDoc === "2" ? "bg-gray-100 text-gray-700" : ""}
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Este campo se llena automáticamente tras buscar el
-                    documento.
+                    {tipoDoc === "2"
+                      ? "Este campo se llena automáticamente tras buscar el documento."
+                      : "Ingrese el nombre completo en mayúsculas."}
                   </p>
                 </div>
               </div>
@@ -872,26 +929,43 @@ const Visits = () => {
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                 <div className="md:col-span-3">
                   <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Número de Departamento
+                    Fase *
                   </label>
-                  <Input
-                    type="text"
-                    value={nroDpto}
-                    onChange={handleNroDptoChange}
-                    placeholder="Ejemplo: 101"
-                  />
+                  <Select value={idFase} onChange={handleIdFaseChange} required>
+                    <option value="">Seleccione una fase</option>
+                    {fases.map((fase) => (
+                      <option key={fase.ID_FASE} value={fase.ID_FASE}>
+                        {fase.NOMBRE}
+                      </option>
+                    ))}
+                  </Select>
+                  <p className="text-xs text-gray-500 mt-1">Seleccione la fase del departamento.</p>
+                </div>
+                <div className="md:col-span-3">
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    Número de Departamento *
+                  </label>
+                  <Select value={nroDpto} onChange={handleNroDptoChange} disabled={!idFase} required>
+                    <option value="">Seleccione un departamento</option>
+                    {departamentos.map((depto) => (
+                      <option key={depto.ID_DEPARTAMENTO} value={depto.NRO_DPTO}>
+                        {depto.NRO_DPTO}
+                      </option>
+                    ))}
+                  </Select>
                   <p className="text-xs text-gray-500 mt-1">
-                    Ingresa el número del departamento visitado.
+                    Seleccione el número del departamento visitado.
                   </p>
                 </div>
-                <div className="md:col-span-9">
+                <div className="md:col-span-6">
                   <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Residente
+                    Residente *
                   </label>
                   <Select
                     value={idResidente}
                     onChange={(e) => setIdResidente(e.target.value)}
-                    disabled={residentes.length === 0}
+                    disabled={residentes.length === 0 || !nroDpto}
+                    required
                   >
                     <option value="">Seleccione un residente</option>
                     {residentes.map((res) => (
@@ -908,7 +982,7 @@ const Visits = () => {
 
               <div className="grid grid-cols-1">
                 <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Motivo de la Visita
+                  Motivo de la Visita *
                 </label>
                 <Input
                   type="text"
@@ -937,20 +1011,24 @@ const Visits = () => {
           <Card>
             <h2 className="text-lg font-semibold mb-4">Historial de Visitas</h2>
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full md:w-3/4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 w-full md:w-3/4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Estado
-                  </label>
-                  <Select
-                    name="estado"
-                    value={filter.estado}
-                    onChange={handleFilterChange}
-                  >
+                  <label className="block text-sm font-medium text-gray-600 mb-1">Estado</label>
+                  <Select name="estado" value={filter.estado} onChange={handleFilterChange}>
                     <option value="todos">Todos</option>
                     <option value="activas">Visitas Activas</option>
                     <option value="terminadas">Visitas Terminadas</option>
                   </Select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">Fase</label>
+                  <Input
+                    type="text"
+                    name="fase"
+                    value={filter.fase}
+                    onChange={handleFilterChange}
+                    placeholder="Ejemplo: Fase1"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -997,84 +1075,45 @@ const Visits = () => {
               <table className="min-w-full bg-white border border-gray-200">
                 <thead>
                   <tr className="bg-gray-50 text-gray-700">
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      ID Visita
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Número Dpto
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Nombre Visitante
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Documento
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Tipo Doc
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Residente
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Fecha Ingreso
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Hora Ingreso
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Fecha Salida
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Hora Salida
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Motivo
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Estado
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Acciones
-                    </th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">ID Visita</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Fase</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Número Dpto</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Nombre Visitante</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Documento</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Tipo Doc</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Residente</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Fecha Ingreso</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Hora Ingreso</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Fecha Salida</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Hora Salida</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Motivo</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Estado</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredVisitas.length === 0 ? (
                     <tr>
-                      <td
-                        colSpan={13}
-                        className="py-4 text-center text-gray-500"
-                      >
+                      <td colSpan={14} className="py-4 text-center text-gray-500">
                         No hay visitas para mostrar.
                       </td>
                     </tr>
                   ) : (
                     filteredVisitas.map((visita, index) => {
                       const estadoNum =
-                        typeof visita.ESTADO === "boolean"
-                          ? visita.ESTADO
-                            ? 1
-                            : 0
-                          : visita.ESTADO;
+                        typeof visita.ESTADO === "boolean" ? (visita.ESTADO ? 1 : 0) : visita.ESTADO;
                       return (
                         <TableRow
                           key={visita.ID_VISITA}
                           $estado={estadoNum}
                           $delay={index * 0.1}
-                          $isHighlighted={
-                            visita.ID_VISITA === highlightedVisitId
-                          }
+                          $isHighlighted={visita.ID_VISITA === highlightedVisitId}
                         >
                           <td className="py-3 px-4">{visita.ID_VISITA}</td>
-                          <td className="py-3 px-4">
-                            {visita.NRO_DPTO ?? "-"}
-                          </td>
-                          <td className="py-3 px-4">
-                            {visita.NOMBRE_VISITANTE}
-                          </td>
-                          <td className="py-3 px-4">
-                            {visita.NRO_DOC_VISITANTE}
-                          </td>
+                          <td className="py-3 px-4">{visita.NOMBRE_FASE ?? "-"}</td>
+                          <td className="py-3 px-4">{visita.NRO_DPTO ?? "-"}</td>
+                          <td className="py-3 px-4">{visita.NOMBRE_VISITANTE}</td>
+                          <td className="py-3 px-4">{visita.NRO_DOC_VISITANTE}</td>
                           <td className="py-3 px-4">
                             {visita.ID_TIPO_DOC_VISITANTE
                               ? {
@@ -1086,24 +1125,16 @@ const Visits = () => {
                                 }[visita.ID_TIPO_DOC_VISITANTE] || "-"
                               : "-"}
                           </td>
-                          <td className="py-3 px-4">
-                            {visita.NOMBRE_PROPIETARIO ?? "-"}
-                          </td>
+                          <td className="py-3 px-4">{visita.NOMBRE_PROPIETARIO ?? "-"}</td>
                           <td className="py-3 px-4">{visita.FECHA_INGRESO}</td>
                           <td className="py-3 px-4">{visita.HORA_INGRESO}</td>
-                          <td className="py-3 px-4">
-                            {visita.FECHA_SALIDA ? visita.FECHA_SALIDA : "-"}
-                          </td>
-                          <td className="py-3 px-4">
-                            {visita.HORA_SALIDA ? visita.HORA_SALIDA : "-"}
-                          </td>
+                          <td className="py-3 px-4">{visita.FECHA_SALIDA ? visita.FECHA_SALIDA : "-"}</td>
+                          <td className="py-3 px-4">{visita.HORA_SALIDA ? visita.HORA_SALIDA : "-"}</td>
                           <td className="py-3 px-4">{visita.MOTIVO}</td>
                           <td className="py-3 px-4">
                             <span
                               className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
-                                estadoNum === 1
-                                  ? "bg-blue-100 text-[#2563eb]"
-                                  : "bg-red-100 text-red-700"
+                                estadoNum === 1 ? "bg-blue-100 text-[#2563eb]" : "bg-red-100 text-red-700"
                               }`}
                             >
                               {estadoNum === 1 ? "Activa" : "Terminada"}
@@ -1135,7 +1166,19 @@ const Visits = () => {
           <Card>
             <h2 className="text-lg font-semibold mb-4">Visitas Programadas</h2>
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full md:w-3/4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 w-full md:w-3/4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">Fase</label>
+                  <Input
+                    type="text"
+                    name="fase"
+                    value={filterScheduled.fase}
+                    onChange={(e) =>
+                      setFilterScheduled((prev) => ({ ...prev, fase: e.target.value }))
+                    }
+                    placeholder="Ejemplo: Fase1"
+                  />
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Número de Departamento
@@ -1147,10 +1190,7 @@ const Visits = () => {
                     onChange={(e) => {
                       const value = e.target.value;
                       if (value === "" || /^[0-9]*$/.test(value)) {
-                        setFilterScheduled((prev) => ({
-                          ...prev,
-                          nroDpto: value,
-                        }));
+                        setFilterScheduled((prev) => ({ ...prev, nroDpto: value }));
                       }
                     }}
                     placeholder="Ejemplo: 101"
@@ -1165,10 +1205,7 @@ const Visits = () => {
                     name="nombre"
                     value={filterScheduled.nombre}
                     onChange={(e) =>
-                      setFilterScheduled((prev) => ({
-                        ...prev,
-                        nombre: e.target.value,
-                      }))
+                      setFilterScheduled((prev) => ({ ...prev, nombre: e.target.value }))
                     }
                     placeholder="Filtrar por nombre"
                   />
@@ -1182,10 +1219,7 @@ const Visits = () => {
                     name="fecha"
                     value={filterScheduled.fecha}
                     onChange={(e) =>
-                      setFilterScheduled((prev) => ({
-                        ...prev,
-                        fecha: e.target.value,
-                      }))
+                      setFilterScheduled((prev) => ({ ...prev, fecha: e.target.value }))
                     }
                     min={currentDate}
                   />
@@ -1196,59 +1230,31 @@ const Visits = () => {
               <table className="min-w-full bg-white border border-gray-200">
                 <thead>
                   <tr className="bg-gray-50 text-gray-700">
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      ID Visita
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Número Dpto
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Nombre Visitante
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Documento
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Tipo Doc
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Residente
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Fecha Llegada
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Hora Tentativa
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Motivo
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Acciones
-                    </th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">ID Visita</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Fase</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Número Dpto</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Nombre Visitante</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Documento</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Tipo Doc</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Residente</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Fecha Llegada</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Hora Tentativa</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Motivo</th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredVisitasProgramadas.length === 0 ? (
                     <tr>
-                      <td
-                        colSpan={10}
-                        className="py-4 text-center text-gray-500"
-                      >
+                      <td colSpan={11} className="py-4 text-center text-gray-500">
                         No hay visitas programadas para mostrar.
                       </td>
                     </tr>
                   ) : (
                     filteredVisitasProgramadas.map((visita, index) => {
                       const estadoNum =
-                        typeof visita.ESTADO === "boolean"
-                          ? visita.ESTADO
-                            ? 1
-                            : 0
-                          : visita.ESTADO;
-                      const fechaLlegadaFormatted = formatDate(
-                        visita.FECHA_LLEGADA
-                      );
+                        typeof visita.ESTADO === "boolean" ? (visita.ESTADO ? 1 : 0) : visita.ESTADO;
+                      const fechaLlegadaFormatted = formatDate(visita.FECHA_LLEGADA);
                       const isToday = fechaLlegadaFormatted === currentDate;
                       const currentDateObj = new Date(currentDate);
                       const fechaLlegadaDate = new Date(visita.FECHA_LLEGADA);
@@ -1261,13 +1267,10 @@ const Visits = () => {
                           $estado={estadoNum}
                           $delay={index * 0.1}
                         >
-                          <td className="py-3 px-4">
-                            {visita.ID_VISITA_PROGRAMADA}
-                          </td>
+                          <td className="py-3 px-4">{visita.ID_VISITA_PROGRAMADA}</td>
+                          <td className="py-3 px-4">{visita.NOMBRE_FASE ?? "-"}</td>
                           <td className="py-3 px-4">{visita.NRO_DPTO}</td>
-                          <td className="py-3 px-4">
-                            {visita.NOMBRE_VISITANTE}
-                          </td>
+                          <td className="py-3 px-4">{visita.NOMBRE_VISITANTE}</td>
                           <td className="py-3 px-4">{visita.DNI_VISITANTE}</td>
                           <td className="py-3 px-4">
                             {visita.ID_TIPO_DOC_VISITANTE
@@ -1280,9 +1283,7 @@ const Visits = () => {
                                 }[visita.ID_TIPO_DOC_VISITANTE] || "-"
                               : "-"}
                           </td>
-                          <td className="py-3 px-4">
-                            {visita.NOMBRE_PROPIETARIO ?? "-"}
-                          </td>
+                          <td className="py-3 px-4">{visita.NOMBRE_PROPIETARIO ?? "-"}</td>
                           <td className="py-3 px-4">{fechaLlegadaFormatted}</td>
                           <td className="py-3 px-4">
                             {(() => {
@@ -1293,14 +1294,10 @@ const Visits = () => {
                                 let normalizedTime = visita.HORA_LLEGADA.trim();
                                 if (/^\d{2}:\d{2}$/.test(normalizedTime)) {
                                   normalizedTime = `${normalizedTime}:00`;
-                                } else if (
-                                  !/^\d{2}:\d{2}:\d{2}$/.test(normalizedTime)
-                                ) {
+                                } else if (!/^\d{2}:\d{2}:\d{2}$/.test(normalizedTime)) {
                                   return "-";
                                 }
-                                const date = new Date(
-                                  `1970-01-01T${normalizedTime}`
-                                );
+                                const date = new Date(`1970-01-01T${normalizedTime}`);
                                 if (isNaN(date.getTime())) {
                                   return "-";
                                 }
