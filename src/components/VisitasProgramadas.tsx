@@ -322,49 +322,68 @@ const VisitasProgramadas = () => {
     }
   };
 
-  const fetchResidentId = async (nroDpto: number): Promise<number> => {
-    try {
-      const userResponse = await fetch(`${API_URL}/users/${userId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      if (!userResponse.ok)
-        throw new Error("Error al obtener datos del usuario");
-      const userData = await userResponse.json();
-      console.log("userData:", userData); // Depuración: Verificar ID_PERSONA
-      const idPersona = userData.ID_PERSONA;
-
-      const deptResponse = await fetch(
-        `${API_URL}/departments?nro_dpto=${nroDpto}`,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
-      );
-      if (!deptResponse.ok)
-        throw new Error("Error al obtener datos del departamento");
-      const deptData = await deptResponse.json();
-      console.log("deptData:", deptData); // Depuración: Verificar ID_DEPARTAMENTO
-      const idDepartamento = deptData.ID_DEPARTAMENTO;
-
-      const residentResponse = await fetch(
-        `${API_URL}/residents?persona=${idPersona}&departamento=${idDepartamento}`,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
-      );
-      if (!residentResponse.ok)
-        throw new Error("Error al obtener datos del residente");
-      const residentData = await residentResponse.json();
-      console.log("residentData:", residentData); // Depuración: Verificar ID_RESIDENTE
-      if (!residentData.ID_RESIDENTE) {
-        throw new Error("No se encontró un residente asociado");
-      }
-      return residentData.ID_RESIDENTE;
-    } catch (err) {
-      console.error("Error en fetchResidentId:", err);
-      throw err;
+const fetchResidentId = async (nroDpto: number): Promise<number> => {
+  try {
+    // Obtener ID_PERSONA del usuario autenticado
+    const userResponse = await fetch(`${API_URL}/users/${userId}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
+    if (!userResponse.ok) {
+      throw new Error(`Error al obtener datos del usuario: ${userResponse.statusText}`);
     }
-  };
+    const userData = await userResponse.json();
+    console.log("fetchResidentId - userData:", userData);
+    const idPersona = userData.ID_PERSONA;
+    if (!idPersona) {
+      throw new Error("ID_PERSONA no encontrado en los datos del usuario");
+    }
 
+    // Obtener ID_DEPARTAMENTO para NRO_DPTO
+    const deptResponse = await fetch(
+      `${API_URL}/departments?nro_dpto=${nroDpto}`,
+      {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      }
+    );
+    if (!deptResponse.ok) {
+      throw new Error(`Error al obtener datos del departamento: ${deptResponse.statusText}`);
+    }
+    const deptData = await deptResponse.json();
+    console.log("fetchResidentId - deptData:", deptData);
+    const idDepartamento = deptData.ID_DEPARTAMENTO;
+    if (!idDepartamento) {
+      throw new Error("ID_DEPARTAMENTO no encontrado para NRO_DPTO");
+    }
+
+    // Obtener ID_RESIDENTE para ID_PERSONA y ID_DEPARTAMENTO
+    const residentResponse = await fetch(
+      `${API_URL}/residents?persona=${idPersona}&departamento=${idDepartamento}`,
+      {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      }
+    );
+    if (!residentResponse.ok) {
+      const errorData = await residentResponse.json();
+      throw new Error(`Error al obtener datos del residente: ${errorData.message || residentResponse.statusText}`);
+    }
+    const residentData = await residentResponse.json();
+    console.log("fetchResidentId - residentData:", residentData);
+    if (!residentData.ID_RESIDENTE) {
+      throw new Error(`No se encontró un residente asociado para NRO_DPTO=${nroDpto}, ID_PERSONA=${idPersona}`);
+    }
+    return residentData.ID_RESIDENTE;
+  } catch (err) {
+    console.error("Error en fetchResidentId:", err);
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: err.message || "No se pudo obtener el ID del residente",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    throw err;
+  }
+};
   const fetchScheduledVisits = async () => {
     if (isCanceling) return;
     try {
@@ -376,12 +395,12 @@ const VisitasProgramadas = () => {
       const response = await fetch(`${API_URL}/scheduled-visits`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const text = await response.text(); // Leer el cuerpo una sola vez
+      const text = await response.text();
       console.log("Respuesta del servidor:", response.status, text);
       if (!response.ok) {
         throw new Error("Error al obtener las visitas programadas");
       }
-      const data = JSON.parse(text); // Parsear el texto a JSON
+      const data = JSON.parse(text);
       const normalizedData = data.map((visit: VisitaProgramada) => ({
         ...visit,
         NOMBRE_VISITANTE: visit.NOMBRE_VISITANTE.toUpperCase(),
@@ -562,7 +581,7 @@ const VisitasProgramadas = () => {
       });
       return;
     }
-    const horaLlegadaFormatted = `${horaLlegada}:00`;
+    const horaLlegadaFormatted = horaLlegada;
     try {
       const idResidente = await fetchResidentId(parseInt(nroDpto));
       const payload = {
@@ -575,16 +594,17 @@ const VisitasProgramadas = () => {
         motivo,
         id_residente: idResidente,
       };
-      console.log("Enviando payload:", payload); // Depuración: Ver datos enviados
+      console.log("Enviando payload:", payload);
       const response = await fetch(`${API_URL}/scheduled-visits`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}` },
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
         body: JSON.stringify(payload),
       });
       const responseData = await response.json();
-      console.log("Respuesta del servidor:", responseData); // Depuración: Ver respuesta
+      console.log("Respuesta del servidor:", responseData);
       if (!response.ok) {
         console.error("Error del servidor:", responseData);
         throw new Error(responseData.message || "Error al registrar la visita programada");
