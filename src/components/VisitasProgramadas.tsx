@@ -157,7 +157,12 @@ const AMPMButton = styled.button<{ selected: boolean }>`
 const TableRow = styled.tr<{ $estado: number; $delay: number }>`
   animation: ${fadeIn} 0.5s ease-out forwards;
   animation-delay: ${(props) => props.$delay}s;
-  background-color: ${(props) => (props.$estado === 1 ? "#f0fff4" : "#fef2f2")};
+  background-color: ${(props) =>
+    props.$estado === 1
+      ? "#f0fff4"
+      : props.$estado === 2
+      ? "#fefcbf"
+      : "#fef2f2"};
   &:hover {
     background-color: #f9fafb;
   }
@@ -323,120 +328,118 @@ const VisitasProgramadas = () => {
     }
   };
 
-const fetchResidentId = async (nroDpto: number): Promise<number> => {
-  try {
-    // Obtener ID_PERSONA del usuario autenticado
-    const userResponse = await fetch(`${API_URL}/users/${userId}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    });
-    if (!userResponse.ok) {
-      throw new Error(`Error al obtener datos del usuario: ${userResponse.statusText}`);
-    }
-    const userData = await userResponse.json();
-    console.log("fetchResidentId - userData:", userData);
-    const idPersona = userData.ID_PERSONA;
-    if (!idPersona) {
-      throw new Error("ID_PERSONA no encontrado en los datos del usuario");
-    }
-
-    // Obtener ID_DEPARTAMENTO para NRO_DPTO
-    const deptResponse = await fetch(
-      `${API_URL}/departments?nro_dpto=${nroDpto}`,
-      {
+  const fetchResidentId = async (nroDpto: number): Promise<number> => {
+    try {
+      const userResponse = await fetch(`${API_URL}/users/${userId}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      if (!userResponse.ok) {
+        throw new Error(`Error al obtener datos del usuario: ${userResponse.statusText}`);
       }
-    );
-    if (!deptResponse.ok) {
-      throw new Error(`Error al obtener datos del departamento: ${deptResponse.statusText}`);
-    }
-    const deptData = await deptResponse.json();
-    console.log("fetchResidentId - deptData:", deptData);
-    const idDepartamento = deptData.ID_DEPARTAMENTO;
-    if (!idDepartamento) {
-      throw new Error("ID_DEPARTAMENTO no encontrado para NRO_DPTO");
-    }
-
-    // Obtener ID_RESIDENTE para ID_PERSONA y ID_DEPARTAMENTO
-    const residentResponse = await fetch(
-      `${API_URL}/residents?persona=${idPersona}&departamento=${idDepartamento}`,
-      {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      const userData = await userResponse.json();
+      console.log("fetchResidentId - userData:", userData);
+      const idPersona = userData.ID_PERSONA;
+      if (!idPersona) {
+        throw new Error("ID_PERSONA no encontrado en los datos del usuario");
       }
-    );
-    if (!residentResponse.ok) {
-      const errorData = await residentResponse.json();
-      throw new Error(`Error al obtener datos del residente: ${errorData.message || residentResponse.statusText}`);
-    }
-    const residentData = await residentResponse.json();
-    console.log("fetchResidentId - residentData:", residentData);
-    if (!residentData.ID_RESIDENTE) {
-      throw new Error(`No se encontró un residente asociado para NRO_DPTO=${nroDpto}, ID_PERSONA=${idPersona}`);
-    }
-    return residentData.ID_RESIDENTE;
-  } catch (err) {
-    console.error("Error en fetchResidentId:", err);
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: err.message || "No se pudo obtener el ID del residente",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    throw err;
-  }
-};
-const fetchScheduledVisits = async () => {
-  if (isCanceling) return;
-  try {
-    const token = localStorage.getItem("token");
-    const response = await fetch(`${API_URL}/scheduled-visits`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const text = await response.text();
-    if (!response.ok) {
-      throw new Error("Error al obtener las visitas programadas");
-    }
-    const data: VisitaProgramada[] = JSON.parse(text); // Aserción de tipo
-    console.log("Datos recibidos de /scheduled-visits:", data); // Log para depuración
-    const normalizedData = data.map((visit: VisitaProgramada) => {
-      // Validar y corregir el campo ESTADO
-      const estadoValidado = visit.ESTADO === 1 || visit.ESTADO === 0 ? visit.ESTADO : 1; // Por defecto Pendiente si no es válido
-      console.log(`Visita ${visit.ID_VISITA_PROGRAMADA} - ESTADO: ${visit.ESTADO} -> ${estadoValidado}`); // Log para depuración
-      return {
-        ...visit,
-        NOMBRE_VISITANTE: visit.NOMBRE_VISITANTE.toUpperCase(),
-        FECHA_LLEGADA: formatDate(visit.FECHA_LLEGADA),
-        HORA_LLEGADA: visit.HORA_LLEGADA || null,
-        ESTADO: estadoValidado, // Usar el estado validado
-      };
-    });
 
-    // Filtrar duplicados basados en ID_VISITA_PROGRAMADA
-    const uniqueData = Array.from(
-      new Map(
-        normalizedData.map((item) => [item.ID_VISITA_PROGRAMADA, item])
-      ).values()
-    );
+      const deptResponse = await fetch(
+        `${API_URL}/departments?nro_dpto=${nroDpto}`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+      if (!deptResponse.ok) {
+        throw new Error(`Error al obtener datos del departamento: ${deptResponse.statusText}`);
+      }
+      const deptData = await deptResponse.json();
+      console.log("fetchResidentId - deptData:", deptData);
+      const idDepartamento = deptData.ID_DEPARTAMENTO;
+      if (!idDepartamento) {
+        throw new Error("ID_DEPARTAMENTO no encontrado para NRO_DPTO");
+      }
 
-    console.log("Visitas normalizadas y sin duplicados:", uniqueData); // Log para depuración
-    setVisitasProgramadas(
-      uniqueData.sort(
-        (a: VisitaProgramada, b: VisitaProgramada) =>
-          new Date(b.FECHA_LLEGADA).getTime() -
-          new Date(a.FECHA_LLEGADA).getTime()
-      )
-    );
-  } catch (err) {
-    console.error("Error al obtener las visitas programadas:", err);
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: "No se pudieron cargar las visitas programadas",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-  }
-}
+      const residentResponse = await fetch(
+        `${API_URL}/residents?persona=${idPersona}&departamento=${idDepartamento}`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+      if (!residentResponse.ok) {
+        const errorData = await residentResponse.json();
+        throw new Error(`Error al obtener datos del residente: ${errorData.message || residentResponse.statusText}`);
+      }
+      const residentData = await residentResponse.json();
+      console.log("fetchResidentId - residentData:", residentData);
+      if (!residentData.ID_RESIDENTE) {
+        throw new Error(`No se encontró un residente asociado para NRO_DPTO=${nroDpto}, ID_PERSONA=${idPersona}`);
+      }
+      return residentData.ID_RESIDENTE;
+    } catch (err) {
+      console.error("Error en fetchResidentId:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: err.message || "No se pudo obtener el ID del residente",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      throw err;
+    }
+  };
+
+  const fetchScheduledVisits = async () => {
+    if (isCanceling) return;
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_URL}/scheduled-visits`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const text = await response.text();
+      if (!response.ok) {
+        throw new Error("Error al obtener las visitas programadas");
+      }
+      const data: VisitaProgramada[] = JSON.parse(text);
+      console.log("Datos recibidos de /scheduled-visits:", data);
+      const normalizedData = data
+        .filter((visit: VisitaProgramada) => visit.ESTADO !== 3) // Excluir Cancelada
+        .map((visit: VisitaProgramada) => {
+          const estadoValidado = [1, 2, 3].includes(visit.ESTADO) ? visit.ESTADO : 1;
+          console.log(`Visita ${visit.ID_VISITA_PROGRAMADA} - ESTADO: ${visit.ESTADO} -> ${estadoValidado}`);
+          return {
+            ...visit,
+            NOMBRE_VISITANTE: visit.NOMBRE_VISITANTE.toUpperCase(),
+            FECHA_LLEGADA: formatDate(visit.FECHA_LLEGADA),
+            HORA_LLEGADA: visit.HORA_LLEGADA || null,
+            ESTADO: estadoValidado,
+          };
+        });
+
+      const uniqueData = Array.from(
+        new Map(
+          normalizedData.map((item) => [item.ID_VISITA_PROGRAMADA, item])
+        ).values()
+      );
+
+      console.log("Visitas normalizadas y sin duplicados:", uniqueData);
+      setVisitasProgramadas(
+        uniqueData.sort(
+          (a: VisitaProgramada, b: VisitaProgramada) =>
+            new Date(b.FECHA_LLEGADA).getTime() -
+            new Date(a.FECHA_LLEGADA).getTime()
+        )
+      );
+    } catch (err) {
+      console.error("Error al obtener las visitas programadas:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudieron cargar las visitas programadas",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  };
 
   useEffect(() => {
     fetchOwnerDepartments();
@@ -500,173 +503,173 @@ const fetchScheduledVisits = async () => {
     }
   };
 
-const handleSaveScheduledVisit = async () => {
-  const dniError = validateDni();
-  if (dniError) {
-    setError(dniError);
-    Swal.fire({
-      icon: "error",
-      title: "Documento inválido",
-      text: dniError,
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-  if (!nombreVisitante.trim()) {
-    setError("El nombre del visitante es obligatorio");
-    Swal.fire({
-      icon: "error",
-      title: "Nombre inválido",
-      text: "El nombre del visitante es obligatorio",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-  if (!nroDpto) {
-    setError("El número de departamento es obligatorio");
-    Swal.fire({
-      icon: "error",
-      title: "Departamento inválido",
-      text: "Por favor, seleccione un departamento",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-  if (!fechaLlegada) {
-    setError("La fecha de llegada es obligatoria");
-    Swal.fire({
-      icon: "error",
-      title: "Fecha inválida",
-      text: "Por favor, seleccione una fecha de llegada",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-  if (!motivo.trim()) {
-    setError("El motivo de la visita es obligatorio");
-    Swal.fire({
-      icon: "error",
-      title: "Motivo inválido",
-      text: "El motivo de la visita es obligatorio",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-  if (motivo.length > 100) {
-    setError("El motivo no puede exceder los 100 caracteres");
-    Swal.fire({
-      icon: "error",
-      title: "Motivo inválido",
-      text: "El motivo no puede exceder los 100 caracteres",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-  const fechaLlegadaFormatted = fechaLlegada.split("T")[0];
-  const todayFormatted = currentDate.split("T")[0];
-  if (fechaLlegadaFormatted < todayFormatted) {
-    setError("La fecha de llegada no puede ser anterior a hoy");
-    Swal.fire({
-      icon: "error",
-      title: "Fecha inválida",
-      text: "La fecha de llegada no puede ser anterior a hoy",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-  if (!horaLlegada) {
-    setError("La hora de llegada es obligatoria");
-    Swal.fire({
-      icon: "error",
-      title: "Hora inválida",
-      text: "Por favor, seleccione una hora válida (HH:mm).",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-  const timeMatch = horaLlegada.match(/^(\d{2}:\d{2})$/);
-  if (!timeMatch) {
-    setError("Formato de hora inválido.");
-    Swal.fire({
-      icon: "error",
-      title: "Hora inválida",
-      text: "Por favor, seleccione una hora válida (HH:mm).",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-  const horaLlegadaFormatted = `${horaLlegada}:00`; // Corrección: usar horaLlegada
-  try {
-    const idResidente = await fetchResidentId(parseInt(nroDpto));
-    const payload = {
-      nro_dpto: parseInt(nroDpto),
-      dni_visitante: dni,
-      id_tipo_doc_visitante: parseInt(tipoDoc),
-      nombre_visitante: nombreVisitante.toUpperCase(),
-      fecha_llegada: fechaLlegadaFormatted,
-      hora_llegada: horaLlegadaFormatted,
-      motivo,
-      id_residente: idResidente,
-    };
-    console.log("Enviando payload:", payload);
-    const response = await fetch(`${API_URL}/scheduled-visits`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: JSON.stringify(payload),
-    });
-    const responseData = await response.json();
-    console.log("Respuesta del servidor:", responseData);
-    if (!response.ok) {
-      console.error("Error del servidor:", responseData);
-      throw new Error(responseData.message || "Error al registrar la visita programada");
+  const handleSaveScheduledVisit = async () => {
+    const dniError = validateDni();
+    if (dniError) {
+      setError(dniError);
+      Swal.fire({
+        icon: "error",
+        title: "Documento inválido",
+        text: dniError,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
     }
-    Swal.fire({
-      icon: "success",
-      title: "Éxito",
-      text: "Visita programada registrada correctamente",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    await fetchScheduledVisits();
-    setDni("");
-    setNombreVisitante("");
-    setIsNombreManual(false);
-    setTipoDoc("2");
-    setNroDpto(
-      departamentos.length === 1 ? departamentos[0].NRO_DPTO.toString() : ""
-    );
-    setMotivo("");
-    setFechaLlegada(currentDate);
-    setHoraLlegada("");
-    setHour("12");
-    setMinute("00");
-    setPeriod("AM");
-    setActiveTab("history");
-  } catch (err) {
-    const error = err as Error;
-    console.error("Error en handleSaveScheduledVisit:", error);
-    setError(error.message || "Error al registrar la visita programada");
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: error.message || "No se pudo registrar la visita programada",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-  }
-};
+    if (!nombreVisitante.trim()) {
+      setError("El nombre del visitante es obligatorio");
+      Swal.fire({
+        icon: "error",
+        title: "Nombre inválido",
+        text: "El nombre del visitante es obligatorio",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    if (!nroDpto) {
+      setError("El número de departamento es obligatorio");
+      Swal.fire({
+        icon: "error",
+        title: "Departamento inválido",
+        text: "Por favor, seleccione un departamento",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    if (!fechaLlegada) {
+      setError("La fecha de llegada es obligatoria");
+      Swal.fire({
+        icon: "error",
+        title: "Fecha inválida",
+        text: "Por favor, seleccione una fecha de llegada",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    if (!motivo.trim()) {
+      setError("El motivo de la visita es obligatorio");
+      Swal.fire({
+        icon: "error",
+        title: "Motivo inválido",
+        text: "El motivo de la visita es obligatorio",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    if (motivo.length > 100) {
+      setError("El motivo no puede exceder los 100 caracteres");
+      Swal.fire({
+        icon: "error",
+        title: "Motivo inválido",
+        text: "El motivo no puede exceder los 100 caracteres",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    const fechaLlegadaFormatted = fechaLlegada.split("T")[0];
+    const todayFormatted = currentDate.split("T")[0];
+    if (fechaLlegadaFormatted < todayFormatted) {
+      setError("La fecha de llegada no puede ser anterior a hoy");
+      Swal.fire({
+        icon: "error",
+        title: "Fecha inválida",
+        text: "La fecha de llegada no puede ser anterior a hoy",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    if (!horaLlegada) {
+      setError("La hora de llegada es obligatoria");
+      Swal.fire({
+        icon: "error",
+        title: "Hora inválida",
+        text: "Por favor, seleccione una hora válida (HH:mm).",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    const timeMatch = horaLlegada.match(/^(\d{2}:\d{2})$/);
+    if (!timeMatch) {
+      setError("Formato de hora inválido.");
+      Swal.fire({
+        icon: "error",
+        title: "Hora inválida",
+        text: "Por favor, seleccione una hora válida (HH:mm).",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    const horaLlegadaFormatted = `${horaLlegada}:00`;
+    try {
+      const idResidente = await fetchResidentId(parseInt(nroDpto));
+      const payload = {
+        nro_dpto: parseInt(nroDpto),
+        dni_visitante: dni,
+        id_tipo_doc_visitante: parseInt(tipoDoc),
+        nombre_visitante: nombreVisitante.toUpperCase(),
+        fecha_llegada: fechaLlegadaFormatted,
+        hora_llegada: horaLlegadaFormatted,
+        motivo,
+        id_residente: idResidente,
+      };
+      console.log("Enviando payload:", payload);
+      const response = await fetch(`${API_URL}/scheduled-visits`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const responseData = await response.json();
+      console.log("Respuesta del servidor:", responseData);
+      if (!response.ok) {
+        console.error("Error del servidor:", responseData);
+        throw new Error(responseData.message || "Error al registrar la visita programada");
+      }
+      Swal.fire({
+        icon: "success",
+        title: "Éxito",
+        text: "Visita programada registrada correctamente",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      await fetchScheduledVisits();
+      setDni("");
+      setNombreVisitante("");
+      setIsNombreManual(false);
+      setTipoDoc("2");
+      setNroDpto(
+        departamentos.length === 1 ? departamentos[0].NRO_DPTO.toString() : ""
+      );
+      setMotivo("");
+      setFechaLlegada(currentDate);
+      setHoraLlegada("");
+      setHour("12");
+      setMinute("00");
+      setPeriod("AM");
+      setActiveTab("history");
+    } catch (err) {
+      const error = err as Error;
+      console.error("Error en handleSaveScheduledVisit:", error);
+      setError(error.message || "Error al registrar la visita programada");
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: error.message || "No se pudo registrar la visita programada",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  };
 
   const handleFilterChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -703,52 +706,16 @@ const handleSaveScheduledVisit = async () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        if (response.status === 400) {
-          if (
-            errorData.message === "La visita ya está procesada o cancelada" ||
-            errorData.message ===
-              "No se pudo cancelar la visita: estado no válido"
-          ) {
-            const visitResponse = await fetch(`${API_URL}/scheduled-visits`, {
-              headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`,
-              },
-            });
-            if (!visitResponse.ok)
-              throw new Error("Error al verificar el estado de la visita");
-            const visits = await visitResponse.json();
-            const visit = visits.find(
-              (v: VisitaProgramada) => v.ID_VISITA_PROGRAMADA === idVisita
-            );
-
-            if (!visit || visit.ESTADO === 0) {
-              Swal.fire({
-                icon: "success",
-                title: "Éxito",
-                text: "Visita cancelada correctamente",
-                timer: 2000,
-                showConfirmButton: false,
-              });
-            } else {
-              throw new Error(
-                errorData.message || "Error al cancelar la visita"
-              );
-            }
-          } else {
-            throw new Error(errorData.message || "Error al cancelar la visita");
-          }
-        } else {
-          throw new Error(errorData.message || "Error al cancelar la visita");
-        }
-      } else {
-        Swal.fire({
-          icon: "success",
-          title: "Éxito",
-          text: "Visita cancelada correctamente",
-          timer: 2000,
-          showConfirmButton: false,
-        });
+        throw new Error(errorData.message || "Error al cancelar la visita");
       }
+
+      Swal.fire({
+        icon: "success",
+        title: "Éxito",
+        text: "Visita cancelada correctamente",
+        timer: 2000,
+        showConfirmButton: false,
+      });
 
       await fetchScheduledVisits();
     } catch (err) {
@@ -782,16 +749,16 @@ const handleSaveScheduledVisit = async () => {
 
   const exportToCSV = () => {
     const headers =
-      "ID Visita,Número Dpto,Nombre Visitante,DNI/CE,Propietario,Fecha Llegada,Hora Tentativa,Motivo,Estado\n";
+      "ID Visita,Número Dpto,Nombre Visitante,DNI/CE,Propietario,Fecha Llegada,Hora Tent jugada,Motivo,Estado\n";
     const rows = filteredVisitasProgramadas
       .map((visita) => {
-        return `${visita.ID_VISITA_PROGRAMADA},${visita.NRO_DPTO},${
-          visita.NOMBRE_VISITANTE
-        },${visita.DNI_VISITANTE},${
-          visita.NOMBRE_PROPIETARIO || "-"
-        },${formatDateForDisplay(visita.FECHA_LLEGADA)},${formatTime(
-          visita.HORA_LLEGADA
-        )},${visita.MOTIVO},${visita.ESTADO === 1 ? "Pendiente" : "Procesada"}`;
+        const estadoLabel =
+          visita.ESTADO === 1
+            ? "Pendiente"
+            : visita.ESTADO === 2
+            ? "Procesada"
+            : "Cancelada";
+        return `${visita.ID_VISITA_PROGRAMADA},${visita.NRO_DPTO},${visita.NOMBRE_VISITANTE},${visita.DNI_VISITANTE},${visita.NOMBRE_PROPIETARIO || "-"},${formatDateForDisplay(visita.FECHA_LLEGADA)},${formatTime(visita.HORA_LLEGADA)},${visita.MOTIVO},${estadoLabel}`;
       })
       .join("\n");
     const csv = headers + rows;
@@ -1107,8 +1074,9 @@ const handleSaveScheduledVisit = async () => {
                     onChange={handleFilterChange}
                   >
                     <option value="">Todas</option>
-                    <option value="1">Pendientes</option>
-                    <option value="0">Procesadas</option>
+                    <option value="1">Pendiente</option>
+                    <option value="2">Procesada</option>
+                    <option value="3">Cancelada</option>
                   </Select>
                 </div>
               </div>
@@ -1196,10 +1164,16 @@ const handleSaveScheduledVisit = async () => {
                             className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
                               visita.ESTADO === 1
                                 ? "bg-blue-100 text-[#2563eb]"
+                                : visita.ESTADO === 2
+                                ? "bg-green-100 text-green-700"
                                 : "bg-red-100 text-red-700"
                             }`}
                           >
-                            {visita.ESTADO === 1 ? "Pendiente" : "Procesada"}
+                            {visita.ESTADO === 1
+                              ? "Pendiente"
+                              : visita.ESTADO === 2
+                              ? "Procesada"
+                              : "Cancelada"}
                           </span>
                         </td>
                         <td className="py-3 px-4">
