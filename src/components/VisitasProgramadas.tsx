@@ -488,162 +488,173 @@ const fetchResidentId = async (nroDpto: number): Promise<number> => {
     }
   };
 
-  const handleSaveScheduledVisit = async () => {
-    const dniError = validateDni();
-    if (dniError) {
-      setError(dniError);
-      Swal.fire({
-        icon: "error",
-        title: "Documento inválido",
-        text: dniError,
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
+const handleSaveScheduledVisit = async () => {
+  const dniError = validateDni();
+  if (dniError) {
+    setError(dniError);
+    Swal.fire({
+      icon: "error",
+      title: "Documento inválido",
+      text: dniError,
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    return;
+  }
+  if (!nombreVisitante.trim()) {
+    setError("El nombre del visitante es obligatorio");
+    Swal.fire({
+      icon: "error",
+      title: "Nombre inválido",
+      text: "El nombre del visitante es obligatorio",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    return;
+  }
+  if (!nroDpto) {
+    setError("El número de departamento es obligatorio");
+    Swal.fire({
+      icon: "error",
+      title: "Departamento inválido",
+      text: "Por favor, seleccione un departamento",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    return;
+  }
+  if (!fechaLlegada) {
+    setError("La fecha de llegada es obligatoria");
+    Swal.fire({
+      icon: "error",
+      title: "Fecha inválida",
+      text: "Por favor, seleccione una fecha de llegada",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    return;
+  }
+  if (!motivo.trim()) {
+    setError("El motivo de la visita es obligatorio");
+    Swal.fire({
+      icon: "error",
+      title: "Motivo inválido",
+      text: "El motivo de la visita es obligatorio",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    return;
+  }
+  if (motivo.length > 100) {
+    setError("El motivo no puede exceder los 100 caracteres");
+    Swal.fire({
+      icon: "error",
+      title: "Motivo inválido",
+      text: "El motivo no puede exceder los 100 caracteres",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    return;
+  }
+  const fechaLlegadaFormatted = fechaLlegada.split("T")[0];
+  const todayFormatted = currentDate.split("T")[0];
+  if (fechaLlegadaFormatted < todayFormatted) {
+    setError("La fecha de llegada no puede ser anterior a hoy");
+    Swal.fire({
+      icon: "error",
+      title: "Fecha inválida",
+      text: "La fecha de llegada no puede ser anterior a hoy",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    return;
+  }
+  if (!horaLlegada) {
+    setError("La hora de llegada es obligatoria");
+    Swal.fire({
+      icon: "error",
+      title: "Hora inválida",
+      text: "Por favor, seleccione una hora válida (HH:mm).",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    return;
+  }
+  const timeMatch = horaLlegada.match(/^(\d{2}:\d{2})$/);
+  if (!timeMatch) {
+    setError("Formato de hora inválido.");
+    Swal.fire({
+      icon: "error",
+      title: "Hora inválida",
+      text: "Por favor, seleccione una hora válida (HH:mm).",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    return;
+  }
+  const horaLlegadaFormatted = `${horaLlegada}:00`; // Corrección: usar horaLlegada
+  try {
+    const idResidente = await fetchResidentId(parseInt(nroDpto));
+    const payload = {
+      nro_dpto: parseInt(nroDpto),
+      dni_visitante: dni,
+      id_tipo_doc_visitante: parseInt(tipoDoc),
+      nombre_visitante: nombreVisitante.toUpperCase(),
+      fecha_llegada: fechaLlegadaFormatted,
+      hora_llegada: horaLlegadaFormatted,
+      motivo,
+      id_residente: idResidente,
+    };
+    console.log("Enviando payload:", payload);
+    const response = await fetch(`${API_URL}/scheduled-visits`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const responseData = await response.json();
+    console.log("Respuesta del servidor:", responseData);
+    if (!response.ok) {
+      console.error("Error del servidor:", responseData);
+      throw new Error(responseData.message || "Error al registrar la visita programada");
     }
-    if (!nombreVisitante.trim()) {
-      setError("El nombre del visitante es obligatorio");
-      Swal.fire({
-        icon: "error",
-        title: "Nombre inválido",
-        text: "El nombre del visitante es obligatorio",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
-    }
-    if (!nroDpto) {
-      setError("El número de departamento es obligatorio");
-      Swal.fire({
-        icon: "error",
-        title: "Departamento inválido",
-        text: "Por favor, seleccione un departamento",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
-    }
-    if (!fechaLlegada) {
-      setError("La fecha de llegada es obligatoria");
-      Swal.fire({
-        icon: "error",
-        title: "Fecha inválida",
-        text: "Por favor, seleccione una fecha de llegada",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
-    }
-    if (!motivo.trim()) {
-      setError("El motivo de la visita es obligatorio");
-      Swal.fire({
-        icon: "error",
-        title: "Motivo inválido",
-        text: "El motivo de la visita es obligatorio",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
-    }
-    if (motivo.length > 100) {
-      setError("El motivo no puede exceder los 100 caracteres");
-      Swal.fire({
-        icon: "error",
-        title: "Motivo inválido",
-        text: "El motivo no puede exceder los 100 caracteres",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
-    }
-    const fechaLlegadaFormatted = fechaLlegada.split("T")[0];
-    const todayFormatted = currentDate.split("T")[0];
-    if (fechaLlegadaFormatted < todayFormatted) {
-      setError("La fecha de llegada no puede ser anterior a hoy");
-      Swal.fire({
-        icon: "error",
-        title: "Fecha inválida",
-        text: "La fecha de llegada no puede ser anterior a hoy",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
-    }
-    const timeMatch = horaLlegada.match(/^(\d{2}:\d{2})$/);
-    if (!timeMatch) {
-      setError("Formato de hora inválido.");
-      Swal.fire({
-        icon: "error",
-        title: "Hora inválida",
-        text: "Por favor, seleccione una hora válida.",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
-    }
-    const horaLlegadaFormatted = horaLlegada;
-    try {
-      const idResidente = await fetchResidentId(parseInt(nroDpto));
-      const payload = {
-        nro_dpto: parseInt(nroDpto),
-        dni_visitante: dni,
-        id_tipo_doc_visitante: parseInt(tipoDoc),
-        nombre_visitante: nombreVisitante.toUpperCase(),
-        fecha_llegada: fechaLlegada,
-        hora_llegada: horaLlegadaFormatted,
-        motivo,
-        id_residente: idResidente,
-      };
-      console.log("Enviando payload:", payload);
-      const response = await fetch(`${API_URL}/scheduled-visits`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      const responseData = await response.json();
-      console.log("Respuesta del servidor:", responseData);
-      if (!response.ok) {
-        console.error("Error del servidor:", responseData);
-        throw new Error(responseData.message || "Error al registrar la visita programada");
-      }
-      Swal.fire({
-        icon: "success",
-        title: "Éxito",
-        text: "Visita programada registrada correctamente",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      await fetchScheduledVisits();
-      setDni("");
-      setNombreVisitante("");
-      setIsNombreManual(false);
-      setTipoDoc("2");
-      setNroDpto(
-        departamentos.length === 1 ? departamentos[0].NRO_DPTO.toString() : ""
-      );
-      setMotivo("");
-      setFechaLlegada(currentDate);
-      setHoraLlegada("");
-      setHour("12");
-      setMinute("00");
-      setPeriod("AM");
-      setActiveTab("history");
-    } catch (err) {
-      const error = err as Error;
-      console.error("Error en handleSaveScheduledVisit:", error);
-      setError(error.message || "Error al registrar la visita programada");
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: error.message || "No se pudo registrar la visita programada",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-    }
-  };
+    Swal.fire({
+      icon: "success",
+      title: "Éxito",
+      text: "Visita programada registrada correctamente",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    await fetchScheduledVisits();
+    setDni("");
+    setNombreVisitante("");
+    setIsNombreManual(false);
+    setTipoDoc("2");
+    setNroDpto(
+      departamentos.length === 1 ? departamentos[0].NRO_DPTO.toString() : ""
+    );
+    setMotivo("");
+    setFechaLlegada(currentDate);
+    setHoraLlegada("");
+    setHour("12");
+    setMinute("00");
+    setPeriod("AM");
+    setActiveTab("history");
+  } catch (err) {
+    const error = err as Error;
+    console.error("Error en handleSaveScheduledVisit:", error);
+    setError(error.message || "Error al registrar la visita programada");
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: error.message || "No se pudo registrar la visita programada",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+  }
+};
 
   const handleFilterChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
