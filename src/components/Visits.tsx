@@ -270,6 +270,7 @@ interface FilterScheduledState {
   nombre: string;
   fecha: string;
   fase: string;
+  estado: string; // Nuevo campo para el filtro de estado
 }
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -309,6 +310,7 @@ const Visits = () => {
     nombre: "",
     fecha: currentDate,
     fase: "",
+    estado: "por_aceptar",
   });
 
   // Refs for form fields
@@ -485,6 +487,7 @@ const Visits = () => {
       nombre: "",
       fecha: currentDate,
       fase: "",
+      estado: "por_aceptar", // Restablecer a "Por Aceptar"
     });
   };
 
@@ -1046,7 +1049,17 @@ const Visits = () => {
     const matchesFecha =
       filterScheduled.fecha === "" ||
       formatDate(visita.FECHA_LLEGADA) === formatDate(filterScheduled.fecha);
-    return matchesFase && matchesNroDpto && matchesNombre && matchesFecha;
+    const matchesEstado =
+      filterScheduled.estado === "todos" ||
+      (filterScheduled.estado === "por_aceptar" && visita.ESTADO === 1) ||
+      (filterScheduled.estado === "procesadas" && visita.ESTADO === 2);
+    return (
+      matchesFase &&
+      matchesNroDpto &&
+      matchesNombre &&
+      matchesFecha &&
+      matchesEstado
+    );
   });
 
   const departamentoOptions = departamentos.map((depto) => ({
@@ -1538,7 +1551,23 @@ const Visits = () => {
           <Card>
             <h2 className="text-lg font-semibold mb-4">Visitas Programadas</h2>
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 w-full md:w-3/4">
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 w-full md:w-4/5">
+                {" "}
+                {/* Cambiado a 5 columnas */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    Estado
+                  </label>
+                  <SelectNative
+                    name="estado"
+                    value={filterScheduled.estado}
+                    onChange={handleFilterScheduledChange}
+                  >
+                    <option value="todos">Todos</option>
+                    <option value="por_aceptar">Por Aceptar</option>
+                    <option value="procesadas">Procesadas</option>
+                  </SelectNative>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Fase
