@@ -1206,8 +1206,8 @@ const Visits = () => {
           };
           const updatedVisitas = [normalizedVisit, ...prevVisitas].sort(
             (a, b) =>
-              new Date(b.FECHA_LLEGADA).getTime() -
-              new Date(a.FECHA_LLEGADA).getTime()
+              new Date(a.FECHA_LLEGADA).getTime() - // Ascendente
+              new Date(b.FECHA_LLEGADA).getTime()
           );
           return updatedVisitas;
         });
@@ -1242,8 +1242,8 @@ const Visits = () => {
             )
             .sort(
               (a, b) =>
-                new Date(b.FECHA_LLEGADA).getTime() -
-                new Date(a.FECHA_LLEGADA).getTime()
+                new Date(a.FECHA_LLEGADA).getTime() - // Ascendente
+                new Date(b.FECHA_LLEGADA).getTime()
             );
           return updatedVisitas;
         });
