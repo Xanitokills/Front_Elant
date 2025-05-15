@@ -180,7 +180,11 @@ const customSelectStyles = {
     ...provided,
     fontSize: "0.875rem",
     color: "#1f2937",
-    background: state.isSelected ? "#2563eb" : state.isFocused ? "#f3f4f6" : "white",
+    background: state.isSelected
+      ? "#2563eb"
+      : state.isFocused
+      ? "#f3f4f6"
+      : "white",
     "&:hover": {
       background: "#f3f4f6",
     },
@@ -285,10 +289,14 @@ const Visits = () => {
   const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
   const [residentes, setResidentes] = useState<Residente[]>([]);
   const [visitas, setVisitas] = useState<Visitante[]>([]);
-  const [visitasProgramadas, setVisitasProgramadas] = useState<VisitaProgramada[]>([]);
+  const [visitasProgramadas, setVisitasProgramadas] = useState<
+    VisitaProgramada[]
+  >([]);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("create");
-  const [highlightedVisitId, setHighlightedVisitId] = useState<number | null>(null);
+  const [highlightedVisitId, setHighlightedVisitId] = useState<number | null>(
+    null
+  );
   const [filter, setFilter] = useState<FilterState>({
     estado: "activas",
     nroDpto: "",
@@ -315,31 +323,31 @@ const Visits = () => {
   const saveButtonRef = useRef<HTMLButtonElement>(null);
 
   // Funciones de formato
-const formatDate = (date: string | Date): string => {
-  try {
-    console.log("Formatting date:", date); // Log para depurar
-    let d: Date;
-    if (typeof date === "string") {
-      // Asumimos que la fecha viene como YYYY-MM-DD desde el backend
-      d = new Date(`${date}T00:00:00-05:00`); // Forzamos zona horaria America/Lima
-    } else {
-      d = date;
-    }
-    if (isNaN(d.getTime())) {
-      console.warn("Invalid date:", date);
+  const formatDate = (date: string | Date): string => {
+    try {
+      console.log("Formatting date:", date); // Log para depurar
+      let d: Date;
+      if (typeof date === "string") {
+        // Asumimos que la fecha viene como YYYY-MM-DD desde el backend
+        d = new Date(`${date}T00:00:00-05:00`); // Forzamos zona horaria America/Lima
+      } else {
+        d = date;
+      }
+      if (isNaN(d.getTime())) {
+        console.warn("Invalid date:", date);
+        return "-";
+      }
+      return d.toLocaleDateString("es-PE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        timeZone: "America/Lima",
+      });
+    } catch (error) {
+      console.error("Error formatting date:", error, "Input:", date);
       return "-";
     }
-    return d.toLocaleDateString("es-PE", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      timeZone: "America/Lima",
-    });
-  } catch (error) {
-    console.error("Error formatting date:", error, "Input:", date);
-    return "-";
-  }
-};
+  };
 
   const formatTime = (date: Date): string => {
     try {
@@ -364,7 +372,10 @@ const formatDate = (date: string | Date): string => {
   };
 
   // Handle Enter key press
-  const handleEnterKey = (e: React.KeyboardEvent, nextField: React.RefObject<any>) => {
+  const handleEnterKey = (
+    e: React.KeyboardEvent,
+    nextField: React.RefObject<any>
+  ) => {
     if (e.key === "Enter") {
       e.preventDefault();
       if (nextField.current) {
@@ -412,19 +423,16 @@ const formatDate = (date: string | Date): string => {
     []
   );
 
-  const handleNroDptoChange = useCallback(
-    (selectedOption: any) => {
-      const value = selectedOption ? selectedOption.value : "";
-      setNroDpto(value);
-      setError("");
-      setResidentes([]);
-      setIdResidente("");
-      if (value) {
-        fetchResidents(value);
-      }
-    },
-    []
-  );
+  const handleNroDptoChange = useCallback((selectedOption: any) => {
+    const value = selectedOption ? selectedOption.value : "";
+    setNroDpto(value);
+    setError("");
+    setResidentes([]);
+    setIdResidente("");
+    if (value) {
+      fetchResidents(value);
+    }
+  }, []);
 
   const handleMotivoChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -781,45 +789,45 @@ const formatDate = (date: string | Date): string => {
     }
   };
 
-const fetchScheduledVisits = async () => {
-  try {
-    const response = await fetch(`${API_URL}/all-scheduled-visits`, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
-    if (!response.ok)
-      throw new Error("Error al obtener las visitas programadas");
-    const data = await response.json();
-    console.log("Scheduled visits data:", data); // Log para depurar
-    const normalizedData = data.map((visit: VisitaProgramada) => ({
-      ...visit,
-      NOMBRE_VISITANTE: formatName(visit.NOMBRE_VISITANTE),
-      NOMBRE_PROPIETARIO: visit.NOMBRE_PROPIETARIO
-        ? formatName(visit.NOMBRE_PROPIETARIO)
-        : visit.NOMBRE_PROPIETARIO,
-      FECHA_LLEGADA: visit.FECHA_LLEGADA, // No formatear aquí, dejar que formatDate lo maneje
-      ESTADO:
-        visit.ESTADO === true ? 1 : visit.ESTADO === false ? 0 : visit.ESTADO,
-    }));
-    setVisitasProgramadas(
-      normalizedData.sort(
-        (a: VisitaProgramada, b: VisitaProgramada) =>
-          new Date(a.FECHA_LLEGADA).getTime() -
-          new Date(b.FECHA_LLEGADA).getTime()
-      )
-    );
-  } catch (err) {
-    console.error("Error al obtener las visitas programadas:", err);
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: "No se pudieron cargar las visitas programadas",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-  }
-};
+  const fetchScheduledVisits = async () => {
+    try {
+      const response = await fetch(`${API_URL}/all-scheduled-visits`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      if (!response.ok)
+        throw new Error("Error al obtener las visitas programadas");
+      const data = await response.json();
+      console.log("Scheduled visits data:", data); // Log para depurar
+      const normalizedData = data.map((visit: VisitaProgramada) => ({
+        ...visit,
+        NOMBRE_VISITANTE: formatName(visit.NOMBRE_VISITANTE),
+        NOMBRE_PROPIETARIO: visit.NOMBRE_PROPIETARIO
+          ? formatName(visit.NOMBRE_PROPIETARIO)
+          : visit.NOMBRE_PROPIETARIO,
+        FECHA_LLEGADA: visit.FECHA_LLEGADA, // No formatear aquí, dejar que formatDate lo maneje
+        ESTADO:
+          visit.ESTADO === true ? 1 : visit.ESTADO === false ? 0 : visit.ESTADO,
+      }));
+      setVisitasProgramadas(
+        normalizedData.sort(
+          (a: VisitaProgramada, b: VisitaProgramada) =>
+            new Date(a.FECHA_LLEGADA).getTime() -
+            new Date(b.FECHA_LLEGADA).getTime()
+        )
+      );
+    } catch (err) {
+      console.error("Error al obtener las visitas programadas:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudieron cargar las visitas programadas",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  };
 
   const handleEndVisit = async (idVisita: number) => {
     if (!userId) {
@@ -887,8 +895,9 @@ const fetchScheduledVisits = async () => {
       return;
     }
 
-    const fechaLlegadaFormatted = formatDate(fechaLlegada);
-    if (fechaLlegadaFormatted !== currentDate) {
+    // Normalizar fechaLlegada a YYYY-MM-DD
+    const fechaLlegadaNormalized = fechaLlegada.split("T")[0]; // Asegura que sea YYYY-MM-DD
+    if (fechaLlegadaNormalized !== currentDate) {
       Swal.fire({
         icon: "warning",
         title: "Fecha no válida",
@@ -901,7 +910,7 @@ const fetchScheduledVisits = async () => {
 
     try {
       const response = await fetch(
-        `${API_URL}/accept-scheduled-visit/${idVisitaProgramada}`,
+        `${API_URL}/scheduled-visits/${idVisitaProgramada}/accept`, // Corregido el endpoint
         {
           method: "POST",
           headers: {
@@ -943,7 +952,6 @@ const fetchScheduledVisits = async () => {
       });
     }
   };
-
   const exportToCSV = () => {
     const headers = [
       "ID Visita",
@@ -1007,7 +1015,8 @@ const fetchScheduledVisits = async () => {
     const matchesFase =
       filter.fase === "" ||
       (visita.NOMBRE_FASE &&
-        visita.NOMBRE_FASE === fases.find((f) => f.ID_FASE.toString() === filter.fase)?.NOMBRE);
+        visita.NOMBRE_FASE ===
+          fases.find((f) => f.ID_FASE.toString() === filter.fase)?.NOMBRE);
     const matchesNroDpto =
       filter.nroDpto === "" ||
       (visita.NRO_DPTO && visita.NRO_DPTO.toString().includes(filter.nroDpto));
@@ -1128,7 +1137,10 @@ const fetchScheduledVisits = async () => {
                         }
                       }}
                       onKeyDown={(e) =>
-                        handleEnterKey(e, tipoDoc === "2" ? searchButtonRef : nombreVisitanteRef)
+                        handleEnterKey(
+                          e,
+                          tipoDoc === "2" ? searchButtonRef : nombreVisitanteRef
+                        )
                       }
                       placeholder="Ejemplo: 7123XXXX o CE123456789"
                     />
@@ -1659,10 +1671,12 @@ const fetchScheduledVisits = async () => {
                       const fechaLlegadaFormatted = formatDate(
                         visita.FECHA_LLEGADA
                       );
-                      const isToday = fechaLlegadaFormatted === currentDate;
+                      // Normalizar fechas para comparar solo el día
                       const currentDateObj = new Date(currentDate);
                       const fechaLlegadaDate = new Date(visita.FECHA_LLEGADA);
-                      const isPastDate = fechaLlegadaDate < currentDateObj;
+                      const isToday =
+                        currentDateObj.toDateString() ===
+                        fechaLlegadaDate.toDateString();
                       const isFutureDate = fechaLlegadaDate > currentDateObj;
 
                       return (
@@ -1741,26 +1755,34 @@ const fetchScheduledVisits = async () => {
                             <td className="py-3 px-4">{visita.MOTIVO}</td>
                           )}
                           <td className="py-3 px-4">
-                            {estadoNum === 1 && isToday ? (
-                              <Button
-                                className="bg-green-600 text-white hover:bg-green-700 px-2 py-1"
-                                onClick={() =>
-                                  handleAcceptScheduledVisit(
-                                    visita.ID_VISITA_PROGRAMADA,
-                                    visita.FECHA_LLEGADA
-                                  )
-                                }
-                                title="Registrar Visita"
-                              >
-                                <FaCheck />
-                              </Button>
+                            {estadoNum === 1 ? (
+                              isToday ? (
+                                <Button
+                                  className="bg-green-600 text-white hover:bg-green-700 px-2 py-1"
+                                  onClick={() =>
+                                    handleAcceptScheduledVisit(
+                                      visita.ID_VISITA_PROGRAMADA,
+                                      visita.FECHA_LLEGADA
+                                    )
+                                  }
+                                  title="Aceptar Visita"
+                                >
+                                  <FaCheck />
+                                </Button>
+                              ) : isFutureDate ? (
+                                <span className="text-gray-500">
+                                  No se puede aceptar: Fecha futura
+                                </span>
+                              ) : (
+                                <span className="text-gray-500">
+                                  No se puede aceptar: Fecha pasada
+                                </span>
+                              )
+                            ) : estadoNum === 2 ? (
+                              <span className="text-gray-500">Procesada</span>
                             ) : (
                               <span className="text-gray-500">
-                                {isPastDate
-                                  ? "No se puede aceptar: Fecha pasada"
-                                  : isFutureDate
-                                  ? "No se puede aceptar: Fecha futura"
-                                  : "Procesada"}
+                                Estado no permitido
                               </span>
                             )}
                           </td>
