@@ -11,6 +11,7 @@ import {
 } from "react-icons/fa";
 import Swal from "sweetalert2";
 import { useAuth } from "../context/AuthContext";
+import { io, Socket } from "socket.io-client";
 
 // Estilos
 const Container = styled.div`
@@ -270,10 +271,11 @@ interface FilterScheduledState {
   nombre: string;
   fecha: string;
   fase: string;
-  estado: string; // Nuevo campo para el filtro de estado
+  estado: string;
 }
 
 const API_URL = import.meta.env.VITE_API_URL;
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL;
 
 const Visits = () => {
   const { userId } = useAuth();
@@ -313,13 +315,16 @@ const Visits = () => {
     estado: "por_aceptar",
   });
 
+  // Referencia para el socket
+  const socketRef = useRef<Socket | null>(null);
+
   // Refs for form fields
   const tipoDocRef = useRef<HTMLSelectElement>(null);
   const dniRef = useRef<HTMLInputElement>(null);
   const searchButtonRef = useRef<HTMLButtonElement>(null);
   const nombreVisitanteRef = useRef<HTMLInputElement>(null);
   const idFaseRef = useRef<HTMLSelectElement>(null);
-  const nroDptoRef = useRef<any>(null); // react-select ref
+  const nroDptoRef = useRef<any>(null);
   const idResidenteRef = useRef<HTMLSelectElement>(null);
   const motivoRef = useRef<HTMLInputElement>(null);
   const saveButtonRef = useRef<HTMLButtonElement>(null);
@@ -327,11 +332,9 @@ const Visits = () => {
   // Funciones de formato
   const formatDate = (date: string | Date): string => {
     try {
-      console.log("Formatting date:", date); // Log para depurar
       let d: Date;
       if (typeof date === "string") {
-        // Asumimos que la fecha viene como YYYY-MM-DD desde el backend
-        d = new Date(`${date}T00:00:00-05:00`); // Forzamos zona horaria America/Lima
+        d = new Date(`${date}T00:00:00-05:00`);
       } else {
         d = date;
       }
@@ -487,7 +490,7 @@ const Visits = () => {
       nombre: "",
       fecha: currentDate,
       fase: "",
-      estado: "por_aceptar", // Restablecer a "Por Aceptar"
+      estado: "por_aceptar",
     });
   };
 
@@ -698,7 +701,7 @@ const Visits = () => {
         timer: 2000,
         showConfirmButton: false,
       });
-      await fetchVisits();
+      const data = await response.json();
       setDni("");
       setTipoDoc("");
       setNombreVisitante("");
@@ -709,7 +712,6 @@ const Visits = () => {
       setDepartamentos([]);
       setResidentes([]);
       setActiveTab("history");
-      const data = await response.json();
       setHighlightedVisitId(data.ID_VISITA || null);
       setTimeout(() => {
         setHighlightedVisitId(null);
@@ -802,14 +804,13 @@ const Visits = () => {
       if (!response.ok)
         throw new Error("Error al obtener las visitas programadas");
       const data = await response.json();
-      console.log("Scheduled visits data:", data); // Log para depurar
       const normalizedData = data.map((visit: VisitaProgramada) => ({
         ...visit,
         NOMBRE_VISITANTE: formatName(visit.NOMBRE_VISITANTE),
         NOMBRE_PROPIETARIO: visit.NOMBRE_PROPIETARIO
           ? formatName(visit.NOMBRE_PROPIETARIO)
           : visit.NOMBRE_PROPIETARIO,
-        FECHA_LLEGADA: visit.FECHA_LLEGADA, // No formatear aquí, dejar que formatDate lo maneje
+        FECHA_LLEGADA: visit.FECHA_LLEGADA,
         ESTADO:
           visit.ESTADO === true ? 1 : visit.ESTADO === false ? 0 : visit.ESTADO,
       }));
@@ -898,8 +899,7 @@ const Visits = () => {
       return;
     }
 
-    // Normalizar fechaLlegada a YYYY-MM-DD
-    const fechaLlegadaNormalized = fechaLlegada.split("T")[0]; // Asegura que sea YYYY-MM-DD
+    const fechaLlegadaNormalized = fechaLlegada.split("T")[0];
     if (fechaLlegadaNormalized !== currentDate) {
       Swal.fire({
         icon: "warning",
@@ -913,7 +913,7 @@ const Visits = () => {
 
     try {
       const response = await fetch(
-        `${API_URL}/scheduled-visits/${idVisitaProgramada}/accept`, // Corregido el endpoint
+        `${API_URL}/scheduled-visits/${idVisitaProgramada}/accept`,
         {
           method: "POST",
           headers: {
@@ -936,8 +936,6 @@ const Visits = () => {
         timer: 2000,
         showConfirmButton: false,
       });
-      await fetchVisits();
-      await fetchScheduledVisits();
       setActiveTab("history");
       const data = await response.json();
       setHighlightedVisitId(data.id_visita || null);
@@ -955,6 +953,7 @@ const Visits = () => {
       });
     }
   };
+
   const exportToCSV = () => {
     const headers = [
       "ID Visita",
@@ -1066,6 +1065,156 @@ const Visits = () => {
     value: depto.NRO_DPTO.toString(),
     label: depto.NRO_DPTO.toString(),
   }));
+
+  // Socket.IO setup
+useEffect(() => {
+  socketRef.current = io(SOCKET_URL, {
+    auth: {
+      token: `Bearer ${localStorage.getItem("token")}`, // Añade "Bearer "
+    },
+    transports: ["websocket", "polling"], // Prioriza WebSocket
+  });
+
+  socketRef.current.on("connect", () => {
+    console.log("Connected to Socket.IO server");
+  });
+
+  socketRef.current.on("connect_error", (error) => {
+    console.error("Socket.IO connection error:", error);
+  });
+
+  socketRef.current.on("new-visit", (newVisit: Visitante) => {
+    console.log("New visit received via socket:", newVisit);
+    setVisitas((prevVisitas) => {
+      const normalizedVisit: Visitante = {
+        ...newVisit,
+        NOMBRE_VISITANTE: formatName(newVisit.NOMBRE_VISITANTE),
+        NOMBRE_PROPIETARIO: newVisit.NOMBRE_PROPIETARIO
+          ? formatName(newVisit.NOMBRE_PROPIETARIO)
+          : newVisit.NOMBRE_PROPIETARIO,
+        FECHA_INGRESO: formatDate(newVisit.FECHA_INGRESO),
+        HORA_INGRESO: formatTime(new Date(newVisit.FECHA_INGRESO)),
+        FECHA_SALIDA: newVisit.FECHA_SALIDA
+          ? formatDate(newVisit.FECHA_SALIDA)
+          : null,
+        HORA_SALIDA: newVisit.FECHA_SALIDA
+          ? formatTime(new Date(newVisit.FECHA_SALIDA))
+          : null,
+        ESTADO:
+          newVisit.ESTADO === true
+            ? 1
+            : newVisit.ESTADO === false
+            ? 0
+            : newVisit.ESTADO,
+      };
+      const updatedVisitas = [normalizedVisit, ...prevVisitas].sort(
+        (a, b) => b.ID_VISITA - a.ID_VISITA
+      );
+      return updatedVisitas;
+    });
+    if (activeTab === "history") {
+      Swal.fire({
+        icon: "info",
+        title: "Nueva Visita",
+        text: `Se ha registrado una nueva visita para ${formatName(
+          newVisit.NOMBRE_VISITANTE
+        )}`,
+        timer: 3000,
+        showConfirmButton: false,
+      });
+    }
+  });
+
+  socketRef.current.on(
+    "visit-accepted",
+    (data: { id_visita_programada: number; new_visit: Visitante }) => {
+      console.log("Visit accepted received via socket:", data);
+      setVisitasProgramadas((prev) =>
+        prev.filter((v) => v.ID_VISITA_PROGRAMADA !== data.id_visita_programada)
+      );
+      const normalizedVisit: Visitante = {
+        ...data.new_visit,
+        NOMBRE_VISITANTE: formatName(data.new_visit.NOMBRE_VISITANTE),
+        NOMBRE_PROPIETARIO: data.new_visit.NOMBRE_PROPIETARIO
+          ? formatName(data.new_visit.NOMBRE_PROPIETARIO)
+          : data.new_visit.NOMBRE_PROPIETARIO,
+        FECHA_INGRESO: formatDate(data.new_visit.FECHA_INGRESO),
+        HORA_INGRESO: formatTime(new Date(data.new_visit.FECHA_INGRESO)),
+        FECHA_SALIDA: data.new_visit.FECHA_SALIDA
+          ? formatDate(data.new_visit.FECHA_SALIDA)
+          : null,
+        HORA_SALIDA: data.new_visit.FECHA_SALIDA
+          ? formatTime(new Date(data.new_visit.FECHA_SALIDA))
+          : null,
+        ESTADO:
+          data.new_visit.ESTADO === true
+            ? 1
+            : data.new_visit.ESTADO === false
+            ? 0
+            : data.new_visit.ESTADO,
+      };
+      setVisitas((prevVisitas) => {
+        const updatedVisitas = [normalizedVisit, ...prevVisitas].sort(
+          (a, b) => b.ID_VISITA - a.ID_VISITA
+        );
+        return updatedVisitas;
+      });
+      if (activeTab === "scheduled" || activeTab === "history") {
+        Swal.fire({
+          icon: "success",
+          title: "Visita Aceptada",
+          text: `La visita programada para ${formatName(
+            data.new_visit.NOMBRE_VISITANTE
+          )} ha sido aceptada`,
+          timer: 3000,
+          showConfirmButton: false,
+        });
+      }
+    }
+  );
+
+  // Añadir listener para new-scheduled-visit
+  socketRef.current.on("new-scheduled-visit", (newScheduledVisit: VisitaProgramada) => {
+    console.log("New scheduled visit received via socket:", newScheduledVisit);
+    setVisitasProgramadas((prevVisitas) => {
+      const normalizedVisit: VisitaProgramada = {
+        ...newScheduledVisit,
+        NOMBRE_VISITANTE: formatName(newScheduledVisit.NOMBRE_VISITANTE),
+        NOMBRE_PROPIETARIO: newScheduledVisit.NOMBRE_PROPIETARIO
+          ? formatName(newScheduledVisit.NOMBRE_PROPIETARIO)
+          : newScheduledVisit.NOMBRE_PROPIETARIO,
+        FECHA_LLEGADA: formatDate(newScheduledVisit.FECHA_LLEGADA),
+        HORA_LLEGADA: newScheduledVisit.HORA_LLEGADA || null,
+        ESTADO:
+          newScheduledVisit.ESTADO === true
+            ? 1
+            : newScheduledVisit.ESTADO === false
+            ? 0
+            : newScheduledVisit.ESTADO,
+      };
+      const updatedVisitas = [normalizedVisit, ...prevVisitas].sort(
+        (a, b) =>
+          new Date(b.FECHA_LLEGADA).getTime() - new Date(a.FECHA_LLEGADA).getTime()
+      );
+      return updatedVisitas;
+    });
+    if (activeTab === "scheduled") {
+      Swal.fire({
+        icon: "info",
+        title: "Nueva Visita Programada",
+        text: `Se ha registrado una nueva visita programada para ${formatName(
+          newScheduledVisit.NOMBRE_VISITANTE
+        )}`,
+        timer: 3000,
+        showConfirmButton: false,
+      });
+    }
+  });
+
+  return () => {
+    socketRef.current?.disconnect();
+  };
+}, [activeTab]);
 
   useEffect(() => {
     fetchFases();
@@ -1552,8 +1701,6 @@ const Visits = () => {
             <h2 className="text-lg font-semibold mb-4">Visitas Programadas</h2>
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
               <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 w-full md:w-4/5">
-                {" "}
-                {/* Cambiado a 5 columnas */}
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Estado
@@ -1700,7 +1847,6 @@ const Visits = () => {
                       const fechaLlegadaFormatted = formatDate(
                         visita.FECHA_LLEGADA
                       );
-                      // Normalizar fechas para comparar solo el día
                       const currentDateObj = new Date(currentDate);
                       const fechaLlegadaDate = new Date(visita.FECHA_LLEGADA);
                       const isToday =
