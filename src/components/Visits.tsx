@@ -899,8 +899,10 @@ const Visits = () => {
       return;
     }
 
-    const fechaLlegadaNormalized = fechaLlegada.split("T")[0];
-    if (fechaLlegadaNormalized !== currentDate) {
+    const fechaLlegadaDate = new Date(fechaLlegada + "T00:00:00-05:00");
+    const currentDateObj = new Date(currentDate + "T00:00:00-05:00");
+
+    if (fechaLlegadaDate.toDateString() !== currentDateObj.toDateString()) {
       Swal.fire({
         icon: "warning",
         title: "Fecha no válida",
@@ -953,7 +955,6 @@ const Visits = () => {
       });
     }
   };
-
   const exportToCSV = () => {
     const headers = [
       "ID Visita",
@@ -1067,154 +1068,167 @@ const Visits = () => {
   }));
 
   // Socket.IO setup
-useEffect(() => {
-  socketRef.current = io(SOCKET_URL, {
-    auth: {
-      token: `Bearer ${localStorage.getItem("token")}`, // Añade "Bearer "
-    },
-    transports: ["websocket", "polling"], // Prioriza WebSocket
-  });
-
-  socketRef.current.on("connect", () => {
-    console.log("Connected to Socket.IO server");
-  });
-
-  socketRef.current.on("connect_error", (error) => {
-    console.error("Socket.IO connection error:", error);
-  });
-
-  socketRef.current.on("new-visit", (newVisit: Visitante) => {
-    console.log("New visit received via socket:", newVisit);
-    setVisitas((prevVisitas) => {
-      const normalizedVisit: Visitante = {
-        ...newVisit,
-        NOMBRE_VISITANTE: formatName(newVisit.NOMBRE_VISITANTE),
-        NOMBRE_PROPIETARIO: newVisit.NOMBRE_PROPIETARIO
-          ? formatName(newVisit.NOMBRE_PROPIETARIO)
-          : newVisit.NOMBRE_PROPIETARIO,
-        FECHA_INGRESO: formatDate(newVisit.FECHA_INGRESO),
-        HORA_INGRESO: formatTime(new Date(newVisit.FECHA_INGRESO)),
-        FECHA_SALIDA: newVisit.FECHA_SALIDA
-          ? formatDate(newVisit.FECHA_SALIDA)
-          : null,
-        HORA_SALIDA: newVisit.FECHA_SALIDA
-          ? formatTime(new Date(newVisit.FECHA_SALIDA))
-          : null,
-        ESTADO:
-          newVisit.ESTADO === true
-            ? 1
-            : newVisit.ESTADO === false
-            ? 0
-            : newVisit.ESTADO,
-      };
-      const updatedVisitas = [normalizedVisit, ...prevVisitas].sort(
-        (a, b) => b.ID_VISITA - a.ID_VISITA
-      );
-      return updatedVisitas;
+  useEffect(() => {
+    socketRef.current = io(SOCKET_URL, {
+      auth: {
+        token: `Bearer ${localStorage.getItem("token")}`, // Añade "Bearer "
+      },
+      transports: ["websocket", "polling"], // Prioriza WebSocket
     });
-    if (activeTab === "history") {
-      Swal.fire({
-        icon: "info",
-        title: "Nueva Visita",
-        text: `Se ha registrado una nueva visita para ${formatName(
-          newVisit.NOMBRE_VISITANTE
-        )}`,
-        timer: 3000,
-        showConfirmButton: false,
-      });
-    }
-  });
 
-  socketRef.current.on(
-    "visit-accepted",
-    (data: { id_visita_programada: number; new_visit: Visitante }) => {
-      console.log("Visit accepted received via socket:", data);
-      setVisitasProgramadas((prev) =>
-        prev.filter((v) => v.ID_VISITA_PROGRAMADA !== data.id_visita_programada)
-      );
-      const normalizedVisit: Visitante = {
-        ...data.new_visit,
-        NOMBRE_VISITANTE: formatName(data.new_visit.NOMBRE_VISITANTE),
-        NOMBRE_PROPIETARIO: data.new_visit.NOMBRE_PROPIETARIO
-          ? formatName(data.new_visit.NOMBRE_PROPIETARIO)
-          : data.new_visit.NOMBRE_PROPIETARIO,
-        FECHA_INGRESO: formatDate(data.new_visit.FECHA_INGRESO),
-        HORA_INGRESO: formatTime(new Date(data.new_visit.FECHA_INGRESO)),
-        FECHA_SALIDA: data.new_visit.FECHA_SALIDA
-          ? formatDate(data.new_visit.FECHA_SALIDA)
-          : null,
-        HORA_SALIDA: data.new_visit.FECHA_SALIDA
-          ? formatTime(new Date(data.new_visit.FECHA_SALIDA))
-          : null,
-        ESTADO:
-          data.new_visit.ESTADO === true
-            ? 1
-            : data.new_visit.ESTADO === false
-            ? 0
-            : data.new_visit.ESTADO,
-      };
+    socketRef.current.on("connect", () => {
+      console.log("Connected to Socket.IO server");
+    });
+
+    socketRef.current.on("connect_error", (error) => {
+      console.error("Socket.IO connection error:", error);
+    });
+
+    socketRef.current.on("new-visit", (newVisit: Visitante) => {
+      console.log("New visit received via socket:", newVisit);
       setVisitas((prevVisitas) => {
+        const normalizedVisit: Visitante = {
+          ...newVisit,
+          NOMBRE_VISITANTE: formatName(newVisit.NOMBRE_VISITANTE),
+          NOMBRE_PROPIETARIO: newVisit.NOMBRE_PROPIETARIO
+            ? formatName(newVisit.NOMBRE_PROPIETARIO)
+            : newVisit.NOMBRE_PROPIETARIO,
+          FECHA_INGRESO: formatDate(newVisit.FECHA_INGRESO),
+          HORA_INGRESO: formatTime(new Date(newVisit.FECHA_INGRESO)),
+          FECHA_SALIDA: newVisit.FECHA_SALIDA
+            ? formatDate(newVisit.FECHA_SALIDA)
+            : null,
+          HORA_SALIDA: newVisit.FECHA_SALIDA
+            ? formatTime(new Date(newVisit.FECHA_SALIDA))
+            : null,
+          ESTADO:
+            newVisit.ESTADO === true
+              ? 1
+              : newVisit.ESTADO === false
+              ? 0
+              : newVisit.ESTADO,
+        };
         const updatedVisitas = [normalizedVisit, ...prevVisitas].sort(
           (a, b) => b.ID_VISITA - a.ID_VISITA
         );
         return updatedVisitas;
       });
-      if (activeTab === "scheduled" || activeTab === "history") {
+      if (activeTab === "history") {
         Swal.fire({
-          icon: "success",
-          title: "Visita Aceptada",
-          text: `La visita programada para ${formatName(
-            data.new_visit.NOMBRE_VISITANTE
-          )} ha sido aceptada`,
+          icon: "info",
+          title: "Nueva Visita",
+          text: `Se ha registrado una nueva visita para ${formatName(
+            newVisit.NOMBRE_VISITANTE
+          )}`,
           timer: 3000,
           showConfirmButton: false,
         });
       }
-    }
-  );
-
-  // Añadir listener para new-scheduled-visit
-  socketRef.current.on("new-scheduled-visit", (newScheduledVisit: VisitaProgramada) => {
-    console.log("New scheduled visit received via socket:", newScheduledVisit);
-    setVisitasProgramadas((prevVisitas) => {
-      const normalizedVisit: VisitaProgramada = {
-        ...newScheduledVisit,
-        NOMBRE_VISITANTE: formatName(newScheduledVisit.NOMBRE_VISITANTE),
-        NOMBRE_PROPIETARIO: newScheduledVisit.NOMBRE_PROPIETARIO
-          ? formatName(newScheduledVisit.NOMBRE_PROPIETARIO)
-          : newScheduledVisit.NOMBRE_PROPIETARIO,
-        FECHA_LLEGADA: formatDate(newScheduledVisit.FECHA_LLEGADA),
-        HORA_LLEGADA: newScheduledVisit.HORA_LLEGADA || null,
-        ESTADO:
-          newScheduledVisit.ESTADO === true
-            ? 1
-            : newScheduledVisit.ESTADO === false
-            ? 0
-            : newScheduledVisit.ESTADO,
-      };
-      const updatedVisitas = [normalizedVisit, ...prevVisitas].sort(
-        (a, b) =>
-          new Date(b.FECHA_LLEGADA).getTime() - new Date(a.FECHA_LLEGADA).getTime()
-      );
-      return updatedVisitas;
     });
-    if (activeTab === "scheduled") {
-      Swal.fire({
-        icon: "info",
-        title: "Nueva Visita Programada",
-        text: `Se ha registrado una nueva visita programada para ${formatName(
-          newScheduledVisit.NOMBRE_VISITANTE
-        )}`,
-        timer: 3000,
-        showConfirmButton: false,
-      });
-    }
-  });
 
-  return () => {
-    socketRef.current?.disconnect();
-  };
-}, [activeTab]);
+    socketRef.current.on(
+      "visit-accepted",
+      (data: { id_visita_programada: number; new_visit: Visitante }) => {
+        console.log("Visit accepted received via socket:", data);
+        setVisitasProgramadas((prev) =>
+          prev.filter(
+            (v) => v.ID_VISITA_PROGRAMADA !== data.id_visita_programada
+          )
+        );
+        const normalizedVisit: Visitante = {
+          ...data.new_visit,
+          NOMBRE_VISITANTE: formatName(data.new_visit.NOMBRE_VISITANTE),
+          NOMBRE_PROPIETARIO: data.new_visit.NOMBRE_PROPIETARIO
+            ? formatName(data.new_visit.NOMBRE_PROPIETARIO)
+            : data.new_visit.NOMBRE_PROPIETARIO,
+          FECHA_INGRESO: formatDate(data.new_visit.FECHA_INGRESO),
+          HORA_INGRESO: formatTime(new Date(data.new_visit.FECHA_INGRESO)),
+          FECHA_SALIDA: data.new_visit.FECHA_SALIDA
+            ? formatDate(data.new_visit.FECHA_SALIDA)
+            : null,
+          HORA_SALIDA: data.new_visit.FECHA_SALIDA
+            ? formatTime(new Date(data.new_visit.FECHA_SALIDA))
+            : null,
+          ESTADO:
+            data.new_visit.ESTADO === true
+              ? 1
+              : data.new_visit.ESTADO === false
+              ? 0
+              : data.new_visit.ESTADO,
+        };
+        setVisitas((prevVisitas) => {
+          const updatedVisitas = [normalizedVisit, ...prevVisitas].sort(
+            (a, b) => b.ID_VISITA - a.ID_VISITA
+          );
+          return updatedVisitas;
+        });
+        if (activeTab === "scheduled" || activeTab === "history") {
+          Swal.fire({
+            icon: "success",
+            title: "Visita Aceptada",
+            text: `La visita programada para ${formatName(
+              data.new_visit.NOMBRE_VISITANTE
+            )} ha sido aceptada`,
+            timer: 3000,
+            showConfirmButton: false,
+          });
+        }
+      }
+    );
+
+    // Añadir listener para new-scheduled-visit
+    socketRef.current.on(
+      "new-scheduled-visit",
+      (newScheduledVisit: VisitaProgramada) => {
+        console.log(
+          "New scheduled visit received via socket:",
+          newScheduledVisit
+        );
+        setVisitasProgramadas((prevVisitas) => {
+          const normalizedVisit: VisitaProgramada = {
+            ...newScheduledVisit,
+            NOMBRE_VISITANTE: formatName(newScheduledVisit.NOMBRE_VISITANTE),
+            NOMBRE_PROPIETARIO: newScheduledVisit.NOMBRE_PROPIETARIO
+              ? formatName(newScheduledVisit.NOMBRE_PROPIETARIO)
+              : newScheduledVisit.NOMBRE_PROPIETARIO,
+            FECHA_LLEGADA: newScheduledVisit.FECHA_LLEGADA
+              ? new Date(newScheduledVisit.FECHA_LLEGADA + "T00:00:00-05:00")
+                  .toISOString()
+                  .split("T")[0]
+              : "",
+            HORA_LLEGADA: newScheduledVisit.HORA_LLEGADA || null,
+            ESTADO:
+              newScheduledVisit.ESTADO === true
+                ? 1
+                : newScheduledVisit.ESTADO === false
+                ? 0
+                : newScheduledVisit.ESTADO,
+          };
+          const updatedVisitas = [normalizedVisit, ...prevVisitas].sort(
+            (a, b) =>
+              new Date(b.FECHA_LLEGADA).getTime() -
+              new Date(a.FECHA_LLEGADA).getTime()
+          );
+          return updatedVisitas;
+        });
+        if (activeTab === "scheduled") {
+          Swal.fire({
+            icon: "info",
+            title: "Nueva Visita Programada",
+            text: `Se ha registrado una nueva visita programada para ${formatName(
+              newScheduledVisit.NOMBRE_VISITANTE
+            )}`,
+            timer: 3000,
+            showConfirmButton: false,
+          });
+        }
+      }
+    );
+
+    return () => {
+      socketRef.current?.disconnect();
+    };
+  }, [activeTab]);
 
   useEffect(() => {
     fetchFases();
@@ -1847,8 +1861,12 @@ useEffect(() => {
                       const fechaLlegadaFormatted = formatDate(
                         visita.FECHA_LLEGADA
                       );
-                      const currentDateObj = new Date(currentDate);
-                      const fechaLlegadaDate = new Date(visita.FECHA_LLEGADA);
+                      const currentDateObj = new Date(
+                        currentDate + "T00:00:00-05:00"
+                      ); // Normalizar a medianoche en Lima
+                      const fechaLlegadaDate = new Date(
+                        visita.FECHA_LLEGADA + "T00:00:00-05:00"
+                      ); // Normalizar a medianoche en Lima
                       const isToday =
                         currentDateObj.toDateString() ===
                         fechaLlegadaDate.toDateString();
@@ -1895,26 +1913,33 @@ useEffect(() => {
                               }
                               try {
                                 let normalizedTime = visita.HORA_LLEGADA.trim();
-                                if (/^\d{2}:\d{2}$/.test(normalizedTime)) {
-                                  normalizedTime = `${normalizedTime}:00`;
-                                } else if (
-                                  !/^\d{2}:\d{2}:\d{2}$/.test(normalizedTime)
+                                // Aceptar HH:mm:ss o HH:mm
+                                if (
+                                  /^\d{2}:\d{2}(:\d{2})?$/.test(normalizedTime)
                                 ) {
-                                  return "-";
+                                  if (/^\d{2}:\d{2}$/.test(normalizedTime)) {
+                                    normalizedTime = `${normalizedTime}:00`;
+                                  }
+                                  const date = new Date(
+                                    `1970-01-01T${normalizedTime}-05:00`
+                                  ); // Ajustar a zona horaria de Lima
+                                  if (isNaN(date.getTime())) {
+                                    return "-";
+                                  }
+                                  return date.toLocaleTimeString([], {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    hour12: true,
+                                    timeZone: "America/Lima",
+                                  });
                                 }
-                                const date = new Date(
-                                  `1970-01-01T${normalizedTime}`
-                                );
-                                if (isNaN(date.getTime())) {
-                                  return "-";
-                                }
-                                return date.toLocaleTimeString([], {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  hour12: true,
-                                  timeZone: "America/Lima",
-                                });
+                                return "-";
                               } catch (error) {
+                                console.error(
+                                  "Error formatting HORA_LLEGADA:",
+                                  error,
+                                  visita.HORA_LLEGADA
+                                );
                                 return "-";
                               }
                             })()}
