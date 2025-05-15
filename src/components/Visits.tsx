@@ -315,19 +315,31 @@ const Visits = () => {
   const saveButtonRef = useRef<HTMLButtonElement>(null);
 
   // Funciones de formato
-  const formatDate = (date: string | Date): string => {
-    try {
-      const d = typeof date === "string" ? new Date(date) : date;
-      if (isNaN(d.getTime())) return "-";
-      return d.toLocaleDateString("es-PE", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-    } catch {
+const formatDate = (date: string | Date): string => {
+  try {
+    console.log("Formatting date:", date); // Log para depurar
+    let d: Date;
+    if (typeof date === "string") {
+      // Asumimos que la fecha viene como YYYY-MM-DD desde el backend
+      d = new Date(`${date}T00:00:00-05:00`); // Forzamos zona horaria America/Lima
+    } else {
+      d = date;
+    }
+    if (isNaN(d.getTime())) {
+      console.warn("Invalid date:", date);
       return "-";
     }
-  };
+    return d.toLocaleDateString("es-PE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone: "America/Lima",
+    });
+  } catch (error) {
+    console.error("Error formatting date:", error, "Input:", date);
+    return "-";
+  }
+};
 
   const formatTime = (date: Date): string => {
     try {
@@ -769,44 +781,45 @@ const Visits = () => {
     }
   };
 
-  const fetchScheduledVisits = async () => {
-    try {
-      const response = await fetch(`${API_URL}/all-scheduled-visits`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
-      if (!response.ok)
-        throw new Error("Error al obtener las visitas programadas");
-      const data = await response.json();
-      const normalizedData = data.map((visit: VisitaProgramada) => ({
-        ...visit,
-        NOMBRE_VISITANTE: formatName(visit.NOMBRE_VISITANTE),
-        NOMBRE_PROPIETARIO: visit.NOMBRE_PROPIETARIO
-          ? formatName(visit.NOMBRE_PROPIETARIO)
-          : visit.NOMBRE_PROPIETARIO,
-        FECHA_LLEGADA: formatDate(visit.FECHA_LLEGADA),
-        ESTADO:
-          visit.ESTADO === true ? 1 : visit.ESTADO === false ? 0 : visit.ESTADO,
-      }));
-      setVisitasProgramadas(
-        normalizedData.sort(
-          (a: VisitaProgramada, b: VisitaProgramada) =>
-            new Date(a.FECHA_LLEGADA).getTime() -
-            new Date(b.FECHA_LLEGADA).getTime()
-        )
-      );
-    } catch (err) {
-      console.error("Error al obtener las visitas programadas:", err);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "No se pudieron cargar las visitas programadas",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-    }
-  };
+const fetchScheduledVisits = async () => {
+  try {
+    const response = await fetch(`${API_URL}/all-scheduled-visits`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+    if (!response.ok)
+      throw new Error("Error al obtener las visitas programadas");
+    const data = await response.json();
+    console.log("Scheduled visits data:", data); // Log para depurar
+    const normalizedData = data.map((visit: VisitaProgramada) => ({
+      ...visit,
+      NOMBRE_VISITANTE: formatName(visit.NOMBRE_VISITANTE),
+      NOMBRE_PROPIETARIO: visit.NOMBRE_PROPIETARIO
+        ? formatName(visit.NOMBRE_PROPIETARIO)
+        : visit.NOMBRE_PROPIETARIO,
+      FECHA_LLEGADA: visit.FECHA_LLEGADA, // No formatear aquí, dejar que formatDate lo maneje
+      ESTADO:
+        visit.ESTADO === true ? 1 : visit.ESTADO === false ? 0 : visit.ESTADO,
+    }));
+    setVisitasProgramadas(
+      normalizedData.sort(
+        (a: VisitaProgramada, b: VisitaProgramada) =>
+          new Date(a.FECHA_LLEGADA).getTime() -
+          new Date(b.FECHA_LLEGADA).getTime()
+      )
+    );
+  } catch (err) {
+    console.error("Error al obtener las visitas programadas:", err);
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: "No se pudieron cargar las visitas programadas",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+  }
+};
 
   const handleEndVisit = async (idVisita: number) => {
     if (!userId) {
