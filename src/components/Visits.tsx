@@ -1225,6 +1225,31 @@ const Visits = () => {
       }
     );
 
+    // Nuevo listener para cancel-scheduled-visit
+    socketRef.current.on(
+      "cancel-scheduled-visit",
+      (canceledVisit: VisitaProgramada) => {
+        console.log(
+          "Canceled scheduled visit received via socket:",
+          canceledVisit
+        );
+        setVisitasProgramadas((prevVisitas) => {
+          const updatedVisitas = prevVisitas
+            .filter(
+              (visita) =>
+                visita.ID_VISITA_PROGRAMADA !==
+                canceledVisit.ID_VISITA_PROGRAMADA
+            )
+            .sort(
+              (a, b) =>
+                new Date(b.FECHA_LLEGADA).getTime() -
+                new Date(a.FECHA_LLEGADA).getTime()
+            );
+          return updatedVisitas;
+        });
+      }
+    );
+
     return () => {
       socketRef.current?.disconnect();
     };
