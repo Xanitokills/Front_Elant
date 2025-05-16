@@ -306,7 +306,17 @@ const Visits = () => {
     nombre: "",
     fase: "",
   });
-  const currentDate = new Date().toISOString().split("T")[0];
+  const currentDate = new Date()
+    .toLocaleDateString("es-PE", {
+      timeZone: "America/Lima",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+    .split("/")
+    .reverse()
+    .join("-");
+
   const [filterScheduled, setFilterScheduled] = useState<FilterScheduledState>({
     nroDpto: "",
     nombre: "",
@@ -899,10 +909,25 @@ const Visits = () => {
       return;
     }
 
-    const fechaLlegadaDate = new Date(fechaLlegada + "T00:00:00-05:00");
-    const currentDateObj = new Date(currentDate + "T00:00:00-05:00");
+    // Normalizar fechas en zona horaria de Lima
+    const fechaLlegadaDate = new Date(`${fechaLlegada}T00:00:00-05:00`);
+    const currentDateObj = new Date(`${currentDate}T00:00:00-05:00`);
 
-    if (fechaLlegadaDate.toDateString() !== currentDateObj.toDateString()) {
+    if (isNaN(fechaLlegadaDate.getTime()) || isNaN(currentDateObj.getTime())) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Fecha inválida",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+
+    const isToday =
+      currentDateObj.toDateString() === fechaLlegadaDate.toDateString();
+
+    if (!isToday) {
       Swal.fire({
         icon: "warning",
         title: "Fecha no válida",
@@ -955,6 +980,7 @@ const Visits = () => {
       });
     }
   };
+
   const exportToCSV = () => {
     const headers = [
       "ID Visita",
@@ -1887,11 +1913,11 @@ const Visits = () => {
                         visita.FECHA_LLEGADA
                       );
                       const currentDateObj = new Date(
-                        currentDate + "T00:00:00-05:00"
-                      ); // Normalizar a medianoche en Lima
+                        `${currentDate}T00:00:00-05:00`
+                      );
                       const fechaLlegadaDate = new Date(
-                        visita.FECHA_LLEGADA + "T00:00:00-05:00"
-                      ); // Normalizar a medianoche en Lima
+                        `${visita.FECHA_LLEGADA}T00:00:00-05:00`
+                      );
                       const isToday =
                         currentDateObj.toDateString() ===
                         fechaLlegadaDate.toDateString();
@@ -1938,7 +1964,6 @@ const Visits = () => {
                               }
                               try {
                                 let normalizedTime = visita.HORA_LLEGADA.trim();
-                                // Aceptar HH:mm:ss o HH:mm
                                 if (
                                   /^\d{2}:\d{2}(:\d{2})?$/.test(normalizedTime)
                                 ) {
@@ -1947,7 +1972,7 @@ const Visits = () => {
                                   }
                                   const date = new Date(
                                     `1970-01-01T${normalizedTime}-05:00`
-                                  ); // Ajustar a zona horaria de Lima
+                                  );
                                   if (isNaN(date.getTime())) {
                                     return "-";
                                   }
