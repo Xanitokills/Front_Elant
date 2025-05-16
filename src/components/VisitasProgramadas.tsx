@@ -7,29 +7,56 @@ import Swal from "sweetalert2";
 const API_URL = import.meta.env.VITE_API_URL;
 
 const slideInDown = keyframes`
-  0% { opacity: 0; transform: translateY(-20px); }
-  100% { opacity: 1; transform: translateY(0); }
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 `;
 
 const fadeIn = keyframes`
-  0% { opacity: 0; transform: translateY(10px); }
-  100% { opacity: 1; transform: translateY(0); }
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+const spin = keyframes`
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 `;
 
 const Container = styled.div`
-  padding: 1.5rem;
+  padding: 1rem;
   background-color: #f3f4f6;
   min-height: 100vh;
-  @media (min-width: 768px) {
+  @media (min-width: 640px) {
+    padding: 1.5rem;
+  }
+  @media (min-width: 1024px) {
     padding: 2rem;
   }
 `;
 
 const Title = styled.h1`
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: bold;
   margin-bottom: 1.5rem;
   animation: ${slideInDown} 0.5s ease-out;
+  @media (min-width: 640px) {
+    font-size: 1.5rem;
+  }
 `;
 
 const TabButton = styled.button<{ active: boolean }>`
@@ -50,7 +77,7 @@ const TabContent = styled.div`
 
 const Card = styled.div`
   background-color: white;
-  padding: 1.5rem;
+  padding: 1rem;
   border-radius: 0.5rem;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   margin-bottom: 1.5rem;
@@ -58,7 +85,10 @@ const Card = styled.div`
   &:hover {
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
   }
-  @media (min-width: 768px) {
+  @media (min-width: 640px) {
+    padding: 1.5rem;
+  }
+  @media (min-width: 1024px) {
     padding: 2rem;
   }
 `;
@@ -89,22 +119,35 @@ const Select = styled.select`
   }
 `;
 
-const Button = styled.button`
+const Button = styled.button<{ disabled?: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0.5rem 1rem;
   border-radius: 0.375rem;
-  transition: background-color 0.2s ease, transform 0.2s ease;
-  &:hover {
+  transition: background-color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+  opacity: ${(props) => (props.disabled ? 0.6 : 1)};
+  cursor: ${(props) => (props.disabled ? "not-allowed" : "pointer")};
+  &:hover:not(:disabled) {
     transform: translateY(-1px);
   }
+`;
+
+const Spinner = styled.div`
+  border: 2px solid #ffffff;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  width: 1.5rem;
+  height: 1.5rem;
+  animation: ${spin} 0.8s linear infinite;
+  margin-right: 0.5rem;
 `;
 
 const TimePickerContainer = styled.div`
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  flex-wrap: wrap;
 `;
 
 const TimeSelect = styled.select`
@@ -276,26 +319,34 @@ const VisitasProgramadas = () => {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"create" | "history">("create");
   const [isCanceling, setIsCanceling] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const hours = Array.from({ length: 12 }, (_, i) =>
     (i + 1).toString().padStart(2, "0")
   );
   const minutes = ["00", "10", "20", "30", "40", "50"];
 
-useEffect(() => {
-  if (!hour || !minute) {
-    setHoraLlegada(""); // Set to empty string if incomplete
-    return;
-  }
-  let militaryHour = parseInt(hour);
-  if (period === "PM" && militaryHour !== 12) {
-    militaryHour += 12;
-  } else if (period === "AM" && militaryHour === 12) {
-    militaryHour = 0;
-  }
-  const formattedHour = militaryHour.toString().padStart(2, "0");
-  setHoraLlegada(`${formattedHour}:${minute}:00`);
-}, [hour, minute, period]);
+  useEffect(() => {
+    if (!hour || !minute) {
+      setHoraLlegada("");
+      return;
+    }
+    let militaryHour = parseInt(hour);
+    if (period === "PM" && militaryHour !== 12) {
+      militaryHour += 12;
+    } else if (period === "AM" && militaryHour === 12) {
+      militaryHour = 0;
+    }
+    const formattedHour = militaryHour.toString().padStart(2, "0");
+    setHoraLlegada(`${formattedHour}:${minute}:00`);
+  }, [hour, minute, period]);
+
+  useEffect(() => {
+    setIsNombreManual(tipoDoc !== "2");
+    if (tipoDoc !== "2") {
+      setNombreVisitante("");
+    }
+  }, [tipoDoc]);
 
   const fetchOwnerDepartments = async () => {
     try {
@@ -346,7 +397,6 @@ useEffect(() => {
         );
       }
       const userData = await userResponse.json();
-      console.log("fetchResidentId - userData:", userData);
       const idPersona = userData.ID_PERSONA;
       if (!idPersona) {
         throw new Error("ID_PERSONA no encontrado en los datos del usuario");
@@ -364,7 +414,6 @@ useEffect(() => {
         );
       }
       const deptData = await deptResponse.json();
-      console.log("fetchResidentId - deptData:", deptData);
       const idDepartamento = deptData.ID_DEPARTAMENTO;
       if (!idDepartamento) {
         throw new Error(
@@ -387,7 +436,6 @@ useEffect(() => {
         );
       }
       const residentData = await residentResponse.json();
-      console.log("fetchResidentId - residentData:", residentData);
       if (!residentData.ID_RESIDENTE) {
         throw new Error(
           `No se encontró un residente asociado para NRO_DPTO=${nroDpto}, ID_PERSONA=${idPersona}`
@@ -413,14 +461,10 @@ useEffect(() => {
         throw new Error("Error al obtener las visitas programadas");
       }
       const data: VisitaProgramada[] = JSON.parse(text);
-      console.log("Datos recibidos de /scheduled-visits:", data);
       const normalizedData = data.map((visit: VisitaProgramada) => {
         const estadoValidado = [1, 2, 3].includes(visit.ESTADO)
           ? visit.ESTADO
           : 1;
-        console.log(
-          `Visita ${visit.ID_VISITA_PROGRAMADA} - ESTADO: ${visit.ESTADO} -> ${estadoValidado}`
-        );
         return {
           ...visit,
           NOMBRE_VISITANTE: visit.NOMBRE_VISITANTE.toUpperCase(),
@@ -436,7 +480,6 @@ useEffect(() => {
         ).values()
       );
 
-      console.log("Visitas normalizadas y sin duplicados:", uniqueData);
       setVisitasProgramadas(
         uniqueData.sort(
           (a: VisitaProgramada, b: VisitaProgramada) =>
@@ -464,7 +507,7 @@ useEffect(() => {
   }, [userId]);
 
   const validateDni = () => {
-    if (!dni) return "El DNI o documento es obligatorio";
+    if (!dni) return "El documento es obligatorio";
     const lengths: { [key: string]: number } = {
       "2": 8,
       "3": 12,
@@ -474,7 +517,7 @@ useEffect(() => {
     };
     const expectedLength = lengths[tipoDoc];
     if (dni.length !== expectedLength) {
-      return `El documento debe tener exactamente ${expectedLength} caracteres`;
+      return `El documento debe tener ${expectedLength} caracteres`;
     }
     if (!/^[a-zA-Z0-9]+$/.test(dni)) {
       return "El documento solo puede contener letras y números";
@@ -483,10 +526,10 @@ useEffect(() => {
   };
 
   const handleSearchDni = async () => {
+    if (tipoDoc !== "2") return;
     const dniError = validateDni();
     if (dniError) {
       setError(dniError);
-      setIsNombreManual(true);
       Swal.fire({
         icon: "error",
         title: "Documento inválido",
@@ -506,243 +549,241 @@ useEffect(() => {
       setNombreVisitante(data.nombreCompleto.toUpperCase());
       setIsNombreManual(false);
     } catch (err) {
-      setError("No se encontró el DNI. Puede ingresar el nombre manualmente.");
+      setError("No se encontró el DNI. Ingrese el nombre manualmente.");
       setIsNombreManual(true);
       Swal.fire({
         icon: "info",
         title: "DNI no encontrado",
-        text: "Puede ingresar el nombre del visitante manualmente.",
+        text: "Ingrese el nombre del visitante manualmente.",
         timer: 2000,
         showConfirmButton: false,
       });
     }
   };
 
-const handleSaveScheduledVisit = async () => {
-  // Validar DNI
-  const dniError = validateDni();
-  if (dniError) {
-    setError(dniError);
-    Swal.fire({
-      icon: "error",
-      title: "Documento inválido",
-      text: dniError,
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-
-  // Validar nombre del visitante
-  if (!nombreVisitante.trim()) {
-    setError("El nombre del visitante es obligatorio");
-    Swal.fire({
-      icon: "error",
-      title: "Nombre inválido",
-      text: "El nombre del visitante es obligatorio",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-
-  // Validar número de departamento
-  if (!nroDpto) {
-    setError("El número de departamento es obligatorio");
-    Swal.fire({
-      icon: "error",
-      title: "Departamento inválido",
-      text: "Por favor, seleccione un departamento",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-
-  // Validar que nro_dpto sea válido (exista en departamentos)
-  const isValidDpto = departamentos.some(
-    (d) => d.NRO_DPTO === parseInt(nroDpto)
-  );
-  if (!isValidDpto) {
-    setError("El número de departamento no es válido");
-    Swal.fire({
-      icon: "error",
-      title: "Departamento inválido",
-      text: "Por favor, seleccione un departamento válido",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-
-  // Validar fecha de llegada
-  if (!fechaLlegada) {
-    setError("La fecha de llegada es obligatoria");
-    Swal.fire({
-      icon: "error",
-      title: "Fecha inválida",
-      text: "Por favor, seleccione una fecha de llegada",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-
-  // Validar motivo
-  if (!motivo.trim()) {
-    setError("El motivo de la visita es obligatorio");
-    Swal.fire({
-      icon: "error",
-      title: "Motivo inválido",
-      text: "El motivo de la visita es obligatorio",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-  if (motivo.length > 100) {
-    setError("El motivo no puede exceder los 100 caracteres");
-    Swal.fire({
-      icon: "error",
-      title: "Motivo inválido",
-      text: "El motivo no puede exceder los 100 caracteres",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-
-  // Validar que la fecha no sea anterior a hoy
-  const fechaLlegadaFormatted = fechaLlegada.split("T")[0];
-  const todayFormatted = currentDate.split("T")[0];
-  if (fechaLlegadaFormatted < todayFormatted) {
-    setError("La fecha de llegada no puede ser anterior a hoy");
-    Swal.fire({
-      icon: "error",
-      title: "Fecha inválida",
-      text: "La fecha de llegada no puede ser anterior a hoy",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-
-  // Validar hora de llegada
-  let horaLlegadaFormatted = null; // Permitir null si no se selecciona hora
-  if (horaLlegada) {
-    const timeMatch = horaLlegada.match(/^(\d{2}:\d{2}:\d{2})$/);
-    if (!timeMatch) {
-      setError("Formato de hora inválido");
+  const handleSaveScheduledVisit = async () => {
+    setIsSubmitting(true);
+    const dniError = validateDni();
+    if (dniError) {
+      setError(dniError);
       Swal.fire({
         icon: "error",
-        title: "Hora inválida",
-        text: "Por favor, seleccione una hora válida (HH:mm:ss)",
+        title: "Documento inválido",
+        text: dniError,
         timer: 2000,
         showConfirmButton: false,
       });
+      setIsSubmitting(false);
       return;
     }
-    // Validar rangos de hora
-    const [hours, minutes, seconds] = horaLlegada.split(':').map(Number);
-    if (
-      hours < 0 || hours > 23 ||
-      minutes < 0 || minutes > 59 ||
-      seconds < 0 || seconds > 59
-    ) {
-      setError("Hora de llegada inválida");
+
+    if (!nombreVisitante.trim()) {
+      setError("El nombre del visitante es obligatorio");
       Swal.fire({
         icon: "error",
-        title: "Hora inválida",
-        text: "La hora debe estar entre 00:00:00 y 23:59:59",
+        title: "Nombre inválido",
+        text: "El nombre del visitante es obligatorio",
         timer: 2000,
         showConfirmButton: false,
       });
+      setIsSubmitting(false);
       return;
     }
-    horaLlegadaFormatted = horaLlegada; // Usar HH:mm:ss directamente
-  }
 
-  try {
-    // Obtener id_residente
-    const id_residente = await fetchResidentId(parseInt(nroDpto));
-
-    // Construir el payload
-    const payload = {
-      nro_dpto: parseInt(nroDpto),
-      dni_visitante: dni,
-      id_tipo_doc_visitante: parseInt(tipoDoc),
-      nombre_visitante: nombreVisitante.toUpperCase(),
-      fecha_llegada: fechaLlegadaFormatted,
-      hora_llegada: horaLlegadaFormatted,
-      motivo,
-      id_residente,
-    };
-
-    // Log del payload para depuración
-    console.log("Enviando payload:", JSON.stringify(payload, null, 2));
-
-    // Enviar solicitud al backend
-    const response = await fetch(`${API_URL}/scheduled-visits`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const responseData = await response.json();
-    console.log("Respuesta del servidor:", responseData);
-
-    if (!response.ok) {
-      console.error("Error del servidor:", responseData);
-      throw new Error(
-        responseData.error?.message ||
-        responseData.message ||
-        "Error al registrar la visita programada"
-      );
+    if (!nroDpto) {
+      setError("El número de departamento es obligatorio");
+      Swal.fire({
+        icon: "error",
+        title: "Departamento inválido",
+        text: "Por favor, seleccione un departamento",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      setIsSubmitting(false);
+      return;
     }
 
-    // Mostrar mensaje de éxito
-    Swal.fire({
-      icon: "success",
-      title: "Éxito",
-      text: "Visita programada registrada correctamente",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-
-    // Actualizar lista de visitas
-    await fetchScheduledVisits();
-
-    // Limpiar formulario
-    setDni("");
-    setNombreVisitante("");
-    setIsNombreManual(false);
-    setTipoDoc("2");
-    setNroDpto(
-      departamentos.length === 1 ? departamentos[0].NRO_DPTO.toString() : ""
+    const isValidDpto = departamentos.some(
+      (d) => d.NRO_DPTO === parseInt(nroDpto)
     );
-    setMotivo("");
-    setFechaLlegada(currentDate);
-    setHoraLlegada("");
-    setHour("12");
-    setMinute("00");
-    setPeriod("AM");
-    setActiveTab("history");
-  } catch (err) {
-    const error = err as Error;
-    console.error("Error en handleSaveScheduledVisit:", error);
-    setError(error.message || "Error al registrar la visita programada");
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: error.message || "No se pudo registrar la visita programada",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-  }
-};
+    if (!isValidDpto) {
+      setError("El número de departamento no es válido");
+      Swal.fire({
+        icon: "error",
+        title: "Departamento inválido",
+        text: "Por favor, seleccione un departamento válido",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!fechaLlegada) {
+      setError("La fecha de llegada es obligatoria");
+      Swal.fire({
+        icon: "error",
+        title: "Fecha inválida",
+        text: "Por favor, seleccione una fecha de llegada",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!motivo.trim()) {
+      setError("El motivo de la visita es obligatorio");
+      Swal.fire({
+        icon: "error",
+        title: "Motivo inválido",
+        text: "El motivo de la visita es obligatorio",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    if (motivo.length > 100) {
+      setError("El motivo no puede exceder los 100 caracteres");
+      Swal.fire({
+        icon: "error",
+        title: "Motivo inválido",
+        text: "El motivo no puede exceder los 100 caracteres",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    const fechaLlegadaFormatted = fechaLlegada.split("T")[0];
+    const todayFormatted = currentDate.split("T")[0];
+    if (fechaLlegadaFormatted < todayFormatted) {
+      setError("La fecha de llegada no puede ser anterior a hoy");
+      Swal.fire({
+        icon: "error",
+        title: "Fecha inválida",
+        text: "La fecha de llegada no puede ser anterior a hoy",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    let horaLlegadaFormatted = null;
+    if (horaLlegada) {
+      const timeMatch = horaLlegada.match(/^(\d{2}:\d{2}:\d{2})$/);
+      if (!timeMatch) {
+        setError("Formato de hora inválido");
+        Swal.fire({
+          icon: "error",
+          title: "Hora inválida",
+          text: "Por favor, seleccione una hora válida (HH:mm:ss)",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      const [hours, minutes, seconds] = horaLlegada.split(':').map(Number);
+      if (
+        hours < 0 || hours > 23 ||
+        minutes < 0 || minutes > 59 ||
+        seconds < 0 || seconds > 59
+      ) {
+        setError("Hora de llegada inválida");
+        Swal.fire({
+          icon: "error",
+          title: "Hora inválida",
+          text: "La hora debe estar entre 00:00:00 y 23:59:59",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      horaLlegadaFormatted = horaLlegada;
+    }
+
+    try {
+      const id_residente = await fetchResidentId(parseInt(nroDpto));
+
+      const payload = {
+        nro_dpto: parseInt(nroDpto),
+        dni_visitante: dni,
+        id_tipo_doc_visitante: parseInt(tipoDoc),
+        nombre_visitante: nombreVisitante.toUpperCase(),
+        fecha_llegada: fechaLlegadaFormatted,
+        hora_llegada: horaLlegadaFormatted,
+        motivo,
+        id_residente,
+      };
+
+      console.log("Enviando payload:", JSON.stringify(payload, null, 2));
+
+      const response = await fetch(`${API_URL}/scheduled-visits`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const responseData = await response.json();
+      console.log("Respuesta del servidor:", responseData);
+
+      if (!response.ok) {
+        console.error("Error del servidor:", responseData);
+        throw new Error(
+          responseData.error?.message ||
+          responseData.message ||
+          "Error al registrar la visita programada"
+        );
+      }
+
+      Swal.fire({
+        icon: "success",
+        title: "Éxito",
+        text: "Visita programada registrada correctamente",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+
+      await fetchScheduledVisits();
+
+      setDni("");
+      setNombreVisitante("");
+      setIsNombreManual(false);
+      setTipoDoc("2");
+      setNroDpto(
+        departamentos.length === 1 ? departamentos[0].NRO_DPTO.toString() : ""
+      );
+      setMotivo("");
+      setFechaLlegada(currentDate);
+      setHoraLlegada("");
+      setHour("12");
+      setMinute("00");
+      setPeriod("AM");
+      setActiveTab("history");
+    } catch (err) {
+      const error = err as Error;
+      console.error("Error en handleSaveScheduledVisit:", error);
+      setError(error.message || "Error al registrar la visita programada");
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: error.message || "No se pudo registrar la visita programada",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleFilterChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -860,7 +901,7 @@ const handleSaveScheduledVisit = async () => {
     <Container>
       <Title>Gestión de Visitas Programadas</Title>
       <div className="mb-6">
-        <div className="flex space-x-4 border-b">
+        <div className="flex flex-wrap gap-4 border-b">
           <TabButton
             active={activeTab === "create"}
             onClick={() => setActiveTab("create")}
@@ -887,39 +928,8 @@ const handleSaveScheduledVisit = async () => {
               </p>
             )}
             <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                <div className="md:col-span-4">
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
-                    DNI o Carnet de Extranjería
-                  </label>
-                  <div className="flex">
-                    <Input
-                      type="text"
-                      value={dni}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (value === "" || /^[a-zA-Z0-9]{0,15}$/.test(value)) {
-                          setDni(value);
-                          if (value === "") setIsNombreManual(true);
-                        }
-                      }}
-                      placeholder="Ejemplo: 7123XXXX o CE123456789"
-                      required
-                    />
-                    <Button
-                      className="ml-2 bg-blue-600 text-white hover:bg-blue-700"
-                      onClick={handleSearchDni}
-                      disabled={!dni}
-                    >
-                      <FaSearch />
-                    </Button>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Ingresa el DNI o CE y haz clic en buscar. Si no tienes,
-                    ingresa manualmente.
-                  </p>
-                </div>
-                <div className="md:col-span-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Tipo de Documento
                   </label>
@@ -928,21 +938,49 @@ const handleSaveScheduledVisit = async () => {
                     onChange={(e) => setTipoDoc(e.target.value)}
                     required
                   >
-                    <option value="2">DNI (8 dígitos)</option>
-                    <option value="3">
-                      Carnet de Extranjería (12 dígitos)
-                    </option>
-                    <option value="4">Pasaporte (12 dígitos)</option>
-                    <option value="5">
-                      Partida de Nacimiento (15 dígitos)
-                    </option>
-                    <option value="6">Otros (15 dígitos)</option>
+                    <option value="2">DNI</option>
+                    <option value="3">Carnet de Extranjería</option>
+                    <option value="4">Pasaporte</option>
+                    <option value="5">Partida de Nacimiento</option>
+                    <option value="6">Otros</option>
                   </Select>
                   <p className="text-xs text-gray-500 mt-1">
                     Seleccione el tipo de documento del visitante.
                   </p>
                 </div>
-                <div className="md:col-span-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-1">
+                    Número de Documento
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="text"
+                      value={dni}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === "" || /^[a-zA-Z0-9]{0,15}$/.test(value)) {
+                          setDni(value);
+                          if (value === "") setIsNombreManual(tipoDoc !== "2");
+                        }
+                      }}
+                      placeholder="Ejemplo: 7123XXXX o CE123456789"
+                      required
+                    />
+                    {tipoDoc === "2" && (
+                      <Button
+                        className="bg-blue-600 text-white hover:bg-blue-700"
+                        onClick={handleSearchDni}
+                        disabled={!dni}
+                      >
+                        <FaSearch />
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Ingresa el número de documento. Para DNI, puedes buscar.
+                  </p>
+                </div>
+                <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Nombre del Visitante
                   </label>
@@ -967,8 +1005,8 @@ const handleSaveScheduledVisit = async () => {
                   </p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                <div className="md:col-span-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Número de Departamento
                   </label>
@@ -1001,9 +1039,7 @@ const handleSaveScheduledVisit = async () => {
                       : "Seleccione la fase y departamento para la visita."}
                   </p>
                 </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                <div className="md:col-span-6">
+                <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Fecha de Llegada
                   </label>
@@ -1018,53 +1054,53 @@ const handleSaveScheduledVisit = async () => {
                     Seleccione la fecha de llegada del visitante.
                   </p>
                 </div>
-                <div className="md:col-span-6">
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Hora de Llegada Tentativa
-                  </label>
-                  <TimePickerContainer>
-                    <TimeSelect
-                      value={hour}
-                      onChange={(e) => setHour(e.target.value)}
-                      required
+              </div>
+              <div className="grid grid-cols-1">
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Hora de Llegada Tentativa
+                </label>
+                <TimePickerContainer>
+                  <TimeSelect
+                    value={hour}
+                    onChange={(e) => setHour(e.target.value)}
+                    required
+                  >
+                    {hours.map((h) => (
+                      <option key={h} value={h}>
+                        {h}
+                      </option>
+                    ))}
+                  </TimeSelect>
+                  <span className="text-gray-600 font-bold">:</span>
+                  <TimeSelect
+                    value={minute}
+                    onChange={(e) => setMinute(e.target.value)}
+                    required
+                  >
+                    {minutes.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </TimeSelect>
+                  <div className="flex gap-2">
+                    <AMPMButton
+                      selected={period === "AM"}
+                      onClick={() => setPeriod("AM")}
                     >
-                      {hours.map((h) => (
-                        <option key={h} value={h}>
-                          {h}
-                        </option>
-                      ))}
-                    </TimeSelect>
-                    <span className="text-gray-600 font-bold">:</span>
-                    <TimeSelect
-                      value={minute}
-                      onChange={(e) => setMinute(e.target.value)}
-                      required
+                      AM
+                    </AMPMButton>
+                    <AMPMButton
+                      selected={period === "PM"}
+                      onClick={() => setPeriod("PM")}
                     >
-                      {minutes.map((m) => (
-                        <option key={m} value={m}>
-                          {m}
-                        </option>
-                      ))}
-                    </TimeSelect>
-                    <div className="flex gap-2">
-                      <AMPMButton
-                        selected={period === "AM"}
-                        onClick={() => setPeriod("AM")}
-                      >
-                        AM
-                      </AMPMButton>
-                      <AMPMButton
-                        selected={period === "PM"}
-                        onClick={() => setPeriod("PM")}
-                      >
-                        PM
-                      </AMPMButton>
-                    </div>
-                  </TimePickerContainer>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Seleccione la hora y período (AM/PM) de llegada.
-                  </p>
-                </div>
+                      PM
+                    </AMPMButton>
+                  </div>
+                </TimePickerContainer>
+                <p className="text-xs text-gray-500 mt-1">
+                  Seleccione la hora y período (AM/PM) de llegada.
+                </p>
               </div>
               <div className="grid grid-cols-1">
                 <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -1089,9 +1125,19 @@ const handleSaveScheduledVisit = async () => {
               <Button
                 className="bg-green-600 text-white hover:bg-green-700"
                 onClick={handleSaveScheduledVisit}
+                disabled={isSubmitting}
               >
-                <FaSave className="mr-2" />
-                Grabar Visita Programada
+                {isSubmitting ? (
+                  <>
+                    <Spinner />
+                    Registrando...
+                  </>
+                ) : (
+                  <>
+                    <FaSave className="mr-2" />
+                    Registrar Visita Programada
+                  </>
+                )}
               </Button>
             </div>
           </Card>
@@ -1101,8 +1147,8 @@ const handleSaveScheduledVisit = async () => {
             <h2 className="text-lg font-semibold mb-4">
               Historial de Visitas Programadas
             </h2>
-            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 w-full md:w-3/4">
+            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full lg:w-3/4">
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
                     Número de Departamento
@@ -1158,7 +1204,7 @@ const handleSaveScheduledVisit = async () => {
                   </Select>
                 </div>
               </div>
-              <div className="flex justify-end mt-4 md:mt-0">
+              <div className="flex justify-end mt-4 lg:mt-0">
                 <Button
                   className="bg-green-600 text-white hover:bg-green-700"
                   onClick={exportToCSV}
