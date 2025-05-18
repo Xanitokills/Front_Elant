@@ -50,7 +50,11 @@ const App = () => {
     return <Navigate to="/login" replace />;
   }
 
-  if (isAuthenticated && userPermissions.length === 0 && location.pathname !== "/login") {
+  if (
+    isAuthenticated &&
+    userPermissions.length === 0 &&
+    location.pathname !== "/login"
+  ) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
         <div className="flex flex-col items-center space-y-4">
@@ -63,7 +67,11 @@ const App = () => {
     );
   }
 
-  if (location.pathname === "/" && !isLoading && userPermissions.length > 0) {
+  if (
+    location.pathname === "/" &&
+    !isLoading &&
+    userPermissions.length > 0
+  ) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -138,47 +146,52 @@ const App = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
 
-          <Route element={<ProtectedRoute requiredMenuId={7} />}>
+          <Route element={<ProtectedRoute requiredUrl="dashboard" />}>
             <Route path="/dashboard" element={<Dashboard />} />
           </Route>
 
-          <Route element={<ProtectedRoute requiredSubmenuId={3} />}>
+          <Route element={<ProtectedRoute requiredUrl="movements-list" />}>
             <Route path="/personal/movimientos" element={<Movements />} />
             <Route path="/movements-list" element={<MovementsList />} />
           </Route>
 
-          <Route element={<ProtectedRoute requiredSubmenuId={1} />}>
+          <Route element={<ProtectedRoute requiredUrl="users" />}>
             <Route path="/users" element={<Users />} />
           </Route>
-          <Route element={<ProtectedRoute requiredSubmenuId={2} />}>
+
+          <Route element={<ProtectedRoute requiredUrl="user-list" />}>
             <Route path="/user-list" element={<UserList />} />
           </Route>
 
-          <Route element={<ProtectedRoute requiredSubmenuId={4} />}>
+          <Route element={<ProtectedRoute requiredUrl="visits" />}>
             <Route path="/visits" element={<Visits />} />
           </Route>
-          <Route element={<ProtectedRoute requiredSubmenuId={10} />}>
-            <Route path="/VisitasProgramadas" element={<VisitasProgramadas />} />
+
+          <Route element={<ProtectedRoute requiredUrl="visitasProgramadas" />}>
+            <Route path="/visitasProgramadas" element={<VisitasProgramadas />} />
           </Route>
 
-          <Route element={<ProtectedRoute requiredSubmenuId={8} />}>
+          <Route element={<ProtectedRoute requiredUrl="reservas" />}>
             <Route path="/reservas" element={<Reservations />} />
           </Route>
-          <Route element={<ProtectedRoute requiredSubmenuId={7} />}>
+
+          <Route element={<ProtectedRoute requiredUrl="menu-submenu" />}>
             <Route path="/menu-submenu" element={<MenuSubmenuGestion />} />
           </Route>
-          <Route element={<ProtectedRoute requiredSubmenuId={5} />}>
+
+          <Route element={<ProtectedRoute requiredUrl="LoginConfig" />}>
             <Route path="/LoginConfig" element={<LoginConfig />} />
           </Route>
-          <Route element={<ProtectedRoute requiredSubmenuId={6} />}>
+
+          <Route element={<ProtectedRoute requiredUrl="ChangePass" />}>
             <Route path="/ChangePass" element={<ChangePassword />} />
           </Route>
 
-          <Route element={<ProtectedRoute requiredSubmenuId={9} />}>
+          <Route element={<ProtectedRoute requiredUrl="RegisterOrder" />}>
             <Route path="/RegisterOrder" element={<RegisterOrder />} />
           </Route>
 
-          <Route element={<ProtectedRoute requiredMenuId={3} />}>
+          <Route element={<ProtectedRoute requiredUrl="settings" />}>
             <Route
               path="/settings/:section"
               element={
