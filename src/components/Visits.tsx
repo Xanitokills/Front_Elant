@@ -1399,7 +1399,7 @@ const Visits = () => {
                     onChange={handleNombreVisitanteChange}
                     onKeyDown={(e) => handleEnterKey(e, idFaseRef)}
                     readOnly={tipoDoc === "2"}
-                    placeholder="Ejemplo: Jorge Gonzales Perez"
+                    placeholder="Ingrese el nombre completo."
                     className={
                       tipoDoc === "2" ? "bg-gray-100 text-gray-700" : ""
                     }
@@ -1505,7 +1505,7 @@ const Visits = () => {
                   placeholder="Ejemplo: Reunión familiar"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Máximo 80 caracteres. ({motivo.length}/80)
+                  Máximo 100 caracteres. ({motivo.length}/100)
                 </p>
               </div>
             </div>

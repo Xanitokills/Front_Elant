@@ -1025,7 +1025,7 @@ const UserList = () => {
 
   return (
     <Container>
-      <Title>Gestión de Personas</Title>
+      <Title>Lista de Personas</Title>
       {message && (
         <Card>
           <div

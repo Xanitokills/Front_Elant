@@ -296,7 +296,7 @@ const VisitasProgramadas = () => {
   const currentDate = localDate.toISOString().slice(0, 10);
 
   const [dni, setDni] = useState("");
-  const [tipoDoc, setTipoDoc] = useState<string>("2");
+  const [tipoDoc, setTipoDoc] = useState<string>("");
   const [nombreVisitante, setNombreVisitante] = useState("");
   const [isNombreManual, setIsNombreManual] = useState(false);
   const [nroDpto, setNroDpto] = useState("");
@@ -931,13 +931,14 @@ const VisitasProgramadas = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Tipo de Documento
+                    Tipo de Documento *
                   </label>
                   <Select
                     value={tipoDoc}
                     onChange={(e) => setTipoDoc(e.target.value)}
                     required
                   >
+                    <option value="">Seleccione un tipo</option>
                     <option value="2">DNI</option>
                     <option value="3">Carnet de Extranjería</option>
                     <option value="4">Pasaporte</option>
@@ -950,7 +951,7 @@ const VisitasProgramadas = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Número de Documento
+                    Número de Documento *
                   </label>
                   <div className="flex items-center gap-2">
                     <Input
@@ -982,7 +983,7 @@ const VisitasProgramadas = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Nombre del Visitante
+                    Nombre del Visitante *
                   </label>
                   <Input
                     type="text"
@@ -1008,7 +1009,7 @@ const VisitasProgramadas = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Número de Departamento
+                    Número de Departamento *
                   </label>
                   {departamentos.length === 1 ? (
                     <Input
@@ -1041,7 +1042,7 @@ const VisitasProgramadas = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Fecha de Llegada
+                    Fecha de Llegada *
                   </label>
                   <Input
                     type="date"
@@ -1057,7 +1058,7 @@ const VisitasProgramadas = () => {
               </div>
               <div className="grid grid-cols-1">
                 <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Hora de Llegada Tentativa
+                  Hora de Llegada Tentativa *
                 </label>
                 <TimePickerContainer>
                   <TimeSelect
@@ -1104,7 +1105,7 @@ const VisitasProgramadas = () => {
               </div>
               <div className="grid grid-cols-1">
                 <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Motivo de la Visita
+                  Motivo de la Visita *
                 </label>
                 <Input
                   type="text"
