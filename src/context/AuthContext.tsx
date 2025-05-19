@@ -10,6 +10,7 @@ import Swal from "sweetalert2";
 import log from "loglevel";
 import { io, Socket } from "socket.io-client";
 import { useNavigate, useLocation } from "react-router-dom";
+
 const API_URL = import.meta.env.VITE_API_URL;
 
 export interface CustomError extends Error {
@@ -17,6 +18,7 @@ export interface CustomError extends Error {
   data?: any;
   code?: string;
 }
+
 interface Submenu {
   id: number;
   nombre: string;
@@ -48,11 +50,11 @@ interface AuthContextType {
   login: (dni: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshSidebar: () => Promise<void>;
+  validateSession: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Convierte segundos a formato minutos:segundos
 const formatTime = (seconds: number): string => {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = Math.floor(seconds % 60);
@@ -76,7 +78,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const updateSidebarData = async (userId: number, token: string) => {
     try {
-      console.log("AuthContext - Updating sidebar data for userId:", userId);
+      console.log(`AuthContext - Actualizando sidebar para userId: ${userId}`);
       const response = await fetch(`${API_URL}/sidebar/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -85,21 +87,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem("sidebarData", JSON.stringify(data));
         setSidebarData(data);
         setUserPermissions(data);
-        console.log("AuthContext - Updated User Permissions:", data);
+        console.log("AuthContext - Sidebar actualizado:", JSON.stringify(data));
         return data;
       } else {
         console.error(
-          "AuthContext - Error fetching sidebar data:",
-          response.status,
-          response.statusText
+          `AuthContext - Error al obtener sidebar: Status=${response.status}, ${response.statusText}`
         );
         setSidebarData([]);
         setUserPermissions([]);
         localStorage.removeItem("sidebarData");
         return [];
       }
-    } catch (error) {
-      console.error("AuthContext - Error al obtener el menú:", error);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      console.error(`AuthContext - Error al obtener sidebar: ${errorMessage}`);
       setSidebarData([]);
       setUserPermissions([]);
       localStorage.removeItem("sidebarData");
@@ -110,14 +112,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const refreshSidebar = async () => {
     const token = localStorage.getItem("token");
     if (userId && token) {
+      console.log("AuthContext - Refrescando sidebar");
       await updateSidebarData(userId, token);
+    } else {
+      console.warn(
+        `AuthContext - No se puede refrescar sidebar: userId=${userId}, token=${
+          token ? "presente" : "ausente"
+        }`
+      );
     }
   };
 
   const validateSession = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
-      console.log("AuthContext - No token found, logging out");
+      console.log("AuthContext - No hay token, cerrando sesión");
       setIsAuthenticated(false);
       setUserId(null);
       setUserPermissions([]);
@@ -127,14 +136,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
+      console.log("AuthContext - Validando sesión con el backend");
       const response = await fetch(`${API_URL}/validate`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      console.log("AuthContext - validateSession response:", {
-        status: response.status,
-        statusText: response.statusText,
-      });
+      console.log(
+        `AuthContext - Respuesta de validateSession: Status=${response.status}, ${response.statusText}`
+      );
 
       if (response.ok) {
         const data = await response.json();
@@ -152,10 +161,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const parsedData = JSON.parse(savedSidebarData);
           setSidebarData(parsedData);
           setUserPermissions(parsedData);
-          console.log(
-            "AuthContext - Loaded User Permissions from localStorage:",
-            parsedData
-          );
+/*           console.log(
+            "AuthContext - Permisos cargados desde localStorage:",
+            JSON.stringify(parsedData)
+          ); */
           permissionsLoaded = parsedData.length > 0;
         }
 
@@ -165,17 +174,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         if (!permissionsLoaded) {
-          console.warn("AuthContext - No permissions loaded, logging out");
+          console.warn("AuthContext - No se cargaron permisos, cerrando sesión");
           logout();
           return false;
         }
-        console.log("AuthContext - Session validated successfully");
+        console.log("AuthContext - Sesión validada correctamente");
         return true;
       } else {
         console.error(
-          "AuthContext - Session validation failed:",
-          response.status,
-          response.statusText
+          `AuthContext - Falló la validación de sesión: Status=${response.status}, ${response.statusText}`
         );
         if (!isRefreshing) {
           Swal.fire({
@@ -191,8 +198,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         return false;
       }
-    } catch (error) {
-      console.error("AuthContext - Error validating session:", error);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      console.error(`AuthContext - Error al validar sesión: ${errorMessage}`);
       if (!isRefreshing) {
         Swal.fire({
           icon: "error",
@@ -213,21 +222,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshToken = async (showError: boolean = true) => {
     if (isRefreshing) {
-      console.log("AuthContext - Refresh already in progress, skipping");
+      console.log("AuthContext - Renovación en curso, omitiendo");
       return false;
     }
 
     setIsRefreshing(true);
     const token = localStorage.getItem("token");
     if (!token) {
-      console.log("AuthContext - No token found for refresh, logging out");
+      console.log("AuthContext - No hay token para renovar, cerrando sesión");
       logout();
       setIsRefreshing(false);
       return false;
     }
 
     try {
-      console.log("AuthContext - Attempting to refresh token");
+      console.log("AuthContext - Intentando renovar token");
       const response = await fetch(`${API_URL}/refresh-token`, {
         method: "POST",
         headers: {
@@ -236,13 +245,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       console.log(
-        "AuthContext - /refresh-token response status:",
-        response.status
+        `AuthContext - Respuesta de refresh-token: Status=${response.status}`
       );
 
       if (response.ok) {
         const data = await response.json();
-        console.log("AuthContext - Token refreshed successfully:", data);
+        console.log(
+          "AuthContext - Token renovado exitosamente:",
+          JSON.stringify(data)
+        );
 
         localStorage.setItem("token", data.token);
         localStorage.setItem("userName", data.userName);
@@ -255,24 +266,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setRoles(data.roles || []);
         setUserId(data.user.id);
 
-        // Actualizar el token en el socket
         if (socket) {
           socket.auth = { token: `Bearer ${data.token}` };
           socket.disconnect().connect();
-          console.log("AuthContext - Socket re-authenticated with new token");
+          console.log("AuthContext - Socket re-autenticado con nuevo token");
         }
 
         const sidebarData = await updateSidebarData(data.user.id, data.token);
         if (sidebarData.length === 0) {
           console.warn(
-            "AuthContext - No permissions loaded after refresh, logging out"
+            "AuthContext - No se cargaron permisos tras renovar, cerrando sesión"
           );
           logout();
           setIsRefreshing(false);
           return false;
         }
 
-        console.log("AuthContext - Token refresh completed successfully");
+        console.log("AuthContext - Renovación de token completada");
         return true;
       } else {
         const errorData = await response.json();
@@ -282,7 +292,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             "Sesión inválida. Por favor, inicia sesión nuevamente."
         ) {
           console.log(
-            "AuthContext - Session invalidated due to counter mismatch"
+            "AuthContext - Sesión invalidada por mismatch en contador"
           );
           if (showError) {
             Swal.fire({
@@ -301,9 +311,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           return false;
         }
         console.error(
-          "AuthContext - Token refresh failed:",
-          response.status,
-          response.statusText
+          `AuthContext - Falló la renovación del token: Status=${response.status}, ${response.statusText}`
         );
         if (showError) {
           Swal.fire({
@@ -317,13 +325,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             logout();
           });
         } else {
-          console.log("AuthContext - Silent logout due to refresh failure");
+          console.log("AuthContext - Cierre silencioso por fallo en renovación");
           logout();
         }
         return false;
       }
-    } catch (error) {
-      console.error("AuthContext - Error refreshing token:", error);
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Error desconocido";
+      console.error(`AuthContext - Error al renovar token: ${errorMessage}`);
       if (showError) {
         Swal.fire({
           icon: "error",
@@ -336,7 +346,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           logout();
         });
       } else {
-        console.log("AuthContext - Silent logout due to refresh error");
+        console.log("AuthContext - Cierre silencioso por error en renovación");
         logout();
       }
       return false;
@@ -348,13 +358,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
-    console.log("AuthContext - Logging out");
+    console.log("AuthContext - Cerrando sesión");
     setIsAlertShown(false);
     setLastAlertTime(0);
 
     const token = localStorage.getItem("token");
     if (token) {
       try {
+        console.log("AuthContext - Enviando solicitud de logout al backend");
         const response = await fetch(`${API_URL}/logout`, {
           method: "POST",
           headers: {
@@ -366,20 +377,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.log("AuthContext - Sesión cerrada en el backend");
         } else {
           console.error(
-            "AuthContext - Error al cerrar sesión en el backend:",
-            response.status,
-            response.statusText
+            `AuthContext - Error al cerrar sesión en el backend: Status=${response.status}, ${response.statusText}`
           );
         }
-      } catch (error) {
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Error desconocido";
         console.error(
-          "AuthContext - Error al cerrar sesión en el backend:",
-          error
+          `AuthContext - Error al cerrar sesión en el backend: ${errorMessage}`
         );
       }
     }
 
-    // Limpiar localStorage y estado
     localStorage.clear();
     setIsAuthenticated(false);
     setUserName(null);
@@ -390,54 +399,73 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(false);
 
     if (socket) {
+      console.log("AuthContext - Desconectando socket");
       socket.disconnect();
       setSocket(null);
     }
 
+    console.log("AuthContext - Redirigiendo a /login");
     navigate("/login", { replace: true });
   };
 
-  // Inicializar Socket.IO
   useEffect(() => {
     let newSocket: Socket | null = null;
     let heartbeatInterval: NodeJS.Timeout | null = null;
+    let sessionCheckInterval: NodeJS.Timeout | null = null;
 
     const initializeSocket = () => {
       const token = localStorage.getItem("token");
-      if (!userId || !token) {
+      const personaId = localStorage.getItem("personaId");
+      if (!userId || !token || !personaId) {
         console.log(
-          "AuthContext - No userId or token, skipping Socket.IO connection"
+          `AuthContext - No se puede inicializar Socket.IO: userId=${userId}, token=${
+            token ? "presente" : "ausente"
+          }, personaId=${personaId}`
         );
         if (newSocket) {
+          console.log("AuthContext - Desconectando socket existente");
           newSocket.disconnect();
           setSocket(null);
         }
         return () => {};
       }
 
-      console.log("AuthContext - Initializing Socket.IO connection for userId:", userId);
+      console.log(
+        `AuthContext - Inicializando Socket.IO para userId: ${userId}, personaId: ${personaId}`
+      );
       newSocket = io(API_URL, {
         auth: { token: `Bearer ${token}` },
+        path: "/socket.io/",
+        transports: ["websocket", "polling"],
         reconnection: true,
-        reconnectionAttempts: Infinity, // Aumentar intentos para mayor robustez
+        reconnectionAttempts: 5,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
-        forceNew: false,
       });
 
       setSocket(newSocket);
 
       newSocket.on("connect", () => {
-        console.log("AuthContext - Conectado a Socket.IO, ID:", newSocket?.id);
+        console.log(
+          `AuthContext - Conectado a Socket.IO, ID: ${newSocket?.id}`
+        );
+        const room = `user_${personaId}`;
+        console.log(`AuthContext - Solicitando unirse a la sala: ${room}`);
+        newSocket?.emit("joinRoom", room);
+      });
+
+      newSocket.on("joinedRoom", ({ room }) => {
+        console.log(`AuthContext - Unido a la sala: ${room}`);
         newSocket?.emit("getRooms", (rooms: string[]) => {
-          console.log("AuthContext - Salas del cliente:", rooms);
+          console.log(
+            `AuthContext - Salas actuales del cliente: ${rooms.join(", ")}`
+          );
         });
       });
 
-      newSocket.on("connect_error", (error) => {
+      newSocket.on("connect_error", (error: Error) => {
         console.error(
-          "AuthContext - Error de conexión Socket.IO:",
-          error.message
+          `AuthContext - Error de conexión Socket.IO: ${error.message}`
         );
         if (error.message.includes("jwt") || error.message.includes("auth")) {
           console.log("AuthContext - Token inválido, cerrando sesión");
@@ -450,16 +478,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       newSocket.on("reconnect", () => {
-        console.log("AuthContext - Reconexión exitosa, ID:", newSocket?.id);
+        console.log(
+          `AuthContext - Reconexión exitosa, ID: ${newSocket?.id}`
+        );
+        const room = `user_${personaId}`;
+        console.log(`AuthContext - Re-solicitando unirse a la sala: ${room}`);
+        newSocket?.emit("joinRoom", room);
       });
 
       newSocket.on("reconnect_failed", () => {
-        console.error("AuthContext - Fallaron todos los intentos de reconexión");
+        console.error(
+          "AuthContext - Fallaron todos los intentos de reconexión"
+        );
         logout();
       });
 
       newSocket.on("sessionInvalidated", (data) => {
-        console.log("AuthContext - Sesión invalidada recibida:", data);
+        console.log(
+          `AuthContext - Sesión invalidada recibida: ${JSON.stringify(data)}`
+        );
         if (!isAlertShown) {
           setIsAlertShown(true);
           Swal.fire({
@@ -480,37 +517,63 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       });
 
-      // Implementar heartbeat
       heartbeatInterval = setInterval(() => {
         if (newSocket?.connected) {
-          newSocket.emit("heartbeat", (response: { valid: boolean; message?: string }) => {
-            console.log("AuthContext - Heartbeat response:", response);
-            if (!response.valid && !isAlertShown) {
-              setIsAlertShown(true);
-              Swal.fire({
-                icon: "info",
-                title: "Sesión Invalidada",
-                text: response.message || "Tu sesión ha sido cerrada. Inicia sesión nuevamente.",
-                confirmButtonText: "Aceptar",
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-              }).then(() => {
-                logout();
-                setIsAlertShown(false);
-              });
+          console.log("AuthContext - Enviando heartbeat");
+          newSocket.emit(
+            "heartbeat",
+            (response: { valid: boolean; message?: string }) => {
+              console.log(
+                `AuthContext - Respuesta de heartbeat: ${JSON.stringify(
+                  response
+                )}`
+              );
+              if (!response.valid && !isAlertShown) {
+                setIsAlertShown(true);
+                Swal.fire({
+                  icon: "info",
+                  title: "Sesión Invalidada",
+                  text:
+                    response.message ||
+                    "Tu sesión ha sido cerrada. Inicia sesión nuevamente.",
+                  confirmButtonText: "Aceptar",
+                  allowOutsideClick: false,
+                  allowEscapeKey: false,
+                }).then(() => {
+                  logout();
+                  setIsAlertShown(false);
+                });
+              }
             }
-          });
+          );
         } else {
           console.log("AuthContext - Socket no conectado, intentando reconectar");
           if (newSocket) {
-            newSocket.connect(); // Forzar reconexión manual
+            newSocket.connect();
           }
         }
       }, 5000);
 
+      sessionCheckInterval = setInterval(async () => {
+        if (!newSocket?.connected) {
+          console.log("AuthContext - Socket no conectado, validando sesión");
+          const isValid = await validateSession();
+          if (!isValid) {
+            console.log("AuthContext - Sesión inválida, cerrando sesión");
+            logout();
+          }
+        }
+      }, 10000);
+
       newSocket.on("disconnect", (reason) => {
-        console.log("AuthContext - Desconectado de Socket.IO, motivo:", reason);
-        console.log("AuthContext - Estado del socket:", newSocket?.connected);
+        console.log(
+          `AuthContext - Desconectado de Socket.IO, motivo: ${reason}`
+        );
+        console.log(
+          `AuthContext - Estado del socket: ${
+            newSocket?.connected ? "conectado" : "desconectado"
+          }`
+        );
       });
 
       return () => {
@@ -522,6 +585,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (heartbeatInterval) {
           clearInterval(heartbeatInterval);
         }
+        if (sessionCheckInterval) {
+          clearInterval(sessionCheckInterval);
+        }
       };
     };
 
@@ -529,17 +595,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       cleanup();
-      if (newSocket) {
-        newSocket.disconnect();
-        setSocket(null);
-      }
-      if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
-      }
     };
   }, [userId, location.pathname]);
 
-  // Verificar token y manejar expiración
   useEffect(() => {
     if (location.pathname === "/login") {
       console.log(
@@ -554,7 +612,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const checkTokenExpiration = () => {
       const token = localStorage.getItem("token");
       if (!token) {
-        console.log("AuthContext - No token, logging out");
+        console.log("AuthContext - No hay token, cerrando sesión");
         logout();
         return;
       }
@@ -568,29 +626,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (decoded.exp < decoded.iat || timeLeft > 3600 || timeLeft < -3600) {
           console.error(
-            "AuthContext - Invalid token times: exp=",
-            decoded.exp,
-            "iat=",
-            decoded.iat,
-            "currentTime=",
-            currentTime
+            `AuthContext - Tiempos de token inválidos: exp=${decoded.exp}, iat=${decoded.iat}, currentTime=${currentTime}`
           );
           logout();
           return;
         }
 
         console.log(
-          "AuthContext - Token status:",
-          `Start time: ${new Date(
+          `AuthContext - Estado del token: Start time=${new Date(
             tokenStartTime * 1000
-          ).toISOString()} (${formatTime(tokenDuration)})`,
-          `Expiration: ${new Date(decoded.exp * 1000).toISOString()}`,
-          `Current time: ${new Date(currentTime * 1000).toISOString()}`,
-          `Time left: ${formatTime(timeLeft)}`
+          ).toISOString()} (${formatTime(
+            tokenDuration
+          )}), Expiration=${new Date(
+            decoded.exp * 1000
+          ).toISOString()}, Current time=${new Date(
+            currentTime * 1000
+          ).toISOString()}, Time left=${formatTime(timeLeft)}`
         );
 
         if (decoded.exp < currentTime) {
-          console.log("AuthContext - Token expired, logging out");
+          console.log("AuthContext - Token expirado, cerrando sesión");
           logout();
           return;
         }
@@ -603,7 +658,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           !isAlertShown &&
           timeSinceLastAlert >= 60
         ) {
-          console.log("AuthContext - Showing session expiration warning");
+          console.log("AuthContext - Mostrando advertencia de expiración");
           setIsAlertShown(true);
           setLastAlertTime(Date.now());
           if (interval) clearInterval(interval);
@@ -635,23 +690,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
 
             if (result.isConfirmed) {
-              console.log("AuthContext - User clicked 'Renovar'");
+              console.log("AuthContext - Usuario eligió 'Renovar'");
               const success = await refreshToken(true);
               if (!success) {
-                console.log("AuthContext - Refresh failed, logging out");
+                console.log(
+                  "AuthContext - Falló la renovación, cerrando sesión"
+                );
                 logout();
               }
             } else if (
               result.isDismissed &&
               result.dismiss === Swal.DismissReason.cancel
             ) {
-              console.log("AuthContext - User clicked 'Cerrar sesión'");
+              console.log("AuthContext - Usuario eligió 'Cerrar sesión'");
               logout();
             } else if (
               result.isDismissed &&
               result.dismiss === Swal.DismissReason.timer
             ) {
-              console.log("AuthContext - Session expiration warning timed out");
+              console.log("AuthContext - Expiró la advertencia de sesión");
               const currentToken = localStorage.getItem("token");
               if (currentToken) {
                 try {
@@ -659,15 +716,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   const currentTime = Date.now() / 1000;
                   if (decoded.exp <= currentTime) {
                     console.log(
-                      "AuthContext - Token already expired, logging out silently"
+                      "AuthContext - Token ya expiró, cerrando sesión silenciosamente"
                     );
                     logout();
                     return;
                   }
-                } catch (error) {
+                } catch (error: unknown) {
+                  const errorMessage =
+                    error instanceof Error ? error.message : "Error desconocido";
                   console.error(
-                    "AuthContext - Error decoding token during refresh check:",
-                    error
+                    `AuthContext - Error al decodificar token durante verificación: ${errorMessage}`
                   );
                   logout();
                   return;
@@ -675,7 +733,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               }
               const success = await refreshToken(false);
               if (!success) {
-                console.log("AuthContext - Auto-refresh failed, logging out");
+                console.log(
+                  "AuthContext - Falló la renovación automática, cerrando sesión"
+                );
                 logout();
               }
             }
@@ -686,11 +746,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (timeout) clearTimeout(timeout);
         timeout = setTimeout(() => {
-          console.log("AuthContext - Token timeout triggered, logging out");
+          console.log("AuthContext - Timeout de token, cerrando sesión");
           logout();
         }, timeLeft * 1000);
-      } catch (error) {
-        console.error("AuthContext - Error decoding token:", error);
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Error desconocido";
+        console.error(
+          `AuthContext - Error al decodificar token: ${errorMessage}`
+        );
         logout();
       }
     };
@@ -704,17 +768,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [isRefreshing, location.pathname]);
 
-  // Redirigir al login cuando isAuthenticated cambia a false, excepto en /login
   useEffect(() => {
     if (!isAuthenticated && !isLoading && location.pathname !== "/login") {
       console.log(
-        "AuthContext - isAuthenticated is false, redirecting to login"
+        "AuthContext - isAuthenticated es false, redirigiendo a login"
       );
       navigate("/login", { replace: true });
     }
   }, [isAuthenticated, isLoading, location.pathname, navigate]);
 
-  // Validar sesión al montar el componente, excepto en /login
   useEffect(() => {
     if (location.pathname === "/login") {
       console.log(
@@ -728,6 +790,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (dni: string, password: string) => {
     try {
+      console.log(`AuthContext - Intentando login con DNI: ${dni}`);
       const response = await fetch(`${API_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -737,6 +800,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const data = await response.json();
 
       if (!response.ok) {
+        console.error(
+          `AuthContext - Error al iniciar sesión: Status=${response.status}, Mensaje=${data.message}`
+        );
         const error: CustomError = new Error(
           data.message || "Error al iniciar sesión"
         );
@@ -761,23 +827,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setRoles(data.roles || []);
       setUserId(data.user.id);
 
+      console.log(
+        `AuthContext - Login exitoso: userId=${data.user.id}, userName=${data.userName}`
+      );
+
       try {
         const sidebarData = await updateSidebarData(data.user.id, data.token);
         setSidebarData(sidebarData);
         setUserPermissions(sidebarData);
-      } catch (err) {
-        log.error("AuthContext - Error loading sidebar data:", err);
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Error desconocido";
+        log.error(
+          `AuthContext - Error al cargar sidebar: ${errorMessage}`
+        );
         setSidebarData([]);
         setUserPermissions([]);
         localStorage.setItem("sidebarData", JSON.stringify([]));
       }
     } catch (error: unknown) {
-      const customError = error as CustomError;
-      log.error("AuthContext - Error al iniciar sesión:", {
-        message: customError.message,
-        code: customError.code,
-        status: customError.status,
-      });
+      let customError: CustomError;
+      if (error instanceof Error) {
+        customError = error as CustomError;
+      } else {
+        customError = new Error("Error desconocido al iniciar sesión");
+        customError.status = undefined;
+        customError.code = "UNKNOWN_ERROR";
+        customError.data = undefined;
+      }
+      log.error(
+        `AuthContext - Error al iniciar sesión: Mensaje=${customError.message}, Código=${customError.code || "N/A"}, Status=${customError.status || "N/A"}`
+      );
       throw customError;
     } finally {
       setIsLoading(false);
@@ -798,6 +878,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         login,
         logout,
         refreshSidebar,
+        validateSession,
       }}
     >
       {children}
