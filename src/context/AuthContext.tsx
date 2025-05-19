@@ -433,7 +433,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log(
         `AuthContext - Inicializando Socket.IO para userId: ${userId}, personaId: ${personaId}`
       );
-      newSocket = io(API_URL, {
+      newSocket = io(import.meta.env.VITE_SOCKET_URL, {
         auth: { token: `Bearer ${token}` },
         path: "/socket.io/",
         transports: ["websocket", "polling"],
