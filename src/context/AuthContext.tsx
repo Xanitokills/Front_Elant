@@ -273,7 +273,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           errorData.message ===
             "Sesión inválida. Por favor, inicia sesión nuevamente."
         ) {
-          console.log("AuthContext - Session invalidated due to counter mismatch");
+          console.log(
+            "AuthContext - Session invalidated due to counter mismatch"
+          );
           if (showError) {
             Swal.fire({
               icon: "error",
@@ -393,7 +395,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     newSocket.on("connect_error", (error) => {
-      console.error("AuthContext - Error de conexión Socket.IO:", error.message);
+      console.error(
+        "AuthContext - Error de conexión Socket.IO:",
+        error.message
+      );
       if (error.message.includes("jwt") || error.message.includes("auth")) {
         console.log("AuthContext - Token inválido, cerrando sesión");
         logout();
@@ -402,16 +407,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     newSocket.on("sessionInvalidated", (data) => {
       console.log("AuthContext - Sesión invalidada recibida:", data);
-      Swal.fire({
-        icon: "warning",
-        title: "Sesión Invalidada",
-        text: data.message || "Tu sesión ha sido invalidada. Por favor, inicia sesión nuevamente.",
-        confirmButtonText: "Aceptar",
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-      }).then(() => {
-        logout();
-      });
+      if (!isAlertShown) {
+        setIsAlertShown(true);
+        Swal.fire({
+          icon: "warning",
+          title: "Sesión Invalidada",
+          text:
+            data.message ||
+            "Tu sesión ha sido invalidada. Por favor, inicia sesión nuevamente.",
+          confirmButtonText: "Aceptar",
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+        }).then(() => {
+          logout();
+          setIsAlertShown(false);
+        });
+      }
     });
 
     newSocket.on("disconnect", (reason) => {
@@ -428,7 +439,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Verificar token y manejar expiración
   useEffect(() => {
     if (location.pathname === "/login") {
-      console.log("AuthContext - En página de login, omitiendo verificación de token");
+      console.log(
+        "AuthContext - En página de login, omitiendo verificación de token"
+      );
       return;
     }
 
@@ -591,7 +604,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Redirigir al login cuando isAuthenticated cambia a false, excepto en /login
   useEffect(() => {
     if (!isAuthenticated && !isLoading && location.pathname !== "/login") {
-      console.log("AuthContext - isAuthenticated is false, redirecting to login");
+      console.log(
+        "AuthContext - isAuthenticated is false, redirecting to login"
+      );
       navigate("/login", { replace: true });
     }
   }, [isAuthenticated, isLoading, location.pathname, navigate]);
@@ -599,7 +614,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Validar sesión al montar el componente, excepto en /login
   useEffect(() => {
     if (location.pathname === "/login") {
-      console.log("AuthContext - En página de login, omitiendo validateSession");
+      console.log(
+        "AuthContext - En página de login, omitiendo validateSession"
+      );
       setIsLoading(false);
       return;
     }

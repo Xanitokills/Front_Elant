@@ -607,34 +607,34 @@ const UserList = () => {
     setIsLoading(true);
     const { ID_PERSONA, NOMBRES, APELLIDOS, CORREO } = person.basicInfo;
     const rolesSeleccionados = person.roles.map((r) => r.ID_ROL);
-    if (activar) {
-      if (!CORREO || rolesSeleccionados.length === 0) {
-        Swal.fire({
-          icon: "warning",
-          title: "Faltan datos",
-          text: "Debe ingresar un correo válido y asignar al menos un rol.",
-        });
-        setIsLoading(false);
-        return;
-      }
-      const usuarioBase =
-        person.usuario || generateUsername(NOMBRES, APELLIDOS);
-      let usuario = usuarioBase;
-      let intentos = 0;
-      while ((await checkUsername(usuario)) && intentos < 5) {
-        intentos++;
-        usuario = `${usuarioBase}${intentos}`;
-      }
-      if (await checkUsername(usuario)) {
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: "No se pudo generar un nombre de usuario único. Intente manualmente.",
-        });
-        setIsLoading(false);
-        return;
-      }
-      try {
+
+    try {
+      if (activar) {
+        if (!CORREO || rolesSeleccionados.length === 0) {
+          Swal.fire({
+            icon: "warning",
+            title: "Faltan datos",
+            text: "Debe ingresar un correo válido y asignar al menos un rol.",
+          });
+          return;
+        }
+        const usuarioBase =
+          person.usuario || generateUsername(NOMBRES, APELLIDOS);
+        let usuario = usuarioBase;
+        let intentos = 0;
+        while ((await checkUsername(usuario)) && intentos < 5) {
+          intentos++;
+          usuario = `${usuarioBase}${intentos}`;
+        }
+        if (await checkUsername(usuario)) {
+          Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "No se pudo generar un nombre de usuario único. Intente manualmente.",
+          });
+          return;
+        }
+
         const response = await fetch(
           `${API_URL}/persons/${ID_PERSONA}/access`,
           {
@@ -653,10 +653,12 @@ const UserList = () => {
             }),
           }
         );
+
         if (!response.ok) {
           const error = await response.json();
           throw new Error(error.message || "Error al activar acceso");
         }
+
         Swal.fire({
           icon: "success",
           title: "Acceso activado",
@@ -664,21 +666,7 @@ const UserList = () => {
           timer: 2000,
           showConfirmButton: false,
         });
-        setSelectedPerson(null);
-        setEditingPerson(null);
-        setViewMode("view");
-        fetchPersons();
-      } catch (error: any) {
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: error.message || "No se pudo activar el acceso",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
-      try {
+      } else {
         const response = await fetch(
           `${API_URL}/persons/${ID_PERSONA}/access`,
           {
@@ -696,134 +684,157 @@ const UserList = () => {
             }),
           }
         );
+
         if (!response.ok) {
           const error = await response.json();
           throw new Error(error.message || "Error al desactivar acceso");
         }
+
         Swal.fire({
           icon: "success",
           title: "Acceso desactivado",
-          text: `Se desactivó el acceso correctamente para ${NOMBRES}`,
+          text: `Se desactivó el acceso correctamente para ${NOMBRES}. El usuario ha sido desconectado.`,
           timer: 2000,
           showConfirmButton: false,
         });
-        setSelectedPerson(null);
-        setEditingPerson(null);
-        setViewMode("view");
-        fetchPersons();
-      } catch (error: any) {
-        Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: error.message || "No se pudo desactivar el acceso",
-        });
-      } finally {
-        setIsLoading(false);
       }
+
+      setSelectedPerson(null);
+      setEditingPerson(null);
+      setViewMode("view");
+      await fetchPersons(); // Asegura que la lista se actualice
+    } catch (error: any) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text:
+          error.message ||
+          `No se pudo ${activar ? "activar" : "desactivar"} el acceso`,
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleManageRoles = async () => {
     if (!editingPerson) return;
     const roles = editingPerson.roles.map((r) => r.ID_ROL);
-    if (roles.length === 0 && editingPerson.basicInfo.ACCESO_SISTEMA) {
-      Swal.fire({
-        title: "Desactivar Acceso",
-        text: "No se han asignado roles. Esto desactivará el acceso al sistema.",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonText: "Desactivar",
-        cancelButtonText: "Cancelar",
-      }).then(async (result) => {
-        if (result.isConfirmed) {
-          try {
-            setIsLoading(true);
-            const response = await fetch(
-              `${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}/access`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ activar: false }),
-              }
-            );
-            if (!response.ok) throw new Error("Error al desactivar acceso");
-            setSelectedPerson({
-              ...selectedPerson!,
-              basicInfo: {
-                ...selectedPerson!.basicInfo,
-                ACCESO_SISTEMA: false,
-                USUARIO: undefined,
-                ID_USUARIO: undefined,
-              },
-              roles: [],
-            });
-            setEditingPerson({
-              ...editingPerson,
-              basicInfo: {
-                ...editingPerson.basicInfo,
-                ACCESO_SISTEMA: false,
-                USUARIO: undefined,
-                ID_USUARIO: undefined,
-              },
-              roles: [],
-            });
-            Swal.fire({
-              icon: "success",
-              title: "Éxito",
-              text: "Acceso desactivado correctamente",
-              timer: 2000,
-              showConfirmButton: false,
-            });
-            fetchPersons();
-          } catch (error) {
-            Swal.fire({
-              icon: "error",
-              title: "Error",
-              text: "No se pudo desactivar el acceso",
-            });
-          } finally {
-            setIsLoading(false);
-          }
-        }
-      });
-      return;
-    }
+    setIsLoading(true);
+
     try {
-      setIsLoading(true);
-      const response = await fetch(
-        `${API_URL}/persons/${editingPerson.basicInfo.ID_USUARIO}/roles`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ roles }),
+      if (roles.length === 0 && editingPerson.basicInfo.ACCESO_SISTEMA) {
+        const result = await Swal.fire({
+          title: "Desactivar Acceso",
+          text: "No se han asignado roles. Esto desactivará el acceso al sistema.",
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonText: "Desactivar",
+          cancelButtonText: "Cancelar",
+        });
+
+        if (result.isConfirmed) {
+          const response = await fetch(
+            `${API_URL}/persons/${editingPerson.basicInfo.ID_PERSONA}/access`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                activar: false,
+                nombres: editingPerson.basicInfo.NOMBRES,
+                apellidos: editingPerson.basicInfo.APELLIDOS,
+                correo: editingPerson.basicInfo.CORREO,
+                roles: [],
+              }),
+            }
+          );
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || "Error al desactivar acceso");
+          }
+
+          setSelectedPerson({
+            ...selectedPerson!,
+            basicInfo: {
+              ...selectedPerson!.basicInfo,
+              ACCESO_SISTEMA: false,
+              USUARIO: undefined,
+              ID_USUARIO: undefined,
+            },
+            roles: [],
+          });
+          setEditingPerson({
+            ...editingPerson,
+            basicInfo: {
+              ...editingPerson.basicInfo,
+              ACCESO_SISTEMA: false,
+              USUARIO: undefined,
+              ID_USUARIO: undefined,
+            },
+            roles: [],
+          });
+
+          Swal.fire({
+            icon: "success",
+            title: "Éxito",
+            text: "Acceso desactivado correctamente. El usuario ha sido desconectado.",
+            timer: 2000,
+            showConfirmButton: false,
+          });
+        } else {
+          return; // Cancelar si el usuario no confirma
         }
-      );
-      if (!response.ok) throw new Error("Error al actualizar roles");
-      setSelectedPerson({
-        ...selectedPerson!,
-        roles: editingPerson.roles,
-      });
-      Swal.fire({
-        icon: "success",
-        title: "Éxito",
-        text: "Roles actualizados correctamente",
-        timer: 2000,
-        showConfirmButton: false,
-      });
+      } else if (editingPerson.basicInfo.ID_USUARIO) {
+        const response = await fetch(
+          `${API_URL}/persons/${editingPerson.basicInfo.ID_USUARIO}/roles`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ roles }),
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || "Error al actualizar roles");
+        }
+
+        setSelectedPerson({
+          ...selectedPerson!,
+          roles: editingPerson.roles,
+        });
+
+        Swal.fire({
+          icon: "success",
+          title: "Éxito",
+          text: "Roles actualizados correctamente. El usuario ha sido notificado.",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      } else {
+        Swal.fire({
+          icon: "warning",
+          title: "Sin acceso",
+          text: "El usuario no tiene acceso al sistema. Active el acceso primero.",
+        });
+        return;
+      }
+
       setSelectedPerson(null);
       setEditingPerson(null);
       setViewMode("view");
-    } catch (error) {
+      await fetchPersons();
+    } catch (error: any) {
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "No se pudo actualizar los roles",
+        text: error.message || "No se pudo actualizar los roles",
       });
     } finally {
       setIsLoading(false);
@@ -831,43 +842,65 @@ const UserList = () => {
   };
 
   const handleResetPassword = async (idUsuario: number) => {
-    Swal.fire({
+    if (!idUsuario) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se puede restablecer la contraseña: usuario no válido.",
+      });
+      return;
+    }
+
+    const result = await Swal.fire({
       title: "¿Restablecer contraseña?",
-      text: "Se generará una nueva contraseña para el usuario.",
+      text: "Se generará una nueva contraseña y el usuario será desconectado.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Restablecer",
       cancelButtonText: "Cancelar",
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          setIsLoading(true);
-          const response = await fetch(
-            `${API_URL}/persons/${idUsuario}/change-password`,
-            {
-              method: "PUT",
-              headers: { Authorization: `Bearer ${token}` },
-            }
-          );
-          if (!response.ok) throw new Error("Error al restablecer contraseña");
-          Swal.fire({
-            icon: "success",
-            title: "Éxito",
-            text: "Contraseña restablecida correctamente",
-            timer: 2000,
-            showConfirmButton: false,
-          });
-        } catch (error) {
-          Swal.fire({
-            icon: "error",
-            title: "Error",
-            text: "No se pudo restablecer la contraseña",
-          });
-        } finally {
-          setIsLoading(false);
-        }
-      }
     });
+
+    if (result.isConfirmed) {
+      try {
+        setIsLoading(true);
+        const response = await fetch(
+          `${API_URL}/persons/${idUsuario}/change-password`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || "Error al restablecer contraseña");
+        }
+
+        Swal.fire({
+          icon: "success",
+          title: "Éxito",
+          text: "Contraseña restablecida correctamente. El usuario ha sido desconectado.",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+
+        setSelectedPerson(null);
+        setEditingPerson(null);
+        setViewMode("view");
+        await fetchPersons();
+      } catch (error: any) {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: error.message || "No se pudo restablecer la contraseña",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
   };
 
   const getDefaultPhoto = (sexo: string) => {
