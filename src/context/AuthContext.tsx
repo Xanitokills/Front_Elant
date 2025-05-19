@@ -178,9 +178,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         );
         if (!isRefreshing) {
           Swal.fire({
-            icon: "error",
-            title: "Sesión Invalidada",
-            text: "Tu sesión ha sido invalidada. Por favor, inicia sesión nuevamente.",
+            icon: "info",
+            title: "Acceso Actualizado",
+            text: "Tu acceso ha cambiado. Inicia sesión nuevamente.",
             confirmButtonText: "Aceptar",
             allowOutsideClick: false,
             allowEscapeKey: false,
@@ -278,9 +278,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           );
           if (showError) {
             Swal.fire({
-              icon: "error",
-              title: "Sesión Invalidada",
-              text: "Tu sesión ha sido invalidada. Por favor, inicia sesión nuevamente.",
+              icon: "info",
+              title: "Acceso Actualizado",
+              text: "Tu acceso ha cambiado. Inicia sesión nuevamente.",
               confirmButtonText: "Aceptar",
               allowOutsideClick: false,
               allowEscapeKey: false,
@@ -410,11 +410,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!isAlertShown) {
         setIsAlertShown(true);
         Swal.fire({
-          icon: "warning",
-          title: "Sesión Invalidada",
+          icon: "info",
+          title: "Acceso Actualizado",
           text:
             data.message ||
-            "Tu sesión ha sido invalidada. Por favor, inicia sesión nuevamente.",
+            "Tu acceso ha cambiado. Inicia sesión nuevamente.",
           confirmButtonText: "Aceptar",
           allowOutsideClick: false,
           allowEscapeKey: false,
