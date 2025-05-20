@@ -9,20 +9,22 @@ const API_URL = import.meta.env.VITE_API_URL;
 interface Departamento {
   NRO_DPTO: number;
   ID_FASE: number;
-  nombreFase: string; // Nombre de la fase para mostrar al usuario
+  nombreFase: string;
 }
 
 interface Movimiento {
   ID_ACCESO: number;
-  ID_USUARIO: number;
-  DNI: number;
+  ID_PERSONA: number;
+  DNI: string;
   nombre: string;
   CORREO: string;
   NRO_DPTO: number | null;
-  ID_FASE: number | null; // Añadido para registrar la fase
+  ID_FASE: number | null;
+  nombreFase: string | null;
   FECHA_ACCESO: string;
   EXITO: number;
   MOTIVO_FALLO: string | null;
+  tipo_registro: string;
   puerta: string;
   descripcion: string;
 }
@@ -165,6 +167,11 @@ const Movements = () => {
   const now = new Date();
   const currentDate = now.toISOString().slice(0, 10);
 
+  const validateDNI = (dni: string): boolean => {
+    const dniRegex = /^\d{8}$/;
+    return dniRegex.test(dni);
+  };
+
   const fetchMovements = async () => {
     const token = localStorage.getItem("token");
     try {
@@ -204,12 +211,12 @@ const Movements = () => {
   };
 
   const handleBuscarPorDNI = async () => {
-    const token = localStorage.getItem("token");
-    if (!dni) {
-      Swal.fire("Advertencia", "Por favor, ingresa un DNI válido", "warning");
+    if (!validateDNI(dni)) {
+      Swal.fire("Advertencia", "El DNI debe tener 8 dígitos numéricos", "warning");
       return;
     }
 
+    const token = localStorage.getItem("token");
     try {
       const response = await fetch(`${API_URL}/usuarios/${dni}`, {
         method: "GET",
@@ -226,12 +233,12 @@ const Movements = () => {
         const departamentosOptions = data.departamentos
           .map(
             (dpto: Departamento) =>
-              `<option value="${dpto.NRO_DPTO}|${dpto.ID_FASE}">${dpto.NRO_DPTO} (Fase: ${dpto.nombreFase})</option>`
+              `<option value="${dpto.NRO_DPTO}">${dpto.NRO_DPTO} (Fase: ${dpto.nombreFase})</option>`
           )
           .join("");
 
         const { value: selectedDpto } = await Swal.fire({
-          title: "¿Registrar ingreso para este usuario?",
+          title: "¿Registrar ingreso manual para este usuario?",
           html: `
             <p><strong>Nombre:</strong> ${data.nombre}</p>
             <p><strong>Correo:</strong> ${data.CORREO}</p>
@@ -246,29 +253,28 @@ const Movements = () => {
           cancelButtonText: "Cancelar",
           preConfirm: () => {
             const select = document.getElementById("dptoSelect") as HTMLSelectElement;
-            return select.value; // Devuelve "NRO_DPTO|ID_FASE"
+            return select.value;
           },
         });
 
         if (selectedDpto) {
-          const [nroDpto, idFase] = selectedDpto.split("|").map(Number);
-          await registrarIngreso(data, nroDpto, idFase);
+          await registrarIngreso(data, Number(selectedDpto));
         } else {
           setDni("");
         }
       } else {
-        // Caso de un solo departamento
+        // Caso de un solo departamento o ninguno
         const nroDpto = data.departamentos?.[0]?.NRO_DPTO ?? null;
-        const idFase = data.departamentos?.[0]?.ID_FASE ?? null;
+        const nombreFase = data.departamentos?.[0]?.nombreFase ?? "-";
         const content = `
           <p><strong>Nombre:</strong> ${data.nombre}</p>
           <p><strong>Correo:</strong> ${data.CORREO}</p>
           <p><strong>Dpto:</strong> ${nroDpto ?? "-"}</p>
-          <p><strong>Fase:</strong> ${data.departamentos?.[0]?.nombreFase ?? "-"}</p>
+          <p><strong>Fase:</strong> ${nombreFase}</p>
         `;
 
         const result = await Swal.fire({
-          title: "¿Registrar este ingreso?",
+          title: "¿Registrar ingreso manual?",
           html: content,
           icon: "info",
           showCancelButton: true,
@@ -277,7 +283,7 @@ const Movements = () => {
         });
 
         if (result.isConfirmed) {
-          await registrarIngreso(data, nroDpto, idFase);
+          await registrarIngreso(data, nroDpto);
         } else {
           setDni("");
         }
@@ -288,7 +294,13 @@ const Movements = () => {
     }
   };
 
-  const registrarIngreso = async (userData: any, nroDpto: number | null, idFase: number | null) => {
+  const registrarIngreso = async (userData: any, nroDpto: number | null) => {
+    if (!nroDpto) {
+      Swal.fire("Error", "El usuario no tiene un departamento asociado", "error");
+      setDni("");
+      return;
+    }
+
     const token = localStorage.getItem("token");
     try {
       const postResponse = await fetch(`${API_URL}/movements/registrar-acceso`, {
@@ -297,7 +309,7 @@ const Movements = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ dni, NRO_DPTO: nroDpto, ID_FASE: idFase }),
+        body: JSON.stringify({ dni, NRO_DPTO: nroDpto }),
       });
 
       const resultData = await postResponse.json();
@@ -318,26 +330,30 @@ const Movements = () => {
   const exportToExcel = () => {
     const headers = [
       "ID Acceso",
-      "ID Usuario",
+      "ID Persona",
+      "DNI",
       "Nombre",
       "Correo",
       "Nro Dpto",
       "Fase",
       "Fecha Acceso",
       "Éxito",
+      "Tipo Registro",
       "Motivo Fallo",
       "Puerta",
       "Descripción",
     ];
     const data = movimientos.map((mov) => [
       mov.ID_ACCESO,
-      mov.ID_USUARIO,
+      mov.ID_PERSONA,
+      mov.DNI,
       mov.nombre,
       mov.CORREO,
       mov.NRO_DPTO ?? "-",
-      mov.ID_FASE ?? "-", // Añadido para mostrar la fase
+      mov.nombreFase ?? "-",
       new Date(mov.FECHA_ACCESO).toLocaleString(),
       mov.EXITO ? "Sí" : "No",
+      mov.tipo_registro,
       mov.MOTIVO_FALLO ?? "-",
       mov.puerta,
       mov.descripcion,
@@ -382,7 +398,7 @@ const Movements = () => {
             active={activeTab === "register"}
             onClick={() => setActiveTab("register")}
           >
-            Registrar Ingreso
+            Registrar Ingreso Manual
           </TabButton>
           <TabButton
             active={activeTab === "history"}
@@ -395,7 +411,7 @@ const Movements = () => {
       <TabContent>
         {activeTab === "register" && (
           <Card>
-            <h2 className="text-lg font-semibold mb-4">Registrar ingreso por DNI</h2>
+            <h2 className="text-lg font-semibold mb-4">Registrar ingreso manual por DNI</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -508,6 +524,9 @@ const Movements = () => {
                       Éxito
                     </th>
                     <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                      Tipo Registro
+                    </th>
+                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
                       Motivo Fallo
                     </th>
                     <th className="py-3 px-4 border-b text-left text-sm font-semibold">
@@ -521,7 +540,7 @@ const Movements = () => {
                 <tbody>
                   {filteredMovimientos.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="py-4 text-center text-gray-500">
+                      <td colSpan={11} className="py-4 text-center text-gray-500">
                         No hay movimientos para mostrar.
                       </td>
                     </tr>
@@ -536,7 +555,7 @@ const Movements = () => {
                         <td className="py-3 px-4">{mov.nombre}</td>
                         <td className="py-3 px-4">{mov.CORREO}</td>
                         <td className="py-3 px-4">{mov.NRO_DPTO ?? "-"}</td>
-                        <td className="py-3 px-4">{mov.ID_FASE ?? "-"}</td>
+                        <td className="py-3 px-4">{mov.nombreFase ?? "-"}</td>
                         <td className="py-3 px-4">
                           {new Date(mov.FECHA_ACCESO).toLocaleString()}
                         </td>
@@ -551,6 +570,7 @@ const Movements = () => {
                             {mov.EXITO ? "Sí" : "No"}
                           </span>
                         </td>
+                        <td className="py-3 px-4">{mov.tipo_registro}</td>
                         <td className="py-3 px-4">{mov.MOTIVO_FALLO ?? "-"}</td>
                         <td className="py-3 px-4">{mov.puerta}</td>
                         <td className="py-3 px-4">{mov.descripcion}</td>
