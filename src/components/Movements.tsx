@@ -18,7 +18,8 @@ interface Movimiento {
   DNI: string;
   nombre: string;
   CORREO: string;
-  NRO_DPTO: number | null;
+  id_departamento: number | null;
+  numero_dpto: string | null;
   ID_FASE: number | null;
   nombreFase: string | null;
   FECHA_ACCESO: string;
@@ -27,6 +28,13 @@ interface Movimiento {
   tipo_registro: string;
   puerta: string;
   descripcion: string;
+}
+
+interface UserData {
+  ID_PERSONA: number;
+  nombre: string;
+  CORREO: string;
+  departamentos: Departamento[];
 }
 
 const slideInDown = keyframes`
@@ -55,6 +63,8 @@ const Container = styled.div`
   padding: 1rem;
   background-color: #f3f4f6;
   min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
   @media (min-width: 640px) {
     padding: 1.5rem;
   }
@@ -76,17 +86,21 @@ const Title = styled.h1`
 const TabButton = styled.button<{ active: boolean }>`
   padding: 0.5rem 1rem;
   font-weight: 600;
+  font-size: 0.875rem;
   color: ${(props) => (props.active ? "#2563eb" : "#4b5563")};
   border-bottom: ${(props) => (props.active ? "2px solid #2563eb" : "none")};
   transition: color 0.2s ease, border-bottom 0.2s ease;
   &:hover {
     color: #2563eb;
   }
+  @media (min-width: 640px) {
+    font-size: 1rem;
+  }
 `;
 
 const TabContent = styled.div`
   animation: ${fadeIn} 0.5s ease-out;
-  margin-top: 1.5rem;
+  margin-top: 1rem;
 `;
 
 const Card = styled.div`
@@ -94,42 +108,62 @@ const Card = styled.div`
   padding: 1rem;
   border-radius: 0.5rem;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   transition: box-shadow 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
   &:hover {
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
   }
   @media (min-width: 640px) {
     padding: 1.5rem;
+    margin-bottom: 1.5rem;
   }
   @media (min-width: 1024px) {
     padding: 2rem;
   }
 `;
 
+const UserInfoCard = styled(Card)`
+  margin-top: 1rem;
+  animation: ${fadeIn} 0.5s ease-out;
+`;
+
 const Input = styled.input`
   border: 1px solid #d1d5db;
-  padding: 0.75rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 0.375rem;
   width: 100%;
+  font-size: 0.875rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
   &:focus {
     outline: none;
     border-color: #2563eb;
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
   }
+  @media (min-width: 640px) {
+    padding: 0.75rem;
+    font-size: 1rem;
+  }
 `;
 
 const Select = styled.select`
   border: 1px solid #d1d5db;
-  padding: 0.75rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 0.375rem;
   width: 100%;
+  font-size: 0.875rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
   &:focus {
     outline: none;
     border-color: #2563eb;
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+  }
+  @media (min-width: 640px) {
+    padding: 0.75rem;
+    font-size: 1rem;
   }
 `;
 
@@ -139,16 +173,26 @@ const Button = styled.button`
   justify-content: center;
   padding: 0.5rem 1rem;
   border-radius: 0.375rem;
+  font-size: 0.875rem;
   transition: background-color 0.2s ease, transform 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
   &:hover:not(:disabled) {
     transform: translateY(-1px);
   }
+  @media (min-width: 640px) {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    width: auto;
+  }
 `;
 
-const TableRow = styled.tr<{ $exito: number; $delay: number }>`
+const TableRow = styled.tr<{ $exito: number; $delay: number; $highlight?: boolean }>`
   animation: ${fadeIn} 0.5s ease-out forwards;
   animation-delay: ${(props) => props.$delay}s;
-  background-color: ${(props) => (props.$exito ? "#f0fff4" : "#fef2f2")};
+  background-color: ${(props) =>
+    props.$highlight ? "#2563eb33" : props.$exito ? "#f0fff4" : "#fef2f2"};
+  transition: background-color 1s ease;
   &:hover {
     background-color: #f9fafb;
   }
@@ -163,12 +207,15 @@ const Movements = () => {
   });
   const [dni, setDni] = useState("");
   const [activeTab, setActiveTab] = useState<"register" | "history">("register");
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [selectedDpto, setSelectedDpto] = useState<string>("");
+  const [highlightLast, setHighlightLast] = useState(false);
 
   const now = new Date();
   const currentDate = now.toISOString().slice(0, 10);
 
   const validateDNI = (dni: string): boolean => {
-    const dniRegex = /^\d{8}$/;
+    const dniRegex = /^[a-zA-Z0-9]{1,12}$/;
     return dniRegex.test(dni);
   };
 
@@ -203,6 +250,15 @@ const Movements = () => {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (highlightLast) {
+      const timer = setTimeout(() => {
+        setHighlightLast(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightLast]);
+
   const handleFilterChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -212,7 +268,11 @@ const Movements = () => {
 
   const handleBuscarPorDNI = async () => {
     if (!validateDNI(dni)) {
-      Swal.fire("Advertencia", "El DNI debe tener 8 dígitos numéricos", "warning");
+      Swal.fire(
+        "Advertencia",
+        "El DNI o pasaporte debe tener hasta 12 caracteres alfanuméricos",
+        "warning"
+      );
       return;
     }
 
@@ -227,80 +287,35 @@ const Movements = () => {
 
       if (!response.ok) throw new Error("Usuario no encontrado");
       const data = await response.json();
-
-      // Si el usuario tiene múltiples departamentos, mostrar un selector
-      if (data.departamentos && data.departamentos.length > 1) {
-        const departamentosOptions = data.departamentos
-          .map(
-            (dpto: Departamento) =>
-              `<option value="${dpto.NRO_DPTO}">${dpto.NRO_DPTO} (Fase: ${dpto.nombreFase})</option>`
-          )
-          .join("");
-
-        const { value: selectedDpto } = await Swal.fire({
-          title: "¿Registrar ingreso manual para este usuario?",
-          html: `
-            <p><strong>Nombre:</strong> ${data.nombre}</p>
-            <p><strong>Correo:</strong> ${data.CORREO}</p>
-            <label><strong>Seleccionar Departamento:</strong></label>
-            <select id="dptoSelect" class="swal2-select">
-              ${departamentosOptions}
-            </select>
-          `,
-          icon: "info",
-          showCancelButton: true,
-          confirmButtonText: "Registrar",
-          cancelButtonText: "Cancelar",
-          preConfirm: () => {
-            const select = document.getElementById("dptoSelect") as HTMLSelectElement;
-            return select.value;
-          },
-        });
-
-        if (selectedDpto) {
-          await registrarIngreso(data, Number(selectedDpto));
-        } else {
-          setDni("");
-        }
-      } else {
-        // Caso de un solo departamento o ninguno
-        const nroDpto = data.departamentos?.[0]?.NRO_DPTO ?? null;
-        const nombreFase = data.departamentos?.[0]?.nombreFase ?? "-";
-        const content = `
-          <p><strong>Nombre:</strong> ${data.nombre}</p>
-          <p><strong>Correo:</strong> ${data.CORREO}</p>
-          <p><strong>Dpto:</strong> ${nroDpto ?? "-"}</p>
-          <p><strong>Fase:</strong> ${nombreFase}</p>
-        `;
-
-        const result = await Swal.fire({
-          title: "¿Registrar ingreso manual?",
-          html: content,
-          icon: "info",
-          showCancelButton: true,
-          confirmButtonText: "Registrar",
-          cancelButtonText: "Cancelar",
-        });
-
-        if (result.isConfirmed) {
-          await registrarIngreso(data, nroDpto);
-        } else {
-          setDni("");
-        }
-      }
+      setUserData(data);
+      setSelectedDpto(
+        data.departamentos?.length === 1 ? String(data.departamentos[0].NRO_DPTO) : ""
+      );
     } catch (error) {
-      Swal.fire("Error", "No se encontró un usuario con ese DNI", "error");
+      Swal.fire("Error", "No se encontró un usuario con ese DNI o pasaporte", "error");
+      setUserData(null);
       setDni("");
     }
   };
 
-  const registrarIngreso = async (userData: any, nroDpto: number | null) => {
-    if (!nroDpto) {
-      Swal.fire("Error", "El usuario no tiene un departamento asociado", "error");
-      setDni("");
+  const handleRegistrar = async () => {
+    if (!userData) return;
+    if (!selectedDpto) {
+      Swal.fire("Error", "Por favor, selecciona un departamento", "error");
       return;
     }
 
+    const nroDpto = Number(selectedDpto);
+    await registrarIngreso(userData, nroDpto);
+  };
+
+  const handleCancelar = () => {
+    setUserData(null);
+    setDni("");
+    setSelectedDpto("");
+  };
+
+  const registrarIngreso = async (userData: UserData, nroDpto: number) => {
     const token = localStorage.getItem("token");
     try {
       const postResponse = await fetch(`${API_URL}/movements/registrar-acceso`, {
@@ -316,14 +331,22 @@ const Movements = () => {
       if (resultData.success) {
         Swal.fire("¡Registrado!", resultData.message, "success");
         setDni("");
-        fetchMovements();
+        setUserData(null);
+        setSelectedDpto("");
+        setActiveTab("history");
+        await fetchMovements();
+        setHighlightLast(true);
       } else {
         Swal.fire("Error", resultData.message, "error");
         setDni("");
+        setUserData(null);
+        setSelectedDpto("");
       }
     } catch (error) {
       Swal.fire("Error", "No se pudo registrar el ingreso", "error");
       setDni("");
+      setUserData(null);
+      setSelectedDpto("");
     }
   };
 
@@ -349,7 +372,7 @@ const Movements = () => {
       mov.DNI,
       mov.nombre,
       mov.CORREO,
-      mov.NRO_DPTO ?? "-",
+      mov.numero_dpto ?? "-",
       mov.nombreFase ?? "-",
       new Date(mov.FECHA_ACCESO).toLocaleString(),
       mov.EXITO ? "Sí" : "No",
@@ -383,7 +406,7 @@ const Movements = () => {
     } else if (filter.campo === "dni") {
       coincide = mov.DNI.toString().includes(texto);
     } else if (filter.campo === "departamento") {
-      coincide = (mov.NRO_DPTO?.toString() || "").includes(texto);
+      coincide = (mov.numero_dpto?.toString() || "").includes(texto);
     }
 
     return coincide && (filter.fecha === "" || fechaAcceso === filter.fecha);
@@ -391,38 +414,36 @@ const Movements = () => {
 
   return (
     <Container>
-      <Title>Control de Ingresos y Salidas</Title>
-      <div className="mb-6">
-        <div className="flex flex-wrap gap-4 border-b">
-          <TabButton
-            active={activeTab === "register"}
-            onClick={() => setActiveTab("register")}
-          >
-            Registrar Ingreso Manual
-          </TabButton>
-          <TabButton
-            active={activeTab === "history"}
-            onClick={() => setActiveTab("history")}
-          >
-            Historial de Movimientos
-          </TabButton>
-        </div>
+      <Title>Control de Ingresos Personas</Title>
+      <div className="mb-4 flex flex-wrap gap-2 border-b">
+        <TabButton
+          active={activeTab === "register"}
+          onClick={() => setActiveTab("register")}
+        >
+          Registrar Ingreso Manual
+        </TabButton>
+        <TabButton
+          active={activeTab === "history"}
+          onClick={() => setActiveTab("history")}
+        >
+          Historial de Ingresos y Salidas
+        </TabButton>
       </div>
       <TabContent>
         {activeTab === "register" && (
           <Card>
-            <h2 className="text-lg font-semibold mb-4">Registrar ingreso manual por DNI</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="md:col-span-2">
+            <h2 className="text-lg font-semibold mb-4">Registrar ingreso con documento</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+              <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-gray-600 mb-1">
-                  DNI del usuario
+                  DNI o Pasaporte
                 </label>
                 <div className="flex items-center gap-2">
                   <Input
                     type="text"
                     value={dni}
                     onChange={(e) => setDni(e.target.value)}
-                    placeholder="Ejemplo: 12345678"
+                    placeholder="Ejemplo: 12345678 o AB1234567890"
                     required
                   />
                   <Button
@@ -433,21 +454,61 @@ const Movements = () => {
                   </Button>
                 </div>
               </div>
-              <div className="flex items-end">
-                <Button
-                  className="bg-blue-600 text-white hover:bg-blue-700 w-full"
-                  onClick={handleBuscarPorDNI}
-                >
-                  Registrar
-                </Button>
-              </div>
             </div>
+            {userData && (
+              <UserInfoCard>
+                <h3 className="text-md font-semibold mb-2">Información del Usuario</h3>
+                <p className="text-sm text-gray-600">
+                  <strong>Nombre:</strong> {userData.nombre}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <strong>Correo:</strong> {userData.CORREO}
+                </p>
+                {userData.departamentos?.length > 0 ? (
+                  <div className="mt-2">
+                    <label className="block text-sm font-medium text-gray-600 mb-1">
+                      Seleccionar Departamento
+                    </label>
+                    <Select
+                      value={selectedDpto}
+                      onChange={(e) => setSelectedDpto(e.target.value)}
+                    >
+                      <option value="">Seleccione un departamento</option>
+                      {userData.departamentos.map((dpto) => (
+                        <option key={dpto.NRO_DPTO} value={dpto.NRO_DPTO}>
+                          Departamento {dpto.NRO_DPTO} ({dpto.nombreFase})
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                ) : (
+                  <p className="text-sm text-red-600 mt-2">
+                    No hay departamentos asociados
+                  </p>
+                )}
+                <div className="mt-4 flex gap-2 flex-col sm:flex-row">
+                  <Button
+                    className="bg-green-600 text-white hover:bg-green-700"
+                    onClick={handleRegistrar}
+                    disabled={!selectedDpto}
+                  >
+                    Registrar
+                  </Button>
+                  <Button
+                    className="bg-gray-600 text-white hover:bg-gray-700"
+                    onClick={handleCancelar}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </UserInfoCard>
+            )}
           </Card>
         )}
         {activeTab === "history" && (
           <Card>
             <h2 className="text-lg font-semibold mb-4">Historial de Movimientos</h2>
-            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-6">
+            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full lg:w-3/4">
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -488,7 +549,7 @@ const Movements = () => {
                   />
                 </div>
               </div>
-              <div className="flex justify-end mt-4 lg:mt-0">
+              <div className="flex justify-end mt-2 lg:mt-0">
                 <Button
                   className="bg-green-600 text-white hover:bg-green-700"
                   onClick={exportToExcel}
@@ -499,40 +560,34 @@ const Movements = () => {
               </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-full bg-white border border-gray-200">
+              <table className="min-w-full bg-white border border-gray-200 text-sm">
                 <thead>
                   <tr className="bg-gray-50 text-gray-700">
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                    <th className="py-2 px-3 border-b text-left text-xs font-semibold sm:text-sm">
                       DNI
                     </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                    <th className="py-2 px-3 border-b text-left text-xs font-semibold sm:text-sm">
                       Nombre
                     </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Correo
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                    <th className="py-2 px-3 border-b text-left text-xs font-semibold sm:text-sm">
                       Nro Dpto
                     </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                    <th className="py-2 px-3 border-b text-left text-xs font-semibold sm:text-sm">
                       Fase
                     </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Fecha Acceso
+                    <th className="py-2 px-3 border-b text-left text-xs font-semibold sm:text-sm">
+                      Fecha Ingreso
                     </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                    <th className="py-2 px-3 border-b text-left text-xs font-semibold sm:text-sm">
                       Éxito
                     </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                    <th className="py-2 px-3 border-b text-left text-xs font-semibold sm:text-sm">
                       Tipo Registro
                     </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
-                      Motivo Fallo
-                    </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                    <th className="py-2 px-3 border-b text-left text-xs font-semibold sm:text-sm">
                       Puerta
                     </th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">
+                    <th className="py-2 px-3 border-b text-left text-xs font-semibold sm:text-sm">
                       Descripción
                     </th>
                   </tr>
@@ -540,7 +595,7 @@ const Movements = () => {
                 <tbody>
                   {filteredMovimientos.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="py-4 text-center text-gray-500">
+                      <td colSpan={9} className="py-4 text-center text-gray-500 text-sm">
                         No hay movimientos para mostrar.
                       </td>
                     </tr>
@@ -550,16 +605,16 @@ const Movements = () => {
                         key={mov.ID_ACCESO}
                         $exito={mov.EXITO}
                         $delay={index * 0.1}
+                        $highlight={highlightLast && index === 0}
                       >
-                        <td className="py-3 px-4">{mov.DNI}</td>
-                        <td className="py-3 px-4">{mov.nombre}</td>
-                        <td className="py-3 px-4">{mov.CORREO}</td>
-                        <td className="py-3 px-4">{mov.NRO_DPTO ?? "-"}</td>
-                        <td className="py-3 px-4">{mov.nombreFase ?? "-"}</td>
-                        <td className="py-3 px-4">
+                        <td className="py-2 px-3 text-sm">{mov.DNI}</td>
+                        <td className="py-2 px-3 text-sm">{mov.nombre}</td>
+                        <td className="py-2 px-3 text-sm">{mov.numero_dpto ?? "-"}</td>
+                        <td className="py-2 px-3 text-sm">{mov.nombreFase ?? "-"}</td>
+                        <td className="py-2 px-3 text-sm">
                           {new Date(mov.FECHA_ACCESO).toLocaleString()}
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-2 px-3 text-sm">
                           <span
                             className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
                               mov.EXITO
@@ -570,10 +625,9 @@ const Movements = () => {
                             {mov.EXITO ? "Sí" : "No"}
                           </span>
                         </td>
-                        <td className="py-3 px-4">{mov.tipo_registro}</td>
-                        <td className="py-3 px-4">{mov.MOTIVO_FALLO ?? "-"}</td>
-                        <td className="py-3 px-4">{mov.puerta}</td>
-                        <td className="py-3 px-4">{mov.descripcion}</td>
+                        <td className="py-2 px-3 text-sm">{mov.tipo_registro}</td>
+                        <td className="py-2 px-3 text-sm">{mov.puerta}</td>
+                        <td className="py-2 px-3 text-sm">{mov.descripcion}</td>
                       </TableRow>
                     ))
                   )}
