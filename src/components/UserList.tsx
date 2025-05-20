@@ -693,7 +693,7 @@ const UserList = () => {
         Swal.fire({
           icon: "success",
           title: "Acceso desactivado",
-          text: `Se desactivó el acceso correctamente para ${NOMBRES}. El usuario ha sido desconectado.`,
+          text: `Se desactivó el acceso correctamente para ${NOMBRES}.`,
           timer: 2000,
           showConfirmButton: false,
         });
@@ -813,7 +813,7 @@ const UserList = () => {
         Swal.fire({
           icon: "success",
           title: "Éxito",
-          text: "Roles actualizados correctamente. El usuario ha sido notificado.",
+          text: "Roles actualizados correctamente.",
           timer: 2000,
           showConfirmButton: false,
         });
@@ -882,7 +882,7 @@ const UserList = () => {
         Swal.fire({
           icon: "success",
           title: "Éxito",
-          text: "Contraseña restablecida correctamente. El usuario ha sido desconectado.",
+          text: "Contraseña restablecida correctamente.",
           timer: 2000,
           showConfirmButton: false,
         });
