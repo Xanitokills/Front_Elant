@@ -33,7 +33,8 @@ const App = () => {
   const [unreadCount, setUnreadCount] = useState(3); // Inicialmente 3 no leídas
   const { isAuthenticated, isLoading, userPermissions } = useAuth();
 
-  if (isLoading && location.pathname !== "/login") {
+  // Mostrar "Cargando SoftHome" si isLoading es true, para cualquier ruta
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
         <div className="flex flex-col items-center space-y-4">
@@ -46,10 +47,12 @@ const App = () => {
     );
   }
 
+  // Redirigir a /login si no está autenticado y no está en /login
   if (!isAuthenticated && location.pathname !== "/login") {
     return <Navigate to="/login" replace />;
   }
 
+  // Mostrar carga de permisos si está autenticado pero no hay permisos
   if (
     isAuthenticated &&
     userPermissions.length === 0 &&
@@ -67,6 +70,7 @@ const App = () => {
     );
   }
 
+  // Redirigir de / a /dashboard si hay permisos
   if (
     location.pathname === "/" &&
     !isLoading &&

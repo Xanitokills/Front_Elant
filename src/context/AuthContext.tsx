@@ -599,15 +599,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [isAuthenticated, isLoading, location.pathname, navigate]);
 
   useEffect(() => {
-    if (location.pathname === "/login") {
-      console.log(
-        "AuthContext - En página de login, omitiendo validateSession"
-      );
-      setIsLoading(false);
-      return;
-    }
-    validateSession();
-  }, [location.pathname]);
+    const checkSessionAndRedirect = async () => {
+      console.log("AuthContext - Verificando sesión para ruta:", location.pathname);
+      // Verificación inicial rápida basada en localStorage
+      const token = localStorage.getItem("token");
+      if (token && location.pathname === "/login") {
+        try {
+          const decoded: { exp: number } = jwtDecode(token);
+          const currentTime = Date.now() / 1000;
+          if (decoded.exp > currentTime) {
+            console.log(
+              "AuthContext - Token local válido detectado en /login, redirigiendo a dashboard"
+            );
+            navigate("/dashboard", { replace: true });
+            return; // Evita renderizar el login
+          }
+        } catch (error) {
+          console.error("AuthContext - Error al decodificar token localmente:", error);
+        }
+      }
+
+      // Validación completa con el backend
+      const isValid = await validateSession();
+      if (isValid && location.pathname === "/login") {
+        console.log(
+          "AuthContext - Sesión activa detectada en /login, redirigiendo a dashboard"
+        );
+        navigate("/dashboard", { replace: true });
+      } else if (!isValid && location.pathname !== "/login") {
+        console.log(
+          "AuthContext - No hay sesión activa y no está en /login, redirigiendo a login"
+        );
+        navigate("/login", { replace: true });
+      }
+    };
+
+    checkSessionAndRedirect();
+  }, [location.pathname, navigate]);
 
   const login = async (dni: string, password: string) => {
     try {
