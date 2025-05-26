@@ -426,7 +426,7 @@ const Movements = () => {
           active={activeTab === "history"}
           onClick={() => setActiveTab("history")}
         >
-          Historial de Ingresos y Salidas
+          Historial de Ingresos
         </TabButton>
       </div>
       <TabContent>
