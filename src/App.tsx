@@ -31,7 +31,21 @@ const App = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(3); // Inicialmente 3 no leídas
-  const { isAuthenticated, isLoading, userPermissions } = useAuth();
+  const { isAuthenticated, isLoading, isLoggingOut, userPermissions } = useAuth();
+
+  // Mostrar pantalla de "Cerrando sesión" si isLoggingOut es true
+  if (isLoggingOut) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-200">
+        <div className="flex flex-col items-center space-y-4">
+          <FaSpinner className="animate-spin text-4xl text-blue-600" />
+          <p className="text-lg font-semibold text-gray-700 animate-pulse">
+            Cerrando sesión...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Mostrar "Cargando SoftHome" si isLoading es true, para cualquier ruta
   if (isLoading) {
