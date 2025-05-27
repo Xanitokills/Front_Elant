@@ -10,7 +10,7 @@ import { jwtDecode } from "jwt-decode";
 import log from "loglevel";
 import { io, Socket } from "socket.io-client";
 import { useNavigate, useLocation } from "react-router-dom";
-import Swal from 'sweetalert2';
+import Swal from "sweetalert2";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -49,7 +49,7 @@ interface AuthContextType {
   isLoading: boolean;
   socket: Socket | null;
   login: (dni: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  logout: (showSpinner?: boolean) => Promise<void>;
   refreshSidebar: () => Promise<void>;
   validateSession: () => Promise<boolean>;
 }
@@ -76,6 +76,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const socketRef = useRef<Socket | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const updateSidebarData = async (userId: number, token: string) => {
     try {
@@ -83,12 +85,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const response = await fetch(`${API_URL}/sidebar/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      console.log(`AuthContext - Respuesta de sidebar: Status=${response.status}`);
       if (response.ok) {
         const data = await response.json();
+        console.log("AuthContext - Sidebar data recibido:", JSON.stringify(data));
         localStorage.setItem("sidebarData", JSON.stringify(data));
         setSidebarData(data);
         setUserPermissions(data);
-        console.log("AuthContext - Sidebar actualizado:", JSON.stringify(data));
         return data;
       } else {
         console.error(
@@ -128,7 +131,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const token = localStorage.getItem("token");
     if (!token) {
       console.log("AuthContext - No hay token, cerrando sesión silenciosamente");
-      logout();
+      await logout(false);
       return false;
     }
 
@@ -148,50 +151,54 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const savedName = localStorage.getItem("userName");
         const savedRoles = JSON.parse(localStorage.getItem("roles") || "[]");
 
-        setUserName(data.userName || savedName || null);
-        setRoles(data.roles || savedRoles || []);
-        setUserId(data.user?.id);
+        setUserName(data.userName || savedName || "");
+        setRoles(data.roles || savedRoles);
+        setUserId(data.id);
 
         const savedSidebarData = localStorage.getItem("sidebarData");
         let permissionsLoaded = false;
         if (savedSidebarData) {
-          const parsedData = JSON.parse(savedSidebarData);
-          setSidebarData(parsedData);
-          setUserPermissions(parsedData);
-          permissionsLoaded = parsedData.length > 0;
+          try {
+            const parsedData = JSON.parse(savedSidebarData);
+            if (Array.isArray(parsedData)) {
+              setSidebarData(parsedData);
+              setUserPermissions(parsedData);
+              permissionsLoaded = parsedData.length > 0;
+            }
+          } catch (error) {
+            console.error("AuthContext - Error al parsear sidebarData de localStorage:", error);
+          }
         }
 
-        if (!permissionsLoaded && data.user?.id) {
-          const sidebarData = await updateSidebarData(data.user.id, token);
+        if (!permissionsLoaded && data.id) {
+          const sidebarData = await updateSidebarData(data.id, token);
           permissionsLoaded = sidebarData.length > 0;
         }
 
+        // No cerrar sesión si no se cargan permisos, solo loguear
         if (!permissionsLoaded) {
           console.warn(
-            "AuthContext - No se cargaron permisos, cerrando sesión silenciosamente"
+            "AuthContext - No se cargaron permisos, pero se mantiene la sesión activa"
           );
-          logout();
-          return false;
         }
         console.log("AuthContext - Sesión validada correctamente");
         return true;
-      } else {
-        console.error(
-          `AuthContext - Falló la validación de sesión: Status=${response.status}, ${response.statusText}`
-        );
-        if (!isRefreshing) {
-          console.log("AuthContext - Sesión inválida, cerrando sesión silenciosamente");
-          logout();
-        }
-        return false;
       }
+      console.error(
+        `AuthContext - Falló la validación de sesión: Status=${response.status}, ${response.statusText}`
+      );
+      if (!isRefreshing) {
+        console.log("AuthContext - Sesión inválida, cerrando sesión silenciosamente");
+        await logout(false);
+      }
+      return false;
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
       console.error(`AuthContext - Error al validar sesión: ${errorMessage}`);
       if (!isRefreshing) {
         console.log("AuthContext - Error de sesión, cerrando sesión silenciosamente");
-        logout();
+        await logout(false);
       }
       return false;
     } finally {
@@ -209,7 +216,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const token = localStorage.getItem("token");
     if (!token) {
       console.log("AuthContext - No hay token para renovar, cerrando sesión silenciosamente");
-      logout();
+      await logout(false);
       setIsRefreshing(false);
       return false;
     }
@@ -249,7 +256,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (socketRef.current) {
           socketRef.current.disconnect();
           console.log("AuthContext - Socket desconectado antes de la reconexión");
-          await new Promise(resolve => setTimeout(resolve, 500)); // Retraso de 500 ms
+          await new Promise((resolve) => setTimeout(resolve, 500));
           socketRef.current.auth = { token: `Bearer ${data.token}` };
           socketRef.current.connect();
           console.log("AuthContext - Socket re-autenticado con nuevo token");
@@ -258,41 +265,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const sidebarData = await updateSidebarData(data.user.id, data.token);
         if (sidebarData.length === 0) {
           console.warn(
-            "AuthContext - No se cargaron permisos tras renovar, cerrando sesión silenciosamente"
+            "AuthContext - No se cargaron permisos tras renovar, pero se mantiene la sesión activa"
           );
-          logout();
-          setIsRefreshing(false);
-          return false;
         }
 
         console.log("AuthContext - Renovación de token completada");
         return true;
-      } else {
-        const errorData = await response.json();
-        if (
-          response.status === 401 &&
-          errorData.message ===
-            "Sesión inválida. Por favor, inicia sesión nuevamente."
-        ) {
-          console.log(
-            "AuthContext - Sesión invalidada por mismatch en contador, cerrando sesión silenciosamente"
-          );
-          logout();
-          return false;
-        }
-        console.error(
-          `AuthContext - Falló la renovación del token: Status=${response.status}, ${response.statusText}`
+      }
+      const errorData = await response.json();
+      if (
+        response.status === 401 &&
+        errorData.message ===
+          "Sesión inválida. Por favor, inicia sesión nuevamente."
+      ) {
+        console.log(
+          "AuthContext - Sesión invalidada por mismatch en contador, cerrando sesión silenciosamente"
         );
-        console.log("AuthContext - Falló la renovación, cerrando sesión silenciosamente");
-        logout();
+        await logout(false);
         return false;
       }
+      console.error(
+        `AuthContext - Falló la renovación del token: Status=${response.status}, ${response.statusText}`
+      );
+      console.log("AuthContext - Falló la renovación, cerrando sesión silenciosamente");
+      await logout(false);
+      return false;
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
       console.error(`AuthContext - Error al renovar token: ${errorMessage}`);
       console.log("AuthContext - Error en renovación, cerrando sesión silenciosamente");
-      logout();
+      await logout(false);
       return false;
     } finally {
       setIsRefreshing(false);
@@ -301,32 +304,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const logout = async () => {
+  const logout = async (showSpinner: boolean = true) => {
     console.log("AuthContext - Cerrando sesión");
     setIsAlertShown(false);
     setLastAlertTime(0);
-    setIsRefreshing(false); // Reiniciar isRefreshing
+    setIsRefreshing(false);
 
     // Cerrar cualquier alerta de SweetAlert2
     Swal.close();
 
+    // Mostrar spinner solo si showSpinner es true
+    if (showSpinner) {
+      Swal.fire({
+        title: "Cerrando sesión",
+        html: '<div class="flex justify-center"><svg class="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+      });
+    }
+
     const token = localStorage.getItem("token");
     if (token) {
       try {
-        console.log("AuthContext - Enviando solicitud de logout al backend");
-        const response = await fetch(`${API_URL}/logout`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        if (response.ok) {
-          console.log("AuthContext - Sesión cerrada en el backend");
+        const decoded: { exp: number } = jwtDecode(token);
+        const currentTime = Date.now() / 1000;
+        if (decoded.exp > currentTime) {
+          console.log("AuthContext - Enviando solicitud de logout al backend");
+          const response = await fetch(`${API_URL}/logout`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
+          if (response.ok) {
+            console.log("AuthContext - Sesión cerrada en el backend");
+          } else {
+            console.error(
+              `AuthContext - Error al cerrar sesión en el backend: Status=${response.status}, ${response.statusText}`
+            );
+          }
         } else {
-          console.error(
-            `AuthContext - Error al cerrar sesión en el backend: Status=${response.status}, ${response.statusText}`
-          );
+          console.log("AuthContext - Token expirado, omitiendo solicitud de logout");
         }
       } catch (error: unknown) {
         const errorMessage =
@@ -335,8 +354,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           `AuthContext - Error al cerrar sesión en el backend: ${errorMessage}`
         );
       }
+    } else {
+      console.log("AuthContext - No hay token, omitiendo solicitud de logout");
     }
 
+    // Desconectar socket
+    if (socketRef.current) {
+      console.log("AuthContext - Desconectando socket");
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+
+    // Limpiar localStorage y estados
     localStorage.clear();
     setIsAuthenticated(false);
     setUserName(null);
@@ -346,10 +375,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setSidebarData([]);
     setIsLoading(false);
 
-    if (socketRef.current) {
-      console.log("AuthContext - Desconectando socket");
-      socketRef.current.disconnect();
-      socketRef.current = null;
+    // Cerrar el spinner si se mostró
+    if (showSpinner) {
+      Swal.close();
     }
 
     console.log("AuthContext - Redirigiendo a /login");
@@ -408,18 +436,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
     });
 
-    socketRef.current.on("connect_error", (error: Error) => {
+    socketRef.current.on("connect_error", async (error: Error) => {
       console.error(
         `AuthContext - Error de conexión Socket.IO: ${error.message}`
       );
       if (error.message.includes("jwt") || error.message.includes("auth")) {
         console.log("AuthContext - Token inválido, cerrando sesión silenciosamente");
         Swal.close();
-        logout();
+        await logout(false);
       }
     });
 
-    socketRef.current.on("sessionInvalidated", (data) => {
+    socketRef.current.on("sessionInvalidated", async (data) => {
       console.log(
         `AuthContext - Sesión invalidada recibida: ${JSON.stringify(data)}`
       );
@@ -439,7 +467,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else {
         console.log("AuthContext - Máximo de reintentos alcanzado, cerrando sesión silenciosamente");
         Swal.close();
-        logout();
+        await logout(false);
       }
     });
 
@@ -459,7 +487,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let heartbeatInterval: NodeJS.Timeout | null = null;
     let sessionCheckInterval: NodeJS.Timeout | null = null;
 
-    if (userId) {
+    if (userId && isAuthenticated) {
       initializeSocket();
 
       heartbeatInterval = setInterval(() => {
@@ -469,9 +497,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             "heartbeat",
             (response: { valid: boolean; message?: string }) => {
               console.log(
-                `AuthContext - Respuesta de heartbeat: ${JSON.stringify(
-                  response
-                )}`
+                `AuthContext - Respuesta de heartbeat: ${JSON.stringify(response)}`
               );
               if (!response.valid) {
                 console.log("AuthContext - Heartbeat inválido, cerrando sesión silenciosamente");
@@ -479,25 +505,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   socketRef.current.disconnect();
                   socketRef.current = null;
                 }
-                logout();
+                logout(false);
               }
             }
           );
         } else {
-          console.log(
-            "AuthContext - Socket no conectado, intentando reconectar"
-          );
+          console.log("AuthContext - Socket no conectado, intentando reconectar");
           initializeSocket();
         }
       }, 10000);
 
       sessionCheckInterval = setInterval(async () => {
-        if (!socketRef.current?.connected) {
+        if (!socketRef.current?.connected && isAuthenticated) {
           console.log("AuthContext - Socket no conectado, validando sesión");
           const isValid = await validateSession();
           if (!isValid) {
             console.log("AuthContext - Sesión inválida, cerrando sesión silenciosamente");
-            logout();
+            await logout(false);
           }
         }
       }, 10000);
@@ -509,153 +533,139 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         socketRef.current.disconnect();
         socketRef.current = null;
       }
-      if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
-      }
-      if (sessionCheckInterval) {
-        clearInterval(sessionCheckInterval);
-      }
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
+      if (sessionCheckInterval) clearInterval(sessionCheckInterval);
     };
-  }, [userId]);
+  }, [userId, isAuthenticated]);
 
-useEffect(() => {
-  if (location.pathname === "/login") {
-    console.log(
-      "AuthContext - En página de login, omitiendo verificación de token"
-    );
-    return;
-  }
-
-  let timeout: ReturnType<typeof setTimeout> | null = null;
-  let interval: ReturnType<typeof setInterval> | null = null;
-
-  const checkTokenExpiration = () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      console.log("AuthContext - No hay token, cerrando sesión silenciosamente");
-      logout();
+  useEffect(() => {
+    if (location.pathname === "/login" || !isAuthenticated) {
+      console.log(
+        "AuthContext - En página de login o no autenticado, omitiendo verificación de token"
+      );
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       return;
     }
 
-    try {
-      const decoded: { exp: number; iat: number } = jwtDecode(token);
-      const currentTime = Date.now() / 1000;
-      const tokenStartTime = decoded.iat;
-      const tokenDuration = decoded.exp - decoded.iat;
-      const timeLeft = decoded.exp - currentTime;
+    const checkTokenExpiration = async () => {
+      const token = localStorage.getItem("token");
+      if (!token || !isAuthenticated) {
+        console.log("AuthContext - No hay token o no autenticado, cerrando sesión");
+        await logout(false);
+        return;
+      }
 
-      if (decoded.exp < decoded.iat || timeLeft > 3600 || timeLeft < -3600) {
-        console.error(
-          `AuthContext - Tiempos de token inválidos: exp=${decoded.exp}, iat=${decoded.iat}, currentTime=${currentTime}`
+      try {
+        const decoded: { exp: number; iat: number } = jwtDecode(token);
+        const currentTime = Date.now() / 1000;
+        const tokenStartTime = decoded.iat;
+        const tokenDuration = decoded.exp - decoded.iat;
+        const timeLeft = decoded.exp - currentTime;
+
+        if (decoded.exp < decoded.iat || timeLeft > 3600 || timeLeft < -3600) {
+          console.error(
+            `AuthContext - Tiempos de token inválidos: exp=${decoded.exp}, iat=${decoded.iat}, currentTime=${currentTime}`
+          );
+          await logout(false);
+          return;
+        }
+
+        console.log(
+          `AuthContext - Estado del token: Start time=${new Date(
+            tokenStartTime * 1000
+          ).toISOString()} (${formatTime(
+            tokenDuration
+          )}), Expiration=${new Date(
+            decoded.exp * 1000
+          ).toISOString()}, Current time=${new Date(
+            currentTime * 1000
+          ).toISOString()}, Time left=${formatTime(timeLeft)}`
         );
-        logout();
-        return;
-      }
 
-      console.log(
-        `AuthContext - Estado del token: Start time=${new Date(
-          tokenStartTime * 1000
-        ).toISOString()} (${formatTime(
-          tokenDuration
-        )}), Expiration=${new Date(
-          decoded.exp * 1000
-        ).toISOString()}, Current time=${new Date(
-          currentTime * 1000
-        ).toISOString()}, Time left=${formatTime(timeLeft)}`
-      );
+        if (decoded.exp < currentTime) {
+          console.log("AuthContext - Token expirado, cerrando sesión");
+          await logout(true);
+          return;
+        }
 
-      if (decoded.exp < currentTime) {
-        console.log("AuthContext - Token expirado, cerrando sesión silenciosamente");
-        logout();
-        return;
-      }
+        if (isAlertShown) {
+          console.log("AuthContext - Modal de expiración activo, omitiendo verificación");
+          return;
+        }
 
-      // Evitar mostrar alerta si se mostró recientemente (menos de 60 segundos)
-      const timeSinceLastAlert = (Date.now() - lastAlertTime) / 1000;
-      if (timeSinceLastAlert < 60) {
-        console.log("AuthContext - Alerta reciente, omitiendo nueva alerta");
-        return;
-      }
-
-      // Mostrar alerta cuando falten 60 segundos o menos y no esté en proceso de refresco
-      if (timeLeft <= 60 && timeLeft > 0 && !isRefreshing && !isAlertShown) {
-        console.log("AuthContext - Mostrando alerta de expiración de token");
-        setIsAlertShown(true);
-        setLastAlertTime(Date.now());
-
-        // Detener el intervalo mientras se muestra la alerta
-        if (interval) clearInterval(interval);
-        interval = null;
-
-        if (timeout) clearTimeout(timeout);
-        timeout = null;
-
-        Swal.fire({
-          title: 'Sesión a punto de expirar',
-          text: `Tu sesión expirará en ${formatTime(timeLeft)}. ¿Deseas renovarla?`,
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonText: 'Renovar',
-          cancelButtonText: 'Cerrar sesión',
-          timer: timeLeft * 1000,
-          timerProgressBar: true,
-        }).then(async (result) => {
-          setIsAlertShown(false);
+        if (timeLeft <= 60 && timeLeft > 0 && !isRefreshing) {
+          console.log("AuthContext - Mostrando alerta de expiración de token");
+          setIsAlertShown(true);
           setLastAlertTime(Date.now());
 
-          if (result.isConfirmed) {
-            console.log("AuthContext - Usuario eligió renovar el token");
-            const success = await refreshToken(false);
-            if (!success) {
-              console.log(
-                "AuthContext - Falló la renovación automática, cerrando sesión silenciosamente"
-              );
-              logout();
+          if (intervalRef.current) clearInterval(intervalRef.current);
+          intervalRef.current = null;
+
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+
+          Swal.fire({
+            title: "Sesión a punto de expirar",
+            text: `Tu sesión expirará en ${formatTime(timeLeft)}. ¿Deseas renovarla?`,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Renovar",
+            cancelButtonText: "Cerrar sesión",
+            timer: timeLeft * 1000,
+            timerProgressBar: true,
+            allowOutsideClick: false,
+          }).then(async (result) => {
+            setIsAlertShown(false);
+            setLastAlertTime(Date.now());
+
+            if (result.isConfirmed) {
+              console.log("AuthContext - Usuario eligió renovar el token");
+              const success = await refreshToken(false);
+              if (!success) {
+                console.log(
+                  "AuthContext - Falló la renovación automática, cerrando sesión"
+                );
+                await logout(true);
+              }
+            } else {
+              console.log("AuthContext - Usuario eligió cerrar sesión o la alerta fue cerrada");
+              await logout(true);
             }
-          } else if (result.isDismissed) {
-            console.log("AuthContext - Usuario eligió cerrar sesión o la alerta fue cerrada");
-            logout();
-          }
 
-          // Reiniciar el intervalo después de la acción
-          if (!interval) {
-            interval = setInterval(checkTokenExpiration, 5000);
-          }
-        });
+            // Reiniciar el intervalo solo si el usuario sigue autenticado
+            if (isAuthenticated && !intervalRef.current) {
+              intervalRef.current = setInterval(checkTokenExpiration, 5000);
+            }
+          });
 
-        return;
+          return;
+        }
+
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        timeoutRef.current = setTimeout(async () => {
+          console.log("AuthContext - Timeout de token, cerrando sesión");
+          await logout(true);
+        }, timeLeft * 1000);
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Error desconocido";
+        console.error(
+          `AuthContext - Error al decodificar token: ${errorMessage}`
+        );
+        await logout(false);
       }
+    };
 
-      // Evitar procesamiento adicional si el token es reciente y no está cerca de expirar
-      const timeSinceTokenIssued = currentTime - decoded.iat;
-      if (timeSinceTokenIssued < 300 && timeLeft > 60) {
-        console.log("AuthContext - Token reciente y no cerca de expirar, omitiendo procesamiento");
-        return;
-      }
+    checkTokenExpiration();
+    intervalRef.current = setInterval(checkTokenExpiration, 5000);
 
-      if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        console.log("AuthContext - Timeout de token, cerrando sesión silenciosamente");
-        logout();
-      }, timeLeft * 1000);
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Error desconocido";
-      console.error(
-        `AuthContext - Error al decodificar token: ${errorMessage}`
-      );
-      logout();
-    }
-  };
-
-  checkTokenExpiration();
-  interval = setInterval(checkTokenExpiration, 5000);
-
-  return () => {
-    if (interval) clearInterval(interval);
-    if (timeout) clearTimeout(timeout);
-  };
-}, [isRefreshing, location.pathname, lastAlertTime]);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      Swal.close();
+    };
+  }, [isAuthenticated, location.pathname]);
 
   useEffect(() => {
     if (!isAuthenticated && !isLoading && location.pathname !== "/login") {
@@ -673,7 +683,13 @@ useEffect(() => {
       if (!isMounted) return;
 
       console.log("AuthContext - Verificando sesión para ruta:", location.pathname);
-      // Verificación inicial rápida basada en localStorage
+
+      if (location.pathname === "/login" && !localStorage.getItem("token")) {
+        console.log("AuthContext - En /login sin token, omitiendo validación");
+        setIsLoading(false);
+        return;
+      }
+
       const token = localStorage.getItem("token");
       if (token && location.pathname === "/login") {
         try {
@@ -691,7 +707,6 @@ useEffect(() => {
         }
       }
 
-      // Validación completa con el backend
       const isValid = await validateSession();
       if (isValid && location.pathname === "/login") {
         console.log(
@@ -742,7 +757,6 @@ useEffect(() => {
       setIsAlertShown(false);
       setLastAlertTime(0);
 
-      // Desconectar socket existente antes de iniciar uno nuevo
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
@@ -753,8 +767,8 @@ useEffect(() => {
       localStorage.setItem("roles", JSON.stringify(data.roles || []));
       localStorage.setItem("userId", String(data.user.id));
       localStorage.setItem("personaId", String(data.user.personaId || ""));
-      localStorage.setItem("sexo", data.user.sexo || "Masculino");
-      localStorage.setItem("foto", data.user.foto || "");
+      localStorage.setItem("sexo", data.user?.sexo || "");
+      localStorage.setItem("foto", data.user?.foto || "");
 
       setIsAuthenticated(true);
       setUserName(data.userName);
@@ -765,13 +779,15 @@ useEffect(() => {
         `AuthContext - Login exitoso: userId=${data.user.id}, userName=${data.userName}`
       );
 
-      // Inicializar socket después de un login exitoso
       initializeSocket();
 
       try {
         const sidebarData = await updateSidebarData(data.user.id, data.token);
         setSidebarData(sidebarData);
         setUserPermissions(sidebarData);
+        if (sidebarData.length === 0) {
+          console.warn("AuthContext - No se cargaron permisos tras login, pero se mantiene la sesión");
+        }
       } catch (error: unknown) {
         const errorMessage =
           error instanceof Error ? error.message : "Error desconocido";
