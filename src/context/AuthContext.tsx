@@ -47,7 +47,7 @@ interface AuthContextType {
   userPermissions: Menu[];
   sidebarData: Menu[];
   isLoading: boolean;
-  isLoggingOut: boolean; // Nuevo estado
+  isLoggingOut: boolean;
   socket: Socket | null;
   login: (dni: string, password: string) => Promise<void>;
   logout: (showSpinner?: boolean) => Promise<void>;
@@ -73,7 +73,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isAlertShown, setIsAlertShown] = useState<boolean>(false);
-  const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false); // Nuevo estado
+  const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
   const [lastAlertTime, setLastAlertTime] = useState<number>(0);
   const socketRef = useRef<Socket | null>(null);
   const navigate = useNavigate();
@@ -312,7 +312,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     Swal.close();
 
-    // Mostrar pantalla de cierre de sesión si showSpinner es true
     if (showSpinner) {
       setIsLoggingOut(true);
     }
@@ -366,7 +365,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUserPermissions([]);
     setSidebarData([]);
     setIsLoading(false);
-    setIsLoggingOut(false); // Ocultar la pantalla de logout
+    setIsLoggingOut(false);
 
     console.log("AuthContext - Redirigiendo a /login");
     navigate("/login", { replace: true });
@@ -595,14 +594,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
           Swal.fire({
             title: "Sesión a punto de expirar",
-            text: `Tu sesión expirará en ${formatTime(timeLeft)}. ¿Deseas renovarla?`,
+            text: `Tu sesión expirará en ${formatTime(timeLeft)}.`,
             icon: "warning",
             showCancelButton: true,
             confirmButtonText: "Renovar",
             cancelButtonText: "Cerrar sesión",
             timer: timeLeft * 1000,
-            timerProgressBar: true,
+            timerProgressBar: false,
             allowOutsideClick: false,
+            didOpen: () => {
+              const updateTimer = () => {
+                const currentTime = Date.now() / 1000;
+                const remainingTime = decoded.exp - currentTime;
+                if (remainingTime > 0) {
+                  const timerText = document.querySelector(".swal2-html-container");
+                  if (timerText) {
+                    timerText.textContent = `Tu sesión expirará en ${formatTime(remainingTime)}.`;
+                  }
+                }
+              };
+              const timerInterval = setInterval(updateTimer, 1000);
+              Swal.getPopup()?.addEventListener("close", () => clearInterval(timerInterval));
+            },
           }).then(async (result) => {
             setIsAlertShown(false);
             setLastAlertTime(Date.now());
@@ -816,7 +829,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         userPermissions,
         sidebarData,
         isLoading,
-        isLoggingOut, // Exponer el nuevo estado
+        isLoggingOut,
         socket: socketRef.current,
         login,
         logout,
