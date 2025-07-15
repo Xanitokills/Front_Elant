@@ -875,43 +875,90 @@ const handleEndVisit = async (id_visita: number) => {
 };
 
 const handleAcceptScheduledVisit = async (id_visita_programada: number) => {
-    try {
-      const response = await fetch(
-        `${API_URL}/scheduled-visits/${id_visita_programada}/accept`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify({}),
-        }
-      );
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error al aceptar la visita programada");
+  try {
+    const response = await fetch(
+      `${API_URL}/scheduled-visits/${id_visita_programada}/accept`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({}),
       }
-      Swal.fire({
-        icon: "success",
-        title: "Éxito",
-        text: "Visita programada aceptada correctamente",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      // Actualizar la lista de visitas programadas
-      // (Asume que tienes una función fetchScheduledVisits para actualizar la lista)
-    } catch (err) {
-      const error = err as Error;
-      setError(error.message || "Error al aceptar la visita programada");
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: error.message || "No se pudo aceptar la visita programada",
-        timer: 2000,
-        showConfirmButton: false,
-      });
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Error al aceptar la visita programada");
     }
-  };
+
+    const data = await response.json();
+    const newVisit = data.new_visit; // Asumiendo que el backend devuelve new_visit en la respuesta
+
+    // Actualizar la lista de visitas programadas localmente
+    setVisitasProgramadas((prev) =>
+      prev.filter((v) => v.ID_VISITA_PROGRAMADA !== id_visita_programada)
+    );
+
+    // Normalizar la nueva visita para el historial
+    const normalizedVisit: Visitante = {
+      ID_VISITA: data.id_visita, // ID de la nueva visita desde la respuesta
+      NRO_DPTO: newVisit?.NRO_DPTO ?? null,
+      NOMBRE_VISITANTE: formatName(newVisit?.NOMBRE_VISITANTE || ""),
+      NRO_DOC_VISITANTE: newVisit?.NRO_DOC_VISITANTE || "",
+      ID_TIPO_DOC_VISITANTE: newVisit?.ID_TIPO_DOC_VISITANTE || null,
+      FECHA_INGRESO: formatDate(newVisit?.FECHA_INGRESO || new Date()),
+      HORA_INGRESO: formatTime(new Date(newVisit?.FECHA_INGRESO || new Date())),
+      FECHA_SALIDA: null,
+      HORA_SALIDA: null,
+      MOTIVO: newVisit?.MOTIVO || "",
+      ID_USUARIO_REGISTRO: newVisit?.ID_USUARIO_REGISTRO || 0,
+      ID_RESIDENTE: newVisit?.ID_RESIDENTE || 0,
+      NOMBRE_PROPIETARIO: newVisit?.NOMBRE_PROPIETARIO
+        ? formatName(newVisit.NOMBRE_PROPIETARIO)
+        : "",
+      ESTADO: 1, // Visita activa
+      NOMBRE_FASE: newVisit?.NOMBRE_FASE || "",
+    };
+
+    // Agregar la nueva visita al historial
+    setVisitas((prevVisitas) => {
+      const updatedVisitas = [normalizedVisit, ...prevVisitas].sort(
+        (a, b) => b.ID_VISITA - a.ID_VISITA
+      );
+      return updatedVisitas;
+    });
+
+    // Cambiar a la pestaña de historial
+    setActiveTab("history");
+
+    // Resaltar la nueva visita en el historial
+    setHighlightedVisitId(data.id_visita);
+    setTimeout(() => {
+      setHighlightedVisitId(null);
+    }, 10000);
+
+    // Mostrar notificación de éxito
+    Swal.fire({
+      icon: "success",
+      title: "Éxito",
+      text: "Visita programada aceptada correctamente",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+  } catch (err) {
+    const error = err as Error;
+    setError(error.message || "Error al aceptar la visita programada");
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: error.message || "No se pudo aceptar la visita programada",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+  }
+};
 
   const exportToCSV = () => {
     const headers = [
@@ -1026,68 +1073,70 @@ const handleAcceptScheduledVisit = async (id_visita_programada: number) => {
   }));
 
   // Socket.IO setup
-  useEffect(() => {
-    socketRef.current = io(SOCKET_URL, {
-      auth: {
-        token: `Bearer ${localStorage.getItem("token")}`, // Añade "Bearer "
-      },
-      transports: ["websocket", "polling"], // Prioriza WebSocket
-    });
+useEffect(() => {
+  socketRef.current = io(SOCKET_URL, {
+    auth: {
+      token: `Bearer ${localStorage.getItem("token")}`,
+    },
+    transports: ["websocket", "polling"],
+  });
 
-    socketRef.current.on("connect", () => {
-      console.log("Connected to Socket.IO server");
-    });
+  socketRef.current.on("connect", () => {
+    console.log("Connected to Socket.IO server");
+  });
 
-    socketRef.current.on("connect_error", (error) => {
-      console.error("Socket.IO connection error:", error);
-    });
+  socketRef.current.on("connect_error", (error) => {
+    console.error("Socket.IO connection error:", error);
+  });
 
-    socketRef.current.on("new-visit", (newVisit: Visitante) => {
-      console.log("New visit received via socket:", newVisit);
-      setVisitas((prevVisitas) => {
-        const normalizedVisit: Visitante = {
-          ...newVisit,
-          NOMBRE_VISITANTE: formatName(newVisit.NOMBRE_VISITANTE),
-          NOMBRE_PROPIETARIO: newVisit.NOMBRE_PROPIETARIO
-            ? formatName(newVisit.NOMBRE_PROPIETARIO)
-            : newVisit.NOMBRE_PROPIETARIO,
-          FECHA_INGRESO: formatDate(newVisit.FECHA_INGRESO),
-          HORA_INGRESO: formatTime(new Date(newVisit.FECHA_INGRESO)),
-          FECHA_SALIDA: newVisit.FECHA_SALIDA
-            ? formatDate(newVisit.FECHA_SALIDA)
-            : null,
-          HORA_SALIDA: newVisit.FECHA_SALIDA
-            ? formatTime(new Date(newVisit.FECHA_SALIDA))
-            : null,
-          ESTADO:
-            newVisit.ESTADO === true
-              ? 1
-              : newVisit.ESTADO === false
-              ? 0
-              : newVisit.ESTADO,
-        };
-        const updatedVisitas = [normalizedVisit, ...prevVisitas].sort(
-          (a, b) => b.ID_VISITA - a.ID_VISITA
-        );
-        return updatedVisitas;
+  socketRef.current.on("new-visit", (newVisit: Visitante) => {
+    console.log("New visit received via socket:", newVisit);
+    setVisitas((prevVisitas) => {
+      const normalizedVisit: Visitante = {
+        ...newVisit,
+        NOMBRE_VISITANTE: formatName(newVisit.NOMBRE_VISITANTE),
+        NOMBRE_PROPIETARIO: newVisit.NOMBRE_PROPIETARIO
+          ? formatName(newVisit.NOMBRE_PROPIETARIO)
+          : newVisit.NOMBRE_PROPIETARIO,
+        FECHA_INGRESO: formatDate(newVisit.FECHA_INGRESO),
+        HORA_INGRESO: formatTime(new Date(newVisit.FECHA_INGRESO)),
+        FECHA_SALIDA: newVisit.FECHA_SALIDA
+          ? formatDate(newVisit.FECHA_SALIDA)
+          : null,
+        HORA_SALIDA: newVisit.FECHA_SALIDA
+          ? formatTime(new Date(newVisit.FECHA_SALIDA))
+          : null,
+        ESTADO:
+          newVisit.ESTADO === true
+            ? 1
+            : newVisit.ESTADO === false
+            ? 0
+            : newVisit.ESTADO,
+      };
+      const updatedVisitas = [normalizedVisit, ...prevVisitas].sort(
+        (a, b) => b.ID_VISITA - a.ID_VISITA
+      );
+      return updatedVisitas;
+    });
+    if (activeTab === "history") {
+      Swal.fire({
+        icon: "info",
+        title: "Nueva Visita",
+        text: `Se ha registrado una nueva visita para ${formatName(
+          newVisit.NOMBRE_VISITANTE
+        )}`,
+        timer: 3000,
+        showConfirmButton: false,
       });
-      if (activeTab === "history") {
-        Swal.fire({
-          icon: "info",
-          title: "Nueva Visita",
-          text: `Se ha registrado una nueva visita para ${formatName(
-            newVisit.NOMBRE_VISITANTE
-          )}`,
-          timer: 3000,
-          showConfirmButton: false,
-        });
-      }
-    });
+    }
+  });
 
-    socketRef.current.on(
-      "visit-accepted",
-      (data: { id_visita_programada: number; new_visit: Visitante }) => {
-        console.log("Visit accepted received via socket:", data);
+  socketRef.current.on(
+    "visit-accepted",
+    (data: { id_visita_programada: number; new_visit: Visitante }) => {
+      console.log("Visit accepted received via socket:", data);
+      // Evitar actualizar si el usuario actual es quien aceptó la visita
+      if (data.new_visit.ID_USUARIO_REGISTRO !== userId) {
         setVisitasProgramadas((prev) =>
           prev.filter(
             (v) => v.ID_VISITA_PROGRAMADA !== data.id_visita_programada
@@ -1132,86 +1181,86 @@ const handleAcceptScheduledVisit = async (id_visita_programada: number) => {
           });
         }
       }
-    );
+    }
+  );
 
-    // Añadir listener para new-scheduled-visit
-    socketRef.current.on(
-      "new-scheduled-visit",
-      (newScheduledVisit: VisitaProgramada) => {
-        console.log(
-          "New scheduled visit received via socket:",
-          newScheduledVisit
+  // Mantener el resto de los listeners (new-scheduled-visit, cancel-scheduled-visit)
+  socketRef.current.on(
+    "new-scheduled-visit",
+    (newScheduledVisit: VisitaProgramada) => {
+      console.log(
+        "New scheduled visit received via socket:",
+        newScheduledVisit
+      );
+      setVisitasProgramadas((prevVisitas) => {
+        const normalizedVisit: VisitaProgramada = {
+          ...newScheduledVisit,
+          NOMBRE_VISITANTE: formatName(newScheduledVisit.NOMBRE_VISITANTE),
+          NOMBRE_PROPIETARIO: newScheduledVisit.NOMBRE_PROPIETARIO
+            ? formatName(newScheduledVisit.NOMBRE_PROPIETARIO)
+            : newScheduledVisit.NOMBRE_PROPIETARIO,
+          FECHA_LLEGADA: newScheduledVisit.FECHA_LLEGADA
+            ? new Date(newScheduledVisit.FECHA_LLEGADA + "T00:00:00-05:00")
+                .toISOString()
+                .split("T")[0]
+            : "",
+          HORA_LLEGADA: newScheduledVisit.HORA_LLEGADA || null,
+          ESTADO:
+            newScheduledVisit.ESTADO === true
+              ? 1
+              : newScheduledVisit.ESTADO === false
+              ? 0
+              : newScheduledVisit.ESTADO,
+        };
+        const updatedVisitas = [normalizedVisit, ...prevVisitas].sort(
+          (a, b) =>
+            new Date(a.FECHA_LLEGADA).getTime() -
+            new Date(b.FECHA_LLEGADA).getTime()
         );
-        setVisitasProgramadas((prevVisitas) => {
-          const normalizedVisit: VisitaProgramada = {
-            ...newScheduledVisit,
-            NOMBRE_VISITANTE: formatName(newScheduledVisit.NOMBRE_VISITANTE),
-            NOMBRE_PROPIETARIO: newScheduledVisit.NOMBRE_PROPIETARIO
-              ? formatName(newScheduledVisit.NOMBRE_PROPIETARIO)
-              : newScheduledVisit.NOMBRE_PROPIETARIO,
-            FECHA_LLEGADA: newScheduledVisit.FECHA_LLEGADA
-              ? new Date(newScheduledVisit.FECHA_LLEGADA + "T00:00:00-05:00")
-                  .toISOString()
-                  .split("T")[0]
-              : "",
-            HORA_LLEGADA: newScheduledVisit.HORA_LLEGADA || null,
-            ESTADO:
-              newScheduledVisit.ESTADO === true
-                ? 1
-                : newScheduledVisit.ESTADO === false
-                ? 0
-                : newScheduledVisit.ESTADO,
-          };
-          const updatedVisitas = [normalizedVisit, ...prevVisitas].sort(
+        return updatedVisitas;
+      });
+      if (activeTab === "scheduled") {
+        Swal.fire({
+          icon: "info",
+          title: "Nueva Visita Programada",
+          text: `Se ha registrado una nueva visita programada para ${formatName(
+            newScheduledVisit.NOMBRE_VISITANTE
+          )}`,
+          timer: 3000,
+          showConfirmButton: false,
+        });
+      }
+    }
+  );
+
+  socketRef.current.on(
+    "cancel-scheduled-visit",
+    (canceledVisit: VisitaProgramada) => {
+      console.log(
+        "Canceled scheduled visit received via socket:",
+        canceledVisit
+      );
+      setVisitasProgramadas((prevVisitas) => {
+        const updatedVisitas = prevVisitas
+          .filter(
+            (visita) =>
+              visita.ID_VISITA_PROGRAMADA !==
+              canceledVisit.ID_VISITA_PROGRAMADA
+          )
+          .sort(
             (a, b) =>
-              new Date(a.FECHA_LLEGADA).getTime() - // Ascendente
+              new Date(a.FECHA_LLEGADA).getTime() -
               new Date(b.FECHA_LLEGADA).getTime()
           );
-          return updatedVisitas;
-        });
-        if (activeTab === "scheduled") {
-          Swal.fire({
-            icon: "info",
-            title: "Nueva Visita Programada",
-            text: `Se ha registrado una nueva visita programada para ${formatName(
-              newScheduledVisit.NOMBRE_VISITANTE
-            )}`,
-            timer: 3000,
-            showConfirmButton: false,
-          });
-        }
-      }
-    );
+        return updatedVisitas;
+      });
+    }
+  );
 
-    // Nuevo listener para cancel-scheduled-visit
-    socketRef.current.on(
-      "cancel-scheduled-visit",
-      (canceledVisit: VisitaProgramada) => {
-        console.log(
-          "Canceled scheduled visit received via socket:",
-          canceledVisit
-        );
-        setVisitasProgramadas((prevVisitas) => {
-          const updatedVisitas = prevVisitas
-            .filter(
-              (visita) =>
-                visita.ID_VISITA_PROGRAMADA !==
-                canceledVisit.ID_VISITA_PROGRAMADA
-            )
-            .sort(
-              (a, b) =>
-                new Date(a.FECHA_LLEGADA).getTime() - // Ascendente
-                new Date(b.FECHA_LLEGADA).getTime()
-            );
-          return updatedVisitas;
-        });
-      }
-    );
-
-    return () => {
-      socketRef.current?.disconnect();
-    };
-  }, [activeTab]);
+  return () => {
+    socketRef.current?.disconnect();
+  };
+}, [activeTab, userId]);
 
   useEffect(() => {
     fetchFases();
