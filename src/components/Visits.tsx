@@ -640,105 +640,100 @@ const Visits = () => {
     }
   };
 
-  const handleSaveVisit = async () => {
-    if (
-      !tipoDoc ||
-      !nombreVisitante ||
-      !dni ||
-      !idFase ||
-      !nroDpto ||
-      !idResidente ||
-      !motivo
-    ) {
-      setError("Por favor, complete todos los campos");
-      Swal.fire({
-        icon: "warning",
-        title: "Campos incompletos",
-        text: "Por favor, complete todos los campos",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
-    }
-    if (!userId) {
-      setError("No se encontró el ID del usuario autenticado");
-      Swal.fire({
-        icon: "error",
-        title: "Error de autenticación",
-        text: "Por favor, inicia sesión nuevamente",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
+const handleSaveVisit = async () => {
+  if (
+    !tipoDoc ||
+    !nombreVisitante ||
+    !dni ||
+    !idFase ||
+    !nroDpto ||
+    !idResidente ||
+    !motivo
+  ) {
+    setError("Por favor, complete todos los campos");
+    Swal.fire({
+      icon: "warning",
+      title: "Campos incompletos",
+      text: "Por favor, complete todos los campos",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    return;
+  }
+
+  try {
+    // Obtener la fecha actual en UTC-5 (America/Lima)
+    const now = new Date();
+    const localDate = new Date(
+      now.toLocaleString("en-US", { timeZone: "America/Lima" })
+    );
+
+    // Formatear la fecha en el formato esperado por el backend (YYYY-MM-DD HH:mm:ss)
+    const year = localDate.getFullYear();
+    const month = String(localDate.getMonth() + 1).padStart(2, "0");
+    const day = String(localDate.getDate()).padStart(2, "0");
+    const hours = String(localDate.getHours()).padStart(2, "0");
+    const minutes = String(localDate.getMinutes()).padStart(2, "0");
+    const seconds = String(localDate.getSeconds()).padStart(2, "0");
+    const fechaIngreso = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+
+    const response = await fetch(`${API_URL}/visits`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: JSON.stringify({
+        nombre_visitante: formatName(nombreVisitante),
+        nro_doc_visitante: dni,
+        id_residente: parseInt(idResidente, 10),
+        fecha_ingreso: fechaIngreso,
+        motivo,
+        id_tipo_doc_visitante: parseInt(tipoDoc, 10),
+        estado: 1,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Error al grabar la visita");
     }
 
-    setError("");
-    try {
-      const now = new Date();
-      const localDate = new Date(
-        now.toLocaleString("en-US", { timeZone: "America/Lima" })
-      );
-      const fechaIngreso = localDate
-        .toISOString()
-        .slice(0, 19)
-        .replace("T", " ");
-
-      const response = await fetch(`${API_URL}/visits`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({
-          nombre_visitante: formatName(nombreVisitante),
-          nro_doc_visitante: dni,
-          id_residente: idResidente,
-          fecha_ingreso: fechaIngreso,
-          motivo,
-          id_usuario_registro: userId,
-          id_tipo_doc_visitante: tipoDoc,
-          estado: 1,
-        }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error al grabar la visita");
-      }
-      Swal.fire({
-        icon: "success",
-        title: "Éxito",
-        text: "Visita registrada correctamente",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      const data = await response.json();
-      setDni("");
-      setTipoDoc("");
-      setNombreVisitante("");
-      setIdFase("");
-      setNroDpto("");
-      setMotivo("");
-      setIdResidente("");
-      setDepartamentos([]);
-      setResidentes([]);
-      setActiveTab("history");
-      setHighlightedVisitId(data.ID_VISITA || null);
-      setTimeout(() => {
-        setHighlightedVisitId(null);
-      }, 10000);
-      tipoDocRef.current?.focus();
-    } catch (err) {
-      const error = err as Error;
-      setError(error.message || "Error al grabar la visita");
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: error.message || "No se pudo registrar la visita",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-    }
-  };
+    Swal.fire({
+      icon: "success",
+      title: "Éxito",
+      text: "Visita registrada correctamente",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    const data = await response.json();
+    setDni("");
+    setTipoDoc("");
+    setNombreVisitante("");
+    setIdFase("");
+    setNroDpto("");
+    setMotivo("");
+    setIdResidente("");
+    setDepartamentos([]);
+    setResidentes([]);
+    setActiveTab("history");
+    setHighlightedVisitId(data.ID_VISITA || null);
+    setTimeout(() => {
+      setHighlightedVisitId(null);
+    }, 10000);
+    tipoDocRef.current?.focus();
+  } catch (err) {
+    const error = err as Error;
+    setError(error.message || "Error al grabar la visita");
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: error.message || "No se pudo registrar la visita",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+  }
+};
 
   const fetchVisits = async () => {
     try {
@@ -843,36 +838,20 @@ const Visits = () => {
     }
   };
 
-  const handleEndVisit = async (idVisita: number) => {
-    if (!userId) {
-      setError("No se encontró el ID del usuario autenticado");
-      Swal.fire({
-        icon: "error",
-        title: "Error de autenticación",
-        text: "Por favor, inicia sesión nuevamente",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
-    }
-
+const handleEndVisit = async (id_visita: number) => {
     try {
-      const response = await fetch(`${API_URL}/visits/${idVisita}/end`, {
+      const response = await fetch(`${API_URL}/visits/${id_visita}/end`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-        body: JSON.stringify({
-          id_usuario_registro: userId,
-        }),
+        body: JSON.stringify({}),
       });
-
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Error al terminar la visita");
       }
-
       Swal.fire({
         icon: "success",
         title: "Éxito",
@@ -880,101 +859,54 @@ const Visits = () => {
         timer: 2000,
         showConfirmButton: false,
       });
-      await fetchVisits();
+      // Actualizar la lista de visitas
+      // (Asume que tienes una función fetchVisits para actualizar la lista)
     } catch (err) {
-      console.error("Error al terminar la visita:", err);
+      const error = err as Error;
+      setError(error.message || "Error al terminar la visita");
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: err.message || "No se pudo terminar la visita",
+        text: error.message || "No se pudo terminar la visita",
         timer: 2000,
         showConfirmButton: false,
       });
     }
   };
 
-  const handleAcceptScheduledVisit = async (
-    idVisitaProgramada: number,
-    fechaLlegada: string
-  ) => {
-    if (!userId) {
-      setError("No se encontró el ID del usuario autenticado");
-      Swal.fire({
-        icon: "error",
-        title: "Error de autenticación",
-        text: "Por favor, inicia sesión nuevamente",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
-    }
-
-    // Normalizar fechas en zona horaria de Lima
-    const fechaLlegadaDate = new Date(`${fechaLlegada}T00:00:00-05:00`);
-    const currentDateObj = new Date(`${currentDate}T00:00:00-05:00`);
-
-    if (isNaN(fechaLlegadaDate.getTime()) || isNaN(currentDateObj.getTime())) {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Fecha inválida",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
-    }
-
-    const isToday =
-      currentDateObj.toDateString() === fechaLlegadaDate.toDateString();
-
-    if (!isToday) {
-      Swal.fire({
-        icon: "warning",
-        title: "Fecha no válida",
-        text: "La visita solo puede ser aceptada el día de la fecha de llegada programada",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
-    }
-
+const handleAcceptScheduledVisit = async (id_visita_programada: number) => {
     try {
       const response = await fetch(
-        `${API_URL}/scheduled-visits/${idVisitaProgramada}/accept`,
+        `${API_URL}/scheduled-visits/${id_visita_programada}/accept`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
-          body: JSON.stringify({
-            id_usuario_registro: userId,
-          }),
+          body: JSON.stringify({}),
         }
       );
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Error al aceptar la visita");
+        throw new Error(errorData.message || "Error al aceptar la visita programada");
       }
       Swal.fire({
         icon: "success",
         title: "Éxito",
-        text: "Visita registrada correctamente",
+        text: "Visita programada aceptada correctamente",
         timer: 2000,
         showConfirmButton: false,
       });
-      setActiveTab("history");
-      const data = await response.json();
-      setHighlightedVisitId(data.id_visita || null);
-      setTimeout(() => {
-        setHighlightedVisitId(null);
-      }, 10000);
+      // Actualizar la lista de visitas programadas
+      // (Asume que tienes una función fetchScheduledVisits para actualizar la lista)
     } catch (err) {
-      console.error("Error al aceptar la visita programada:", err);
+      const error = err as Error;
+      setError(error.message || "Error al aceptar la visita programada");
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "No se pudo registrar la visita",
+        text: error.message || "No se pudo aceptar la visita programada",
         timer: 2000,
         showConfirmButton: false,
       });
