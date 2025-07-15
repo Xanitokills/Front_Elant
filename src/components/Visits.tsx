@@ -839,40 +839,40 @@ const handleSaveVisit = async () => {
   };
 
 const handleEndVisit = async (id_visita: number) => {
-    try {
-      const response = await fetch(`${API_URL}/visits/${id_visita}/end`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({}),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error al terminar la visita");
-      }
-      Swal.fire({
-        icon: "success",
-        title: "Éxito",
-        text: "Visita terminada correctamente",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      // Actualizar la lista de visitas
-      // (Asume que tienes una función fetchVisits para actualizar la lista)
-    } catch (err) {
-      const error = err as Error;
-      setError(error.message || "Error al terminar la visita");
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: error.message || "No se pudo terminar la visita",
-        timer: 2000,
-        showConfirmButton: false,
-      });
+  try {
+    const response = await fetch(`${API_URL}/visits/${id_visita}/end`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: JSON.stringify({}),
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Error al terminar la visita");
     }
-  };
+    Swal.fire({
+      icon: "success",
+      title: "Éxito",
+      text: "Visita terminada correctamente",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    // Actualizar la lista de visitas
+    await fetchVisits(); // Recargar todas las visitas desde el backend
+  } catch (err) {
+    const error = err as Error;
+    setError(error.message || "Error al terminar la visita");
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: error.message || "No se pudo terminar la visita",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+  }
+};
 
 const handleAcceptScheduledVisit = async (id_visita_programada: number) => {
     try {
