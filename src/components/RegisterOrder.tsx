@@ -2,9 +2,8 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import Select from "react-select";
-import { FaBox, FaSave, FaFileExport, FaCheck, FaSearch, FaCamera } from "react-icons/fa";
 import styled, { keyframes } from "styled-components";
+import { FaBox, FaSave, FaFileExport, FaCheck, FaSearch, FaCamera, FaTimes, FaUser, FaIdCard, FaBuilding } from "react-icons/fa";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -101,20 +100,41 @@ const Button = styled.button`
   }
 `;
 
-const UsersList = styled.ul`
-  list-style-type: disc;
-  margin-left: 1.5rem;
+const Table = styled.table`
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
   margin-top: 1rem;
-  color: #4b5563;
+  border-radius: 0.5rem;
+  overflow: hidden;
 `;
 
 const TableRow = styled.tr`
   animation: ${fadeIn} 0.5s ease-out forwards;
   animation-delay: ${(props) => props.$delay}s;
-  background-color: ${(props) => (props.$estado === 1 ? "#f0fff4" : "#fef2f2")};
-  &:hover {
+  &:nth-child(even) {
     background-color: #f9fafb;
   }
+  &:hover {
+    background-color: #e5e7eb;
+  }
+`;
+
+const TableHeader = styled.th`
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  background-color: #f1f5f9;
+  border-bottom: 1px solid #d1d5db;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+`;
+
+const TableCell = styled.td`
+  padding: 1rem;
+  border-bottom: 1px solid #d1d5db;
+  font-size: 0.875rem;
 `;
 
 const ImagePreview = styled.img`
@@ -124,6 +144,63 @@ const ImagePreview = styled.img`
   border: 1px solid #d1d5db;
   border-radius: 0.375rem;
   margin-top: 0.5rem;
+`;
+
+const FilterContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+  background-color: #ffffff;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+`;
+
+const ResidentCard = styled.div`
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+`;
+
+const AssociatedUsersContainer = styled.div`
+  margin-top: 1rem;
+`;
+
+const UserCard = styled.div`
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease;
+  &:hover {
+    transform: translateY(-2px);
+  }
+`;
+
+const UserInfo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const Badge = styled.span`
+  background-color: #2563eb;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
 `;
 
 const formatDate = (dateInput) => {
@@ -147,19 +224,19 @@ const RegisterOrder = () => {
   const [activeTab, setActiveTab] = useState("history");
   const [searchCriteria, setSearchCriteria] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedPerson, setSelectedPerson] = useState(null);
-  const [selectedDepartment, setSelectedDepartment] = useState(null);
+  const [selectedPhase, setSelectedPhase] = useState("all");
+  const [phaseOptions, setPhaseOptions] = useState([{ value: "all", label: "Todas las fases" }]);
+  const [results, setResults] = useState([]);
+  const [selectedMainResident, setSelectedMainResident] = useState(null);
   const [description, setDescription] = useState("");
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
-  const [personOptions, setPersonOptions] = useState([]);
-  const [departmentOptions, setDepartmentOptions] = useState([]);
   const [encargos, setEncargos] = useState([]);
   const [filter, setFilter] = useState({
     nroDpto: "",
     descripcion: "",
     fechaRecepcion: "",
-    estado: "",
+    estado: "1", // Default to Pendientes
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -209,7 +286,48 @@ const RegisterOrder = () => {
     return () => clearInterval(interval);
   }, [token, navigate]);
 
-  const fetchPersons = async (query, criteria) => {
+  useEffect(() => {
+    if (activeTab === "history") {
+      setFilter({ nroDpto: "", descripcion: "", fechaRecepcion: "", estado: "1" });
+    }
+  }, [activeTab]);
+
+  const fetchPhases = async (nroDpto) => {
+    if (!nroDpto || isNaN(nroDpto)) {
+      setPhaseOptions([{ value: "all", label: "Todas las fases" }]);
+      return;
+    }
+    try {
+      const response = await fetch(`${API_URL}/phases?nroDpto=${encodeURIComponent(nroDpto)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al obtener las fases");
+      }
+      const data = await response.json();
+      const phases = [
+        { value: "all", label: "Todas las fases" },
+        ...data.map((phase) => ({
+          value: phase.FASE,
+          label: phase.FASE,
+        })),
+      ];
+      setPhaseOptions(phases);
+    } catch (error) {
+      console.error("Error en fetchPhases:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudieron cargar las fases",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      setPhaseOptions([{ value: "all", label: "Todas las fases" }]);
+    }
+  };
+
+  const fetchPersons = async (query, criteria, phase) => {
     if (!token) {
       Swal.fire({
         icon: "error",
@@ -224,37 +342,30 @@ const RegisterOrder = () => {
 
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `${API_URL}?criteria=${criteria}&query=${encodeURIComponent(query)}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const url = phase && phase !== "all"
+        ? `${API_URL}?criteria=${criteria}&query=${encodeURIComponent(query)}&phase=${encodeURIComponent(phase)}`
+        : `${API_URL}?criteria=${criteria}&query=${encodeURIComponent(query)}`;
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Error al buscar personas");
       }
       const data = await response.json();
-      if (criteria === "department") {
-        setDepartmentOptions(
-          data.map((dept) => ({
-            value: dept.NRO_DPTO,
-            label: dept.NRO_DPTO.toString(),
-            users: dept.USUARIOS,
-          }))
-        );
-        setPersonOptions([]);
-      } else {
-        setPersonOptions(
-          data.map((person) => ({
-            value: person.ID_PERSONA,
-            label: `${person.NOMBRES} ${person.APELLIDOS}`,
-            dni: person.DNI,
-            department: person.NRO_DPTO,
-          }))
-        );
-        setDepartmentOptions([]);
-      }
+      setResults(
+        data.map((person) => ({
+          ID_PERSONA: person.ID_PERSONA,
+          NOMBRES: person.NOMBRES,
+          APELLIDOS: person.APELLIDOS,
+          DNI: person.DNI,
+          ID_DEPARTAMENTO: person.ID_DEPARTAMENTO,
+          NRO_DPTO: person.NRO_DPTO,
+          FASE: person.FASE,
+          ES_PROPIETARIO: person.ES_PROPIETARIO,
+          USUARIOS_ASOCIADOS: person.USUARIOS_ASOCIADOS,
+        }))
+      );
     } catch (error) {
       console.error("Error en fetchPersons:", error);
       Swal.fire({
@@ -264,6 +375,7 @@ const RegisterOrder = () => {
         timer: 2000,
         showConfirmButton: false,
       });
+      setResults([]);
     } finally {
       setIsLoading(false);
     }
@@ -310,7 +422,29 @@ const RegisterOrder = () => {
       });
       return;
     }
-    fetchPersons(searchQuery, searchCriteria);
+    fetchPersons(searchQuery, searchCriteria, selectedPhase);
+  };
+
+  const handleCriteriaChange = (e) => {
+    const newCriteria = e.target.value;
+    setSearchCriteria(newCriteria);
+    setSearchQuery("");
+    setSelectedPhase("all");
+    setPhaseOptions([{ value: "all", label: "Todas las fases" }]);
+    setResults([]);
+    setSelectedMainResident(null);
+    setPhoto(null);
+    setPhotoPreview(null);
+    setDescription("");
+    setError("");
+  };
+
+  const handleDepartmentInputChange = (e) => {
+    const value = e.target.value;
+    if (value === "" || /^[0-9]*$/.test(value)) {
+      setSearchQuery(value);
+      fetchPhases(value);
+    }
   };
 
   const handlePhotoChange = (e) => {
@@ -324,14 +458,8 @@ const RegisterOrder = () => {
     }
   };
 
-  const handleCriteriaChange = (e) => {
-    const newCriteria = e.target.value;
-    setSearchCriteria(newCriteria);
-    setSearchQuery("");
-    setSelectedPerson(null);
-    setSelectedDepartment(null);
-    setPersonOptions([]);
-    setDepartmentOptions([]);
+  const clearResidentSelection = () => {
+    setSelectedMainResident(null);
   };
 
   const showConfirmationModal = async () => {
@@ -346,50 +474,36 @@ const RegisterOrder = () => {
       });
       return false;
     }
-    if (!selectedPerson && !selectedDepartment) {
-      setError("Selecciona una persona o departamento.");
+    if (!selectedMainResident) {
+      setError("Selecciona un residente principal.");
       Swal.fire({
         icon: "warning",
-        title: "Destinatario requerido",
-        text: "Selecciona una persona o departamento.",
+        title: "Residente principal requerido",
+        text: "Selecciona un residente principal para recoger el encargo.",
         timer: 2000,
         showConfirmButton: false,
       });
       return false;
     }
 
-    let modalContent = "";
-    if (selectedPerson) {
-      modalContent = `
-        <div style="text-align: left;">
-          <p><strong>Persona:</strong> ${selectedPerson.label}</p>
-          <p><strong>DNI:</strong> ${selectedPerson.dni}</p>
-          <p><strong>Departamento:</strong> ${selectedPerson.department || '-'}</p>
-          <p><strong>Descripción del encargo:</strong> ${description}</p>
-          ${photoPreview ? '<p><strong>Foto del paquete:</strong></p><img src="' + photoPreview + '" style="max-width: 150px;" />' : ''}
-        </div>
-      `;
-    } else if (selectedDepartment) {
-      const users = selectedDepartment.users || [];
-      modalContent = `
-        <div style="text-align: left;">
-          <p><strong>Departamento:</strong> ${selectedDepartment.label}</p>
-          <p><strong>Descripción del encargo:</strong> ${description}</p>
-          <p><strong>Personas asociadas:</strong></p>
-          <ul style="list-style-type: disc; margin-left: 20px;">
-            ${users.length > 0
-              ? users
-                  .map(
-                    (user) =>
-                      `<li>${user.NOMBRES} ${user.APELLIDOS} (DNI: ${user.DNI})</li>`
-                  )
-                  .join("")
-              : "<li>No hay personas asociadas</li>"}
-          </ul>
-          ${photoPreview ? '<p><strong>Foto del paquete:</strong></p><img src="' + photoPreview + '" style="max-width: 150px;" />' : ''}
-        </div>
-      `;
-    }
+    const modalContent = `
+      <div style="text-align: left;">
+        <p><strong>Persona Principal:</strong> ${selectedMainResident.NOMBRES} ${selectedMainResident.APELLIDOS}</p>
+        <p><strong>DNI:</strong> ${selectedMainResident.DNI}</p>
+        <p><strong>Departamento:</strong> ${selectedMainResident.NRO_DPTO} (${selectedMainResident.FASE})</p>
+        <p><strong>Descripción del encargo:</strong> ${description}</p>
+        ${photoPreview ? '<p><strong>Foto del paquete:</strong></p><img src="' + photoPreview + '" style="max-width: 150px;" />' : ''}
+        <p><strong>Personas asociadas:</strong></p>
+        <ul style="list-style-type: disc; margin-left: 20px;">
+          ${selectedMainResident.USUARIOS_ASOCIADOS
+            .map(
+              (user) =>
+                `<li>${user.NOMBRES} ${user.APELLIDOS} (DNI: ${user.DNI})${user.ES_PROPIETARIO ? " (Propietario)" : ""}</li>`
+            )
+            .join("")}
+        </ul>
+      </div>
+    `;
 
     const result = await Swal.fire({
       title: "Confirmar Registro",
@@ -413,8 +527,8 @@ const RegisterOrder = () => {
     try {
       const formData = new FormData();
       formData.append("description", description.trim());
-      formData.append("personId", selectedPerson ? selectedPerson.value : "");
-      formData.append("department", selectedDepartment ? selectedDepartment.value : "");
+      formData.append("personId", selectedMainResident.ID_PERSONA);
+      formData.append("department", selectedMainResident.ID_DEPARTAMENTO);
       formData.append("receptionistId", userId || "0");
       if (photo) {
         formData.append("photo", photo);
@@ -444,15 +558,16 @@ const RegisterOrder = () => {
       await fetchEncargos();
       setDescription("");
       setSearchQuery("");
-      setSelectedPerson(null);
-      setSelectedDepartment(null);
-      setPersonOptions([]);
-      setDepartmentOptions([]);
+      setSelectedPhase("all");
+      setPhaseOptions([{ value: "all", label: "Todas las fases" }]);
+      setResults([]);
+      setSelectedMainResident(null);
       setPhoto(null);
       setPhotoPreview(null);
       setError("");
-      setActiveTab("history");
       setSearchCriteria("");
+      setFilter({ nroDpto: "", descripcion: "", fechaRecepcion: "", estado: "1" });
+      setActiveTab("history");
     } catch (error) {
       console.error("Error en handleRegister:", error);
       setError(error.message || "No se pudo registrar el encargo.");
@@ -486,11 +601,17 @@ const RegisterOrder = () => {
       return;
     }
     const deptData = await usersResponse.json();
-    const users = deptData[0]?.USUARIOS || [];
+    const users = deptData.map(person => ({
+      ID_PERSONA: person.ID_PERSONA,
+      NOMBRES: person.NOMBRES,
+      APELLIDOS: person.APELLIDOS,
+      DNI: person.DNI,
+      ES_PROPIETARIO: person.ES_PROPIETARIO,
+    }));
 
     const userOptions = users.map((user) => ({
       value: user.ID_PERSONA,
-      label: `${user.NOMBRES} ${user.APELLIDOS} (DNI: ${user.DNI})`,
+      label: `${user.NOMBRES} ${user.APELLIDOS} (DNI: ${user.DNI})${user.ES_PROPIETARIO ? " (Propietario)" : ""}`,
     }));
 
     const { value: selectedPersonId, inputValue: photoFile } = await Swal.fire({
@@ -580,10 +701,10 @@ const RegisterOrder = () => {
 
   const exportToCSV = () => {
     const headers =
-      "ID Encargo,Número Dpto,Descripción,Fecha Recepción,Fecha Entrega,Recepcionista,Entregado A,Usuarios Asociados,Estado\n";
+      "ID Encargo,Número Dpto,Fase,Descripción,Fecha Recepción,Fecha Entrega,Recepcionista,Entregado A,Usuarios Asociados,Estado\n";
     const rows = filteredEncargos
       .map((encargo) => {
-        return `${encargo.ID_ENCARGO},${encargo.NRO_DPTO},${encargo.DESCRIPCION},${formatDate(
+        return `${encargo.ID_ENCARGO},${encargo.NRO_DPTO},${encargo.FASE || "-"},${encargo.DESCRIPCION},${formatDate(
           encargo.FECHA_RECEPCION
         )},${formatDate(encargo.FECHA_ENTREGA)},${encargo.RECEPCIONISTA || "-"},${
           encargo.ENTREGADO_A || "-"
@@ -605,6 +726,10 @@ const RegisterOrder = () => {
       timer: 2000,
       showConfirmButton: false,
     });
+  };
+
+  const clearFilters = () => {
+    setFilter({ nroDpto: "", descripcion: "", fechaRecepcion: "", estado: "1" });
   };
 
   return (
@@ -648,136 +773,149 @@ const RegisterOrder = () => {
                   <option value="department">Departamento</option>
                 </SelectInput>
               </div>
-              {searchCriteria === "name" && (
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-600 mb-2">
-                    Nombres y Apellidos
-                  </label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Escribe para buscar..."
-                    />
-                    <Button
-                      className="bg-blue-600 text-white hover:bg-blue-700"
-                      onClick={handleSearch}
-                      disabled={isLoading}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-600 mb-2">
+                  {searchCriteria === "name"
+                    ? "Nombres y Apellidos"
+                    : searchCriteria === "dni"
+                    ? "DNI"
+                    : "Número de Departamento"}
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      if (searchCriteria === "department") {
+                        handleDepartmentInputChange(e);
+                      } else {
+                        setSearchQuery(e.target.value);
+                      }
+                    }}
+                    placeholder={
+                      searchCriteria === "name"
+                        ? "Escribe para buscar..."
+                        : searchCriteria === "dni"
+                        ? "Ingresa el DNI..."
+                        : "Ingresa el número de departamento..."
+                    }
+                  />
+                  {searchCriteria === "department" && (
+                    <SelectInput
+                      value={selectedPhase}
+                      onChange={(e) => setSelectedPhase(e.target.value)}
                     >
-                      <FaSearch className="mr-2" />
-                      Buscar
+                      {phaseOptions.map((phase) => (
+                        <option key={phase.value} value={phase.value}>
+                          {phase.label}
+                        </option>
+                      ))}
+                    </SelectInput>
+                  )}
+                  <Button
+                    className="bg-blue-600 text-white hover:bg-blue-700"
+                    onClick={handleSearch}
+                    disabled={isLoading}
+                    title="Buscar residente"
+                  >
+                    <FaSearch className="mr-2" />
+                    Buscar
+                  </Button>
+                </div>
+              </div>
+              {results.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-medium text-gray-600 mb-2">
+                    Resultados de la búsqueda
+                  </h3>
+                  <div className="flex justify-end mb-2">
+                    <Button
+                      className="bg-gray-600 text-white hover:bg-gray-700 text-xs py-1 px-2"
+                      onClick={clearResidentSelection}
+                      title="Limpiar selección de residente"
+                    >
+                      <FaTimes className="mr-1" />
+                      Limpiar Selección
                     </Button>
                   </div>
-                  {personOptions.length > 0 && (
-                    <div className="mt-4">
-                      <label className="block text-sm font-medium text-gray-600 mb-2">
-                        Seleccionar Persona
-                      </label>
-                      <Select
-                        options={personOptions}
-                        value={selectedPerson}
-                        onChange={(option) => setSelectedPerson(option)}
-                        placeholder="Selecciona una persona..."
-                        className="text-sm"
-                        isClearable
-                      />
-                    </div>
-                  )}
+                  <Table>
+                    <thead>
+                      <tr>
+                        <TableHeader>Seleccionar</TableHeader>
+                        <TableHeader>Fase</TableHeader>
+                        <TableHeader>Departamento</TableHeader>
+                        <TableHeader>Nombre</TableHeader>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {results.map((result, index) => (
+                        <TableRow key={result.ID_PERSONA} $delay={index * 0.1}>
+                          <TableCell>
+                            <input
+                              type="radio"
+                              name="mainResident"
+                              value={result.ID_PERSONA}
+                              checked={selectedMainResident?.ID_PERSONA === result.ID_PERSONA}
+                              onChange={() => {
+                                console.log("Selecting resident:", result);
+                                setSelectedMainResident(result);
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>{result.FASE}</TableCell>
+                          <TableCell>{result.NRO_DPTO}</TableCell>
+                          <TableCell>{`${result.NOMBRES} ${result.APELLIDOS} (DNI: ${result.DNI})${result.ES_PROPIETARIO ? " (Propietario)" : ""}`}</TableCell>
+                        </TableRow>
+                      ))}
+                    </tbody>
+                  </Table>
                 </div>
               )}
-              {searchCriteria === "dni" && (
+              {selectedMainResident && (
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-600 mb-2">
-                    DNI
-                  </label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Ingresa el DNI..."
-                    />
-                    <Button
-                      className="bg-blue-600 text-white hover:bg-blue-700"
-                      onClick={handleSearch}
-                      disabled={isLoading}
-                    >
-                      <FaSearch className="mr-2" />
-                      Buscar
-                    </Button>
-                  </div>
-                  {personOptions.length > 0 && (
-                    <div className="mt-4">
-                      <label className="block text-sm font-medium text-gray-600 mb-2">
-                        Seleccionar Persona
-                      </label>
-                      <Select
-                        options={personOptions}
-                        value={selectedPerson}
-                        onChange={(option) => setSelectedPerson(option)}
-                        placeholder="Selecciona una persona..."
-                        className="text-sm"
-                        isClearable
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-              {searchCriteria === "department" && (
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-600 mb-2">
-                    Número de Departamento
-                  </label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (value === "" || /^[0-9]*$/.test(value))
-                          setSearchQuery(value);
-                      }}
-                      placeholder="Ingresa el número de departamento..."
-                    />
-                    <Button
-                      className="bg-blue-600 text-white hover:bg-blue-700"
-                      onClick={handleSearch}
-                      disabled={isLoading}
-                    >
-                      <FaSearch className="mr-2" />
-                      Buscar
-                    </Button>
-                  </div>
-                  {departmentOptions.length > 0 && (
-                    <div className="mt-4">
-                      <label className="block text-sm font-medium text-gray-600 mb-2">
-                        Seleccionar Departamento
-                      </label>
-                      <Select
-                        options={departmentOptions}
-                        value={selectedDepartment}
-                        onChange={(option) => setSelectedPerson(null) || setSelectedDepartment(option)}
-                        placeholder="Selecciona un departamento..."
-                        className="text-sm"
-                        isClearable
-                      />
-                      {selectedDepartment && selectedDepartment.users && (
-                        <div className="mt-4">
-                          <label className="block text-sm font-medium text-gray-600 mb-2">
-                            Personas Asociadas
-                          </label>
-                          <UsersList>
-                            {selectedDepartment.users.map((user) => (
-                              <li key={user.ID_PERSONA}>
-                                {user.NOMBRES} {user.APELLIDOS} (DNI: {user.DNI})
-                              </li>
-                            ))}
-                          </UsersList>
-                        </div>
+                  <h3 className="text-sm font-medium text-gray-600 mb-2">
+                    Persona Principal Seleccionada
+                  </h3>
+                  <ResidentCard>
+                    <div className="flex items-center gap-2">
+                      <FaUser className="text-gray-500" />
+                      <span className="font-semibold text-gray-700">
+                        {selectedMainResident.NOMBRES} {selectedMainResident.APELLIDOS}
+                      </span>
+                      {selectedMainResident.ES_PROPIETARIO && (
+                        <Badge>Propietario</Badge>
                       )}
                     </div>
-                  )}
+                    <div className="flex items-center gap-2">
+                      <FaIdCard className="text-gray-500" />
+                      <span className="text-gray-600">DNI: {selectedMainResident.DNI}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FaBuilding className="text-gray-500" />
+                      <span className="text-gray-600">
+                        Departamento: {selectedMainResident.NRO_DPTO} ({selectedMainResident.FASE})
+                      </span>
+                    </div>
+                  </ResidentCard>
+                  <h3 className="text-sm font-medium text-gray-600 mb-2">
+                    Personas Asociadas al Departamento
+                  </h3>
+                  <AssociatedUsersContainer>
+                    {selectedMainResident.USUARIOS_ASOCIADOS.map((user) => (
+                      <UserCard key={user.ID_PERSONA}>
+                        <UserInfo>
+                          <FaUser className="text-gray-500" />
+                          <span className="text-gray-700">
+                            {user.NOMBRES} {user.APELLIDOS}
+                          </span>
+                        </UserInfo>
+                        <UserInfo>
+                          <span className="text-gray-600">DNI: {user.DNI}</span>
+                          {user.ES_PROPIETARIO && <Badge>Propietario</Badge>}
+                        </UserInfo>
+                      </UserCard>
+                    ))}
+                  </AssociatedUsersContainer>
                 </div>
               )}
               <div className="mb-6">
@@ -788,7 +926,7 @@ const RegisterOrder = () => {
                   type="text"
                   value={description}
                   onChange={(e) => setDescription(e.target.value.slice(0, 255))}
-                  placeholder="Describe el paquete (máx. 255 caracteres)"
+                  placeholder="Ejemplo: Paquete de Amazon con ropa"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   {description.length}/255 caracteres
@@ -812,6 +950,7 @@ const RegisterOrder = () => {
                   className="bg-green-600 text-white hover:bg-green-700"
                   onClick={handleRegister}
                   disabled={isLoading}
+                  title="Registrar nuevo encargo"
                 >
                   <FaSave className="mr-2" />
                   {isLoading ? "Registrando..." : "Registrar Encargo"}
@@ -823,96 +962,107 @@ const RegisterOrder = () => {
         {activeTab === "history" && (
           <Card>
             <h2 className="text-lg font-semibold mb-4">Historial de Encargos</h2>
-            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 w-full md:w-3/4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Número de Departamento
-                  </label>
-                  <Input
-                    type="text"
-                    name="nroDpto"
-                    value={filter.nroDpto}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (value === "" || /^[0-9]*$/.test(value))
-                        setFilter((prev) => ({ ...prev, nroDpto: value }));
-                    }}
-                    placeholder="Ejemplo: 101"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Descripción
-                  </label>
-                  <Input
-                    type="text"
-                    name="descripcion"
-                    value={filter.descripcion}
-                    onChange={(e) => setFilter((prev) => ({ ...prev, descripcion: e.target.value }))}
-                    placeholder="Filtrar por descripción"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Fecha de Recepción
-                  </label>
-                  <Input
-                    type="date"
-                    name="fechaRecepcion"
-                    value={filter.fechaRecepcion}
-                    onChange={(e) => setFilter((prev) => ({ ...prev, fechaRecepcion: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Estado
-                  </label>
-                  <select
-                    name="estado"
-                    value={filter.estado}
-                    onChange={(e) => setFilter((prev) => ({ ...prev, estado: e.target.value }))}
-                    className="border border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  >
-                    <option value="">Todas</option>
-                    <option value="1">Pendientes</option>
-                    <option value="0">Entregados</option>
-                  </select>
-                </div>
+            <FilterContainer>
+              <div className="flex-1 min-w-[150px]">
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Número de Departamento
+                </label>
+                <Input
+                  type="text"
+                  name="nroDpto"
+                  value={filter.nroDpto}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === "" || /^[0-9]*$/.test(value))
+                      setFilter((prev) => ({ ...prev, nroDpto: value }));
+                  }}
+                  placeholder="Ejemplo: 101"
+                  title="Filtrar por número de departamento"
+                />
               </div>
-              <div className="flex justify-end mt-4 md:mt-0">
+              <div className="flex-1 min-w-[150px]">
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Descripción
+                </label>
+                <Input
+                  type="text"
+                  name="descripcion"
+                  value={filter.descripcion}
+                  onChange={(e) => setFilter((prev) => ({ ...prev, descripcion: e.target.value }))}
+                  placeholder="Ejemplo: Paquete de Amazon"
+                  title="Filtrar por descripción del encargo"
+                />
+              </div>
+              <div className="flex-1 min-w-[150px]">
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Fecha de Recepción
+                </label>
+                <Input
+                  type="date"
+                  name="fechaRecepcion"
+                  value={filter.fechaRecepcion}
+                  onChange={(e) => setFilter((prev) => ({ ...prev, fechaRecepcion: e.target.value }))}
+                  title="Filtrar por fecha de recepción"
+                />
+              </div>
+              <div className="flex-1 min-w-[150px]">
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Estado
+                </label>
+                <SelectInput
+                  name="estado"
+                  value={filter.estado}
+                  onChange={(e) => setFilter((prev) => ({ ...prev, estado: e.target.value }))}
+                  title="Filtrar por estado del encargo"
+                >
+                  <option value="">Todos los estados</option>
+                  <option value="1">Pendientes</option>
+                  <option value="0">Entregados</option>
+                </SelectInput>
+              </div>
+              <div className="flex gap-2">
                 <Button
                   className="bg-green-600 text-white hover:bg-green-700"
                   onClick={exportToCSV}
+                  title="Exportar tabla a CSV"
                 >
                   <FaFileExport className="mr-2" />
-                  Exportar a CSV
+                  Exportar
+                </Button>
+                <Button
+                  className="bg-gray-600 text-white hover:bg-gray-700"
+                  onClick={clearFilters}
+                  title="Limpiar todos los filtros"
+                >
+                  <FaTimes className="mr-2" />
+                  Limpiar
                 </Button>
               </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white border border-gray-200">
+            </FilterContainer>
+            <div className="overflow-x-auto mt-6">
+              <Table>
                 <thead>
-                  <tr className="bg-gray-50 text-gray-700">
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">ID Encargo</th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Número Dpto</th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Descripción</th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Fecha Recepción</th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Fecha Entrega</th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Recepcionista</th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Entregado A</th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Usuarios Asociados</th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Estado</th>
-                    <th className="py-3 px-4 border-b text-left text-sm font-semibold">Acciones</th>
+                  <tr>
+                    <TableHeader title="Identificador único del encargo">ID Encargo</TableHeader>
+                    <TableHeader title="Número del departamento">Nº Dpto</TableHeader>
+                    <TableHeader title="Fase del edificio">Fase</TableHeader>
+                    <TableHeader title="Descripción del paquete">Descripción</TableHeader>
+                    <TableHeader title="Fecha de recepción del paquete">Fecha Recepción</TableHeader>
+                    <TableHeader title="Fecha de entrega del paquete">Fecha Entrega</TableHeader>
+                    <TableHeader title="Persona que recibió el paquete">Recepcionista</TableHeader>
+                    <TableHeader title="Persona que retiró el paquete">Entregado A</TableHeader>
+                    <TableHeader title="Usuarios asociados al departamento">Usuarios Asociados</TableHeader>
+                    <TableHeader title="Estado actual del encargo">Estado</TableHeader>
+                    <TableHeader title="Acciones disponibles">Acciones</TableHeader>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredEncargos.length === 0 ? (
-                    <tr>
-                      <td colSpan={10} className="py-4 text-center text-gray-500">
-                        No hay encargos para mostrar.
-                      </td>
-                    </tr>
+                    <TableRow>
+                      <TableCell colSpan={11} className="text-center text-gray-500 py-4">
+                        No hay encargos que coincidan con los filtros.
+                      </TableCell>
+                    </TableRow>
                   ) : (
                     filteredEncargos.map((encargo, index) => (
                       <TableRow
@@ -920,41 +1070,43 @@ const RegisterOrder = () => {
                         $estado={encargo.ESTADO}
                         $delay={index * 0.1}
                       >
-                        <td className="py-3 px-4">{encargo.ID_ENCARGO}</td>
-                        <td className="py-3 px-4">{encargo.NRO_DPTO}</td>
-                        <td className="py-3 px-4">{encargo.DESCRIPCION}</td>
-                        <td className="py-3 px-4">{formatDate(encargo.FECHA_RECEPCION)}</td>
-                        <td className="py-3 px-4">{formatDate(encargo.FECHA_ENTREGA)}</td>
-                        <td className="py-3 px-4">{encargo.RECEPCIONISTA || "-"}</td>
-                        <td className="py-3 px-4">{encargo.ENTREGADO_A || "-"}</td>
-                        <td className="py-3 px-4">{encargo.USUARIOS_ASOCIADOS || "-"}</td>
-                        <td className="py-3 px-4">
+                        <TableCell>{encargo.ID_ENCARGO}</TableCell>
+                        <TableCell>{encargo.NRO_DPTO}</TableCell>
+                        <TableCell>{encargo.FASE || "-"}</TableCell>
+                        <TableCell>{encargo.DESCRIPCION}</TableCell>
+                        <TableCell>{formatDate(encargo.FECHA_RECEPCION)}</TableCell>
+                        <TableCell>{formatDate(encargo.FECHA_ENTREGA)}</TableCell>
+                        <TableCell>{encargo.RECEPCIONISTA || "-"}</TableCell>
+                        <TableCell>{encargo.ENTREGADO_A || "-"}</TableCell>
+                        <TableCell>{encargo.USUARIOS_ASOCIADOS || "-"}</TableCell>
+                        <TableCell>
                           <span
                             className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
                               encargo.ESTADO === 1
                                 ? "bg-blue-100 text-[#2563eb]"
-                                : "bg-red-100 text-red-700"
+                                : "bg-green-100 text-green-700"
                             }`}
                           >
                             {encargo.ESTADO === 1 ? "Pendiente" : "Entregado"}
                           </span>
-                        </td>
-                        <td className="py-3 px-4">
+                        </TableCell>
+                        <TableCell>
                           {encargo.ESTADO === 1 && (
                             <Button
                               className="bg-blue-600 text-white hover:bg-blue-700 text-xs py-1 px-2"
                               onClick={() => handleMarkDelivered(encargo.ID_ENCARGO)}
+                              title="Marcar como entregado"
                             >
                               <FaCheck className="mr-1" />
-                              Marcar Entregado
+                              Entregar
                             </Button>
                           )}
-                        </td>
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
                 </tbody>
-              </table>
+              </Table>
             </div>
           </Card>
         )}
