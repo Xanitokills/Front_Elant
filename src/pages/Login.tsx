@@ -210,12 +210,13 @@ const Login = () => {
     setCodeAttempts(0);
     setRecoveryError("");
   };
-
   const handleCodeChange = (index, value) => {
     if (/^[0-9a-fA-F]?$/.test(value)) {
       const newCode = [...verificationCode];
       newCode[index] = value.toLowerCase();
       setVerificationCode(newCode);
+
+      // Autoenfocar siguiente campo si hay valor
       if (value && index < 5) {
         inputRefs.current[index + 1].focus();
       }
@@ -346,7 +347,6 @@ const Login = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Contraseña"
                 required
-
                 className="w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-blue-300 transition-all duration-300"
                 style={{
                   backgroundColor: COLOR_WHITE,
