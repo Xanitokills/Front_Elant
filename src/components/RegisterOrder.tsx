@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import styled, { keyframes } from "styled-components";
-import { FaBox, FaSave, FaFileExport, FaCheck, FaSearch, FaCamera, FaTimes, FaUser, FaIdCard, FaBuilding, FaChevronDown, FaChevronUp } from "react-icons/fa";
+import { FaBox, FaSave, FaFileExport, FaCheck, FaSearch, FaCamera, FaTimes, FaUser, FaIdCard, FaBuilding, FaChevronDown, FaChevronUp, FaSpinner } from "react-icons/fa";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -124,6 +124,10 @@ const Button = styled.button`
   transition: background-color 0.2s ease, transform 0.2s ease;
   &:hover {
     transform: translateY(-1px);
+  }
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 `;
 
@@ -278,6 +282,24 @@ const ToggleButton = styled(Button)`
   }
 `;
 
+const SearchContainer = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 0.5rem;
+  align-items: end;
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const Spinner = styled(FaSpinner)`
+  animation: spin 1s linear infinite;
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+
 const formatDate = (dateInput) => {
   if (!dateInput) return "-";
   try {
@@ -318,6 +340,7 @@ const RegisterOrder = () => {
   const [showAssociatedUsers, setShowAssociatedUsers] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [stream, setStream] = useState(null);
+  const [showSearchResults, setShowSearchResults] = useState(true);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -372,13 +395,21 @@ const RegisterOrder = () => {
     }
   }, [activeTab]);
 
-  const fetchPhases = async (nroDpto) => {
-    if (!nroDpto || isNaN(nroDpto)) {
-      setPhaseOptions([{ value: "all", label: "Todas las fases" }]);
+  const fetchAllPhases = async () => {
+    if (!token) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se encontró el token de autenticación",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      navigate("/login");
       return;
     }
+
     try {
-      const response = await fetch(`${API_URL}/phases?nroDpto=${encodeURIComponent(nroDpto)}`, {
+      const response = await fetch(`${API_URL}/all-phases`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) {
@@ -395,7 +426,7 @@ const RegisterOrder = () => {
       ];
       setPhaseOptions(phases);
     } catch (error) {
-      console.error("Error en fetchPhases:", error);
+      console.error("Error en fetchAllPhases:", error);
       Swal.fire({
         icon: "error",
         title: "Error",
@@ -433,6 +464,15 @@ const RegisterOrder = () => {
         throw new Error(errorData.message || "Error al buscar personas");
       }
       const data = await response.json();
+      if (data.length === 0) {
+        Swal.fire({
+          icon: "info",
+          title: "Sin resultados",
+          text: "No se encontraron personas que coincidan con los criterios de búsqueda.",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+      }
       setResults(
         data.map((person, index) => ({
           index,
@@ -447,6 +487,7 @@ const RegisterOrder = () => {
           USUARIOS_ASOCIADOS: person.USUARIOS_ASOCIADOS,
         }))
       );
+      setShowSearchResults(true);
     } catch (error) {
       console.error("Error en fetchPersons:", error);
       Swal.fire({
@@ -462,7 +503,7 @@ const RegisterOrder = () => {
     }
   };
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (!searchCriteria) {
       Swal.fire({
         icon: "warning",
@@ -493,15 +534,17 @@ const RegisterOrder = () => {
       });
       return;
     }
-    if (searchCriteria === "department" && !searchQuery.trim()) {
-      Swal.fire({
-        icon: "warning",
-        title: "Entrada inválida",
-        text: "Ingresa un número de departamento válido.",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
+    if (searchCriteria === "department") {
+      if (!searchQuery.trim() || isNaN(searchQuery) || searchQuery <= 0) {
+        Swal.fire({
+          icon: "warning",
+          title: "Entrada inválida",
+          text: "Ingresa un número de departamento válido.",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+        return;
+      }
     }
     fetchPersons(searchQuery, searchCriteria, selectedPhase);
   };
@@ -519,14 +562,17 @@ const RegisterOrder = () => {
     setDescription("");
     setError("");
     setShowAssociatedUsers(false);
+    setShowSearchResults(true);
     stopCamera();
+    if (newCriteria === "department") {
+      fetchAllPhases();
+    }
   };
 
   const handleDepartmentInputChange = (e) => {
     const value = e.target.value;
     if (value === "" || /^[0-9]*$/.test(value)) {
       setSearchQuery(value);
-      fetchPhases(value);
     }
   };
 
@@ -617,11 +663,16 @@ const RegisterOrder = () => {
   const clearResidentSelection = () => {
     setSelectedMainResident(null);
     setShowAssociatedUsers(false);
+    setShowSearchResults(true);
     console.log("Resident selection cleared");
   };
 
   const toggleAssociatedUsers = () => {
     setShowAssociatedUsers(!showAssociatedUsers);
+  };
+
+  const toggleSearchResults = () => {
+    setShowSearchResults(!showSearchResults);
   };
 
   const showConfirmationModal = async () => {
@@ -722,6 +773,7 @@ const RegisterOrder = () => {
       setFilter({ nroDpto: "", descripcion: "", fechaRecepcion: "", estado: "1" });
       setActiveTab("history");
       setShowAssociatedUsers(false);
+      setShowSearchResults(true);
       stopCamera();
     } catch (error) {
       console.error("Error en handleRegister:", error);
@@ -928,102 +980,134 @@ const RegisterOrder = () => {
                   <option value="department">Departamento</option>
                 </SelectInput>
               </div>
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-600 mb-2">
-                  {searchCriteria === "name"
-                    ? "Nombres y Apellidos"
-                    : searchCriteria === "dni"
-                    ? "DNI"
-                    : "Número de Departamento"}
-                </label>
-                <div className="flex gap-2">
-                  <Input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => {
-                      if (searchCriteria === "department") {
-                        handleDepartmentInputChange(e);
-                      } else {
-                        setSearchQuery(e.target.value);
+              {searchCriteria && (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-600 mb-2">
+                    {searchCriteria === "name"
+                      ? "Nombres y Apellidos"
+                      : searchCriteria === "dni"
+                      ? "DNI"
+                      : "Número de Departamento"}
+                  </label>
+                  <SearchContainer>
+                    {searchCriteria === "department" && (
+                      <SelectInput
+                        value={selectedPhase}
+                        onChange={(e) => setSelectedPhase(e.target.value)}
+                        title="Seleccionar fase del edificio"
+                      >
+                        {phaseOptions.map((phase) => (
+                          <option key={phase.value} value={phase.value}>
+                            {phase.label}
+                          </option>
+                        ))}
+                      </SelectInput>
+                    )}
+                    <Input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => {
+                        if (searchCriteria === "department") {
+                          handleDepartmentInputChange(e);
+                        } else {
+                          setSearchQuery(e.target.value);
+                        }
+                      }}
+                      placeholder={
+                        searchCriteria === "name"
+                          ? "Escribe para buscar..."
+                          : searchCriteria === "dni"
+                          ? "Ingresa el DNI..."
+                          : "Ingresa el número de departamento..."
                       }
-                    }}
-                    placeholder={
-                      searchCriteria === "name"
-                        ? "Escribe para buscar..."
-                        : searchCriteria === "dni"
-                        ? "Ingresa el DNI..."
-                        : "Ingresa el número de departamento..."
-                    }
-                  />
-                  {searchCriteria === "department" && (
-                    <SelectInput
-                      value={selectedPhase}
-                      onChange={(e) => setSelectedPhase(e.target.value)}
+                      title={
+                        searchCriteria === "name"
+                          ? "Ingresa el nombre completo"
+                          : searchCriteria === "dni"
+                          ? "Ingresa el DNI"
+                          : "Ingresa el número de departamento"
+                      }
+                    />
+                    {searchCriteria !== "department" && <div />}
+                    <Button
+                      className="bg-blue-600 text-white hover:bg-blue-700"
+                      onClick={handleSearch}
+                      disabled={isLoading}
+                      title="Buscar residente"
                     >
-                      {phaseOptions.map((phase) => (
-                        <option key={phase.value} value={phase.value}>
-                          {phase.label}
-                        </option>
-                      ))}
-                    </SelectInput>
-                  )}
-                  <Button
-                    className="bg-blue-600 text-white hover:bg-blue-700"
-                    onClick={handleSearch}
-                    disabled={isLoading}
-                    title="Buscar residente"
-                  >
-                    <FaSearch className="mr-2" />
-                    Buscar
-                  </Button>
+                      {isLoading ? <Spinner className="mr-2" /> : <FaSearch className="mr-2" />}
+                      {isLoading ? "Buscando..." : "Buscar"}
+                    </Button>
+                  </SearchContainer>
                 </div>
-              </div>
+              )}
               {results.length > 0 && (
                 <div className="mb-6">
-                  <h3 className="text-sm font-medium text-gray-600 mb-2">
-                    Resultados de la búsqueda
-                  </h3>
-                  <div className="flex justify-end mb-2">
-                    <Button
-                      className="bg-gray-600 text-white hover:bg-gray-700 text-xs py-1 px-2"
-                      onClick={clearResidentSelection}
-                      title="Limpiar selección de residente"
-                    >
-                      <FaTimes className="mr-1" />
-                      Limpiar Selección
-                    </Button>
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-sm font-medium text-gray-600">
+                      Resultados de la búsqueda
+                    </h3>
+                    <div className="flex gap-2">
+                      <Button
+                        className="bg-gray-600 text-white hover:bg-gray-700 text-xs py-1 px-2"
+                        onClick={clearResidentSelection}
+                        title="Limpiar selección de residente"
+                      >
+                        <FaTimes className="mr-1" />
+                        Limpiar Selección
+                      </Button>
+                      <ToggleButton
+                        onClick={toggleSearchResults}
+                        title={showSearchResults ? "Ocultar resultados" : "Mostrar resultados"}
+                      >
+                        {showSearchResults ? (
+                          <>
+                            <FaChevronUp className="mr-2" />
+                            Ocultar
+                          </>
+                        ) : (
+                          <>
+                            <FaChevronDown className="mr-2" />
+                            Mostrar
+                          </>
+                        )}
+                      </ToggleButton>
+                    </div>
                   </div>
-                  <Table>
-                    <thead>
-                      <tr>
-                        <TableHeader>Seleccionar</TableHeader>
-                        <TableHeader>Fase</TableHeader>
-                        <TableHeader>Departamento</TableHeader>
-                        <TableHeader>Nombre</TableHeader>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {results.map((result, index) => (
-                        <TableRow key={`resident-${result.index}`} $delay={index * 0.1}>
-                          <TableCell>
-                            <Input
-                              type="radio"
-                              name="mainResident"
-                              value={result.index}
-                              checked={selectedMainResident?.index === result.index}
-                              onChange={() => {
-                                setSelectedMainResident(result);
-                                console.log("Selected resident index:", result.index);
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>{result.FASE}</TableCell>
-                          <TableCell>{result.NRO_DPTO}</TableCell>
-                          <TableCell>{`${result.NOMBRES} ${result.APELLIDOS} (DNI: ${result.DNI})${result.ES_PROPIETARIO ? " (Propietario)" : ""}`}</TableCell>
-                        </TableRow>
-                      ))}
-                    </tbody>
-                  </Table>
+                  {showSearchResults && (
+                    <Table>
+                      <thead>
+                        <tr>
+                          <TableHeader>Seleccionar</TableHeader>
+                          <TableHeader>Fase</TableHeader>
+                          <TableHeader>Departamento</TableHeader>
+                          <TableHeader>Nombre</TableHeader>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {results.map((result, index) => (
+                          <TableRow key={`resident-${result.index}`} $delay={index * 0.1}>
+                            <TableCell>
+                              <Input
+                                type="radio"
+                                name="mainResident"
+                                value={result.index}
+                                checked={selectedMainResident?.index === result.index}
+                                onChange={() => {
+                                  setSelectedMainResident(result);
+                                  setShowSearchResults(false);
+                                  console.log("Selected resident index:", result.index);
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell>{result.FASE}</TableCell>
+                            <TableCell>{result.NRO_DPTO}</TableCell>
+                            <TableCell>{`${result.NOMBRES} ${result.APELLIDOS} (DNI: ${result.DNI})${result.ES_PROPIETARIO ? " (Propietario)" : ""}`}</TableCell>
+                          </TableRow>
+                        ))}
+                      </tbody>
+                    </Table>
+                  )}
                 </div>
               )}
               {selectedMainResident && (
@@ -1102,6 +1186,7 @@ const RegisterOrder = () => {
                   value={description}
                   onChange={(e) => setDescription(e.target.value.slice(0, 255))}
                   placeholder="Ejemplo: Paquete de Amazon con ropa"
+                  title="Describe el paquete (máx. 255 caracteres)"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   {description.length}/255 caracteres
