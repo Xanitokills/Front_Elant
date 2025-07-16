@@ -1,16 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import Select from "react-select";
-import { debounce } from "lodash";
-import { FaBox, FaSave, FaFileExport, FaCheck, FaSearch } from "react-icons/fa";
+import { FaBox, FaSave, FaFileExport, FaCheck, FaSearch, FaCamera } from "react-icons/fa";
 import styled, { keyframes } from "styled-components";
-
-// Asegúrate de que styled-components está instalado:
-// npm install styled-components @types/styled-components
-// También instala el plugin para Vite:
-// npm install vite-plugin-styled-components --save-dev
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -40,7 +34,7 @@ const Title = styled.h1`
   animation: ${slideInDown} 0.5s ease-out;
 `;
 
-const TabButton = styled.button<{ active: boolean }>`
+const TabButton = styled.button`
   padding: 0.5rem 1rem;
   font-weight: 600;
   color: ${(props) => (props.active ? "#2563eb" : "#4b5563")};
@@ -66,9 +60,6 @@ const Card = styled.div`
   &:hover {
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
   }
-  @media (min-width: 768px) {
-    padding: 2rem;
-  }
 `;
 
 const Input = styled.input`
@@ -76,6 +67,20 @@ const Input = styled.input`
   padding: 0.75rem;
   border-radius: 0.375rem;
   width: 100%;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  &:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+  }
+`;
+
+const SelectInput = styled.select`
+  border: 1px solid #d1d5db;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  width: 100%;
+  background-color: white;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   &:focus {
     outline: none;
@@ -103,7 +108,7 @@ const UsersList = styled.ul`
   color: #4b5563;
 `;
 
-const TableRow = styled.tr<{ $estado: number; $delay: number }>`
+const TableRow = styled.tr`
   animation: ${fadeIn} 0.5s ease-out forwards;
   animation-delay: ${(props) => props.$delay}s;
   background-color: ${(props) => (props.$estado === 1 ? "#f0fff4" : "#fef2f2")};
@@ -112,42 +117,19 @@ const TableRow = styled.tr<{ $estado: number; $delay: number }>`
   }
 `;
 
-interface UserOption {
-  value: number; // ID_USUARIO
-  label: string; // Nombres y apellidos
-  dni?: string;
-  department?: number;
-}
+const ImagePreview = styled.img`
+  max-width: 150px;
+  max-height: 150px;
+  object-fit: contain;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  margin-top: 0.5rem;
+`;
 
-interface DepartmentOption {
-  value: number; // NRO_DPTO
-  label: string; // NRO_DPTO
-  users?: { ID_USUARIO: number; NOMBRES: string; APELLIDOS: string; DNI: string; NRO_DPTO: number }[];
-}
-
-interface Encargo {
-  ID_ENCARGO: number;
-  NRO_DPTO: number;
-  DESCRIPCION: string;
-  FECHA_RECEPCION: string | Date;
-  FECHA_ENTREGA: string | Date | null;
-  ID_USUARIO_RECEPCION: number;
-  RECEPCIONISTA: string;
-  ID_USUARIO_ENTREGA: number | null;
-  ENTREGADO_A: string | null;
-  ESTADO: number;
-  USUARIOS_ASOCIADOS: string;
-}
-
-const formatDate = (dateInput: string | Date | null): string => {
+const formatDate = (dateInput) => {
   if (!dateInput) return "-";
   try {
-    let date: Date;
-    if (typeof dateInput === "string") {
-      date = new Date(dateInput);
-    } else {
-      date = dateInput;
-    }
+    let date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
     if (isNaN(date.getTime())) return "-";
     const year = date.getUTCFullYear();
     const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
@@ -162,15 +144,17 @@ const RegisterOrder = () => {
   const { isAuthenticated, userId } = useAuth();
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
-  const [activeTab, setActiveTab] = useState<"create" | "history">("history");
-  const [searchCriteria, setSearchCriteria] = useState<"name" | "dni" | "department">("name");
+  const [activeTab, setActiveTab] = useState("history");
+  const [searchCriteria, setSearchCriteria] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
-  const [selectedDepartment, setSelectedDepartment] = useState<DepartmentOption | null>(null);
+  const [selectedPerson, setSelectedPerson] = useState(null);
+  const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [description, setDescription] = useState("");
-  const [userOptions, setUserOptions] = useState<UserOption[]>([]);
-  const [departmentOptions, setDepartmentOptions] = useState<DepartmentOption[]>([]);
-  const [encargos, setEncargos] = useState<Encargo[]>([]);
+  const [photo, setPhoto] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [personOptions, setPersonOptions] = useState([]);
+  const [departmentOptions, setDepartmentOptions] = useState([]);
+  const [encargos, setEncargos] = useState([]);
   const [filter, setFilter] = useState({
     nroDpto: "",
     descripcion: "",
@@ -187,36 +171,25 @@ const RegisterOrder = () => {
   }, [isAuthenticated, token, navigate]);
 
   const fetchEncargos = async () => {
-    if (!token) {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "No se encontró el token de autenticación",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      navigate("/login");
-      return;
-    }
-
     try {
-      const response = await fetch(`${API_URL}/orders/list`, {
+      const response = await fetch(`${API_URL}/list`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error("Error al obtener los encargos");
       const data = await response.json();
-      console.log("Encargos recibidos:", data);
       setEncargos(
-        data.map((encargo: Encargo) => ({
-          ...encargo,
-          ESTADO: encargo.ESTADO === true ? 1 : encargo.ESTADO === false ? 0 : encargo.ESTADO,
-          FECHA_RECEPCION: encargo.FECHA_RECEPCION,
-          FECHA_ENTREGA: encargo.FECHA_ENTREGA,
-        })).sort(
-          (a: Encargo, b: Encargo) =>
-            b.ESTADO - a.ESTADO ||
-            new Date(b.FECHA_RECEPCION).getTime() - new Date(a.FECHA_RECEPCION).getTime()
-        )
+        data
+          .map((encargo) => ({
+            ...encargo,
+            ESTADO: encargo.ESTADO === true ? 1 : encargo.ESTADO === false ? 0 : encargo.ESTADO,
+            FECHA_RECEPCION: encargo.FECHA_RECEPCION,
+            FECHA_ENTREGA: encargo.FECHA_ENTREGA,
+          }))
+          .sort(
+            (a, b) =>
+              b.ESTADO - a.ESTADO ||
+              new Date(b.FECHA_RECEPCION).getTime() - new Date(a.FECHA_RECEPCION).getTime()
+          )
       );
     } catch (err) {
       console.error("Error en fetchEncargos:", err);
@@ -236,7 +209,7 @@ const RegisterOrder = () => {
     return () => clearInterval(interval);
   }, [token, navigate]);
 
-  const fetchUsers = async (query: string, criteria: string) => {
+  const fetchPersons = async (query, criteria) => {
     if (!token) {
       Swal.fire({
         icon: "error",
@@ -251,46 +224,43 @@ const RegisterOrder = () => {
 
     setIsLoading(true);
     try {
-      console.log("Enviando solicitud a:", `${API_URL}/orders?criteria=${criteria}&query=${encodeURIComponent(query)}`);
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-
       const response = await fetch(
-        `${API_URL}/orders?criteria=${criteria}&query=${encodeURIComponent(query)}`,
+        `${API_URL}?criteria=${criteria}&query=${encodeURIComponent(query)}`,
         {
           headers: { Authorization: `Bearer ${token}` },
-          signal: controller.signal,
         }
       );
-      clearTimeout(timeoutId);
-
-      if (!response.ok) throw new Error("Error al buscar usuarios");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al buscar personas");
+      }
       const data = await response.json();
-      console.log("Resultados de búsqueda:", data);
       if (criteria === "department") {
         setDepartmentOptions(
-          data.map((dept: any) => ({
+          data.map((dept) => ({
             value: dept.NRO_DPTO,
             label: dept.NRO_DPTO.toString(),
             users: dept.USUARIOS,
           }))
         );
+        setPersonOptions([]);
       } else {
-        setUserOptions(
-          data.map((user: any) => ({
-            value: user.ID_USUARIO,
-            label: `${user.NOMBRES} ${user.APELLIDOS}`,
-            dni: user.DNI,
-            department: user.NRO_DPTO,
+        setPersonOptions(
+          data.map((person) => ({
+            value: person.ID_PERSONA,
+            label: `${person.NOMBRES} ${person.APELLIDOS}`,
+            dni: person.DNI,
+            department: person.NRO_DPTO,
           }))
         );
+        setDepartmentOptions([]);
       }
     } catch (error) {
-      console.error("Error en fetchUsers:", error);
+      console.error("Error en fetchPersons:", error);
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: error.name === "AbortError" ? "Tiempo de espera agotado. Verifica que el servidor esté corriendo." : "No se pudo realizar la búsqueda.",
+        text: error.message || "No se pudo realizar la búsqueda",
         timer: 2000,
         showConfirmButton: false,
       });
@@ -300,29 +270,67 @@ const RegisterOrder = () => {
   };
 
   const handleSearch = () => {
-    if (searchCriteria === "name") {
-      fetchUsers(searchQuery, searchCriteria);
-    } else if (searchCriteria === "dni" && searchQuery.trim().length >= 3) {
-      fetchUsers(searchQuery, searchCriteria);
-    } else if (searchCriteria === "department" && searchQuery.trim()) {
-      fetchUsers(searchQuery, searchCriteria);
-    } else {
+    if (!searchCriteria) {
       Swal.fire({
         icon: "warning",
-        title: "Entrada inválida",
-        text: searchCriteria === "dni" ? "El DNI debe tener al menos 3 caracteres." : "Ingresa un número de departamento válido.",
+        title: "Criterio requerido",
+        text: "Por favor, selecciona un criterio de búsqueda.",
         timer: 2000,
         showConfirmButton: false,
       });
+      return;
+    }
+    if (searchCriteria === "name" && searchQuery.trim().length < 3) {
+      Swal.fire({
+        icon: "warning",
+        title: "Entrada inválida",
+        text: "El nombre debe tener al menos 3 caracteres.",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    if (searchCriteria === "dni" && searchQuery.trim().length < 3) {
+      Swal.fire({
+        icon: "warning",
+        title: "Entrada inválida",
+        text: "El DNI debe tener al menos 3 caracteres.",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    if (searchCriteria === "department" && !searchQuery.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Entrada inválida",
+        text: "Ingresa un número de departamento válido.",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
+    }
+    fetchPersons(searchQuery, searchCriteria);
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setPhoto(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    } else {
+      setPhoto(null);
+      setPhotoPreview(null);
     }
   };
 
-  const handleCriteriaChange = (criteria: "name" | "dni" | "department") => {
-    setSearchCriteria(criteria);
+  const handleCriteriaChange = (e) => {
+    const newCriteria = e.target.value;
+    setSearchCriteria(newCriteria);
     setSearchQuery("");
-    setSelectedUser(null);
+    setSelectedPerson(null);
     setSelectedDepartment(null);
-    setUserOptions([]);
+    setPersonOptions([]);
     setDepartmentOptions([]);
   };
 
@@ -338,12 +346,12 @@ const RegisterOrder = () => {
       });
       return false;
     }
-    if (!selectedUser && !selectedDepartment) {
-      setError("Selecciona un usuario o departamento.");
+    if (!selectedPerson && !selectedDepartment) {
+      setError("Selecciona una persona o departamento.");
       Swal.fire({
         icon: "warning",
         title: "Destinatario requerido",
-        text: "Selecciona un usuario o departamento.",
+        text: "Selecciona una persona o departamento.",
         timer: 2000,
         showConfirmButton: false,
       });
@@ -351,13 +359,14 @@ const RegisterOrder = () => {
     }
 
     let modalContent = "";
-    if (selectedUser) {
+    if (selectedPerson) {
       modalContent = `
         <div style="text-align: left;">
-          <p><strong>Usuario:</strong> ${selectedUser.label}</p>
-          <p><strong>DNI:</strong> ${selectedUser.dni}</p>
-          <p><strong>Departamento:</strong> ${selectedUser.department}</p>
+          <p><strong>Persona:</strong> ${selectedPerson.label}</p>
+          <p><strong>DNI:</strong> ${selectedPerson.dni}</p>
+          <p><strong>Departamento:</strong> ${selectedPerson.department || '-'}</p>
           <p><strong>Descripción del encargo:</strong> ${description}</p>
+          ${photoPreview ? '<p><strong>Foto del paquete:</strong></p><img src="' + photoPreview + '" style="max-width: 150px;" />' : ''}
         </div>
       `;
     } else if (selectedDepartment) {
@@ -366,7 +375,7 @@ const RegisterOrder = () => {
         <div style="text-align: left;">
           <p><strong>Departamento:</strong> ${selectedDepartment.label}</p>
           <p><strong>Descripción del encargo:</strong> ${description}</p>
-          <p><strong>Usuarios asociados:</strong></p>
+          <p><strong>Personas asociadas:</strong></p>
           <ul style="list-style-type: disc; margin-left: 20px;">
             ${users.length > 0
               ? users
@@ -375,8 +384,9 @@ const RegisterOrder = () => {
                       `<li>${user.NOMBRES} ${user.APELLIDOS} (DNI: ${user.DNI})</li>`
                   )
                   .join("")
-              : "<li>No hay usuarios asociados</li>"}
+              : "<li>No hay personas asociadas</li>"}
           </ul>
+          ${photoPreview ? '<p><strong>Foto del paquete:</strong></p><img src="' + photoPreview + '" style="max-width: 150px;" />' : ''}
         </div>
       `;
     }
@@ -401,20 +411,21 @@ const RegisterOrder = () => {
 
     setIsLoading(true);
     try {
-      const payload = {
-        description: description.trim(),
-        userId: selectedUser ? selectedUser.value : null,
-        department: selectedDepartment ? selectedDepartment.value : null,
-        receptionistId: parseInt(userId || "0"),
-      };
+      const formData = new FormData();
+      formData.append("description", description.trim());
+      formData.append("personId", selectedPerson ? selectedPerson.value : "");
+      formData.append("department", selectedDepartment ? selectedDepartment.value : "");
+      formData.append("receptionistId", userId || "0");
+      if (photo) {
+        formData.append("photo", photo);
+      }
 
-      const response = await fetch(`${API_URL}/orders`, {
+      const response = await fetch(`${API_URL}`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -433,12 +444,15 @@ const RegisterOrder = () => {
       await fetchEncargos();
       setDescription("");
       setSearchQuery("");
-      setSelectedUser(null);
+      setSelectedPerson(null);
       setSelectedDepartment(null);
-      setUserOptions([]);
+      setPersonOptions([]);
       setDepartmentOptions([]);
+      setPhoto(null);
+      setPhotoPreview(null);
       setError("");
       setActiveTab("history");
+      setSearchCriteria("");
     } catch (error) {
       console.error("Error en handleRegister:", error);
       setError(error.message || "No se pudo registrar el encargo.");
@@ -454,9 +468,9 @@ const RegisterOrder = () => {
     }
   };
 
-  const handleMarkDelivered = async (idEncargo: number) => {
+  const handleMarkDelivered = async (idEncargo) => {
     const usersResponse = await fetch(
-      `${API_URL}/orders?criteria=department&query=${encargos.find(e => e.ID_ENCARGO === idEncargo)?.NRO_DPTO}`,
+      `${API_URL}?criteria=department&query=${encargos.find(e => e.ID_ENCARGO === idEncargo)?.NRO_DPTO}`,
       {
         headers: { Authorization: `Bearer ${token}` },
       }
@@ -465,7 +479,7 @@ const RegisterOrder = () => {
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "No se pudo obtener la lista de usuarios",
+        text: "No se pudo obtener la lista de personas",
         timer: 2000,
         showConfirmButton: false,
       });
@@ -474,42 +488,58 @@ const RegisterOrder = () => {
     const deptData = await usersResponse.json();
     const users = deptData[0]?.USUARIOS || [];
 
-    const userOptions = users.map((user: any) => ({
-      value: user.ID_USUARIO,
+    const userOptions = users.map((user) => ({
+      value: user.ID_PERSONA,
       label: `${user.NOMBRES} ${user.APELLIDOS} (DNI: ${user.DNI})`,
     }));
 
-    const { value: selectedUserId } = await Swal.fire({
-      title: "Seleccionar usuario que retira",
-      input: "select",
-      inputOptions: userOptions.reduce((acc: any, user: any) => {
-        acc[user.value] = user.label;
-        return acc;
-      }, {}),
-      inputPlaceholder: "Selecciona un usuario",
+    const { value: selectedPersonId, inputValue: photoFile } = await Swal.fire({
+      title: "Seleccionar persona que retira",
+      html: `
+        <select id="swal-input1" class="swal2-select">
+          <option value="">Selecciona una persona</option>
+          ${userOptions
+            .map((user) => `<option value="${user.value}">${user.label}</option>`)
+            .join("")}
+        </select>
+        <div style="margin-top: 1rem;">
+          <label for="swal-input2" class="swal2-file-label">Foto de entrega</label>
+          <input type="file" id="swal-input2" class="swal2-file" accept="image/jpeg,image/png">
+        </div>
+      `,
+      focusConfirm: false,
       showCancelButton: true,
       confirmButtonText: "Confirmar",
       cancelButtonText: "Cancelar",
       confirmButtonColor: "#2563eb",
       cancelButtonColor: "#d33",
-      inputValidator: (value) => {
-        if (!value) {
-          return "Debes seleccionar un usuario";
+      preConfirm: () => {
+        const personId = document.getElementById("swal-input1").value;
+        const photoInput = document.getElementById("swal-input2").files[0];
+        if (!personId) {
+          Swal.showValidationMessage("Debes seleccionar una persona");
+          return false;
         }
+        return { personId, photoFile: photoInput };
       },
     });
 
-    if (!selectedUserId) return;
+    if (!selectedPersonId) return;
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_URL}/orders/${idEncargo}/deliver`, {
+      const formData = new FormData();
+      formData.append("personId", selectedPersonId);
+      if (photoFile) {
+        formData.append("photo", photoFile);
+      }
+
+      const response = await fetch(`${API_URL}/${idEncargo}/deliver`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ userId: parseInt(selectedUserId) }),
+        body: formData,
       });
 
       if (!response.ok) throw new Error("Error al marcar como entregado");
@@ -555,7 +585,7 @@ const RegisterOrder = () => {
       .map((encargo) => {
         return `${encargo.ID_ENCARGO},${encargo.NRO_DPTO},${encargo.DESCRIPCION},${formatDate(
           encargo.FECHA_RECEPCION
-        )},${formatDate(encargo.FECHA_ENTREGA)},${encargo.RECEPCIONISTA},${
+        )},${formatDate(encargo.FECHA_ENTREGA)},${encargo.RECEPCIONISTA || "-"},${
           encargo.ENTREGADO_A || "-"
         },${encargo.USUARIOS_ASOCIADOS || "-"},${encargo.ESTADO === 1 ? "Pendiente" : "Entregado"}`;
       })
@@ -608,59 +638,55 @@ const RegisterOrder = () => {
                 <label className="block text-sm font-medium text-gray-600 mb-2">
                   Buscar por:
                 </label>
-                <div className="flex gap-4">
-                  <Button
-                    onClick={() => handleCriteriaChange("name")}
-                    className={`px-4 py-2 ${
-                      searchCriteria === "name"
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-200 text-gray-600"
-                    } hover:bg-blue-700 hover:text-white transition-colors`}
-                  >
-                    Nombre
-                  </Button>
-                  <Button
-                    onClick={() => handleCriteriaChange("dni")}
-                    className={`px-4 py-2 ${
-                      searchCriteria === "dni"
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-200 text-gray-600"
-                    } hover:bg-blue-700 hover:text-white transition-colors`}
-                  >
-                    DNI
-                  </Button>
-                  <Button
-                    onClick={() => handleCriteriaChange("department")}
-                    className={`px-4 py-2 ${
-                      searchCriteria === "department"
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-200 text-gray-600"
-                    } hover:bg-blue-700 hover:text-white transition-colors`}
-                  >
-                    Departamento
-                  </Button>
-                </div>
+                <SelectInput
+                  value={searchCriteria}
+                  onChange={handleCriteriaChange}
+                >
+                  <option value="">Selecciona un criterio</option>
+                  <option value="name">Nombre</option>
+                  <option value="dni">DNI</option>
+                  <option value="department">Departamento</option>
+                </SelectInput>
               </div>
-              {searchCriteria === "name" ? (
+              {searchCriteria === "name" && (
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-600 mb-2">
                     Nombres y Apellidos
                   </label>
-                  <Select
-                    options={userOptions}
-                    value={selectedUser}
-                    onChange={(option) => setSelectedUser(option)}
-                    onInputChange={(input) => {
-                      setSearchQuery(input);
-                      fetchUsers(input, "name");
-                    }}
-                    placeholder="Escribe para buscar..."
-                    isLoading={isLoading}
-                    className="text-sm"
-                    isClearable
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Escribe para buscar..."
+                    />
+                    <Button
+                      className="bg-blue-600 text-white hover:bg-blue-700"
+                      onClick={handleSearch}
+                      disabled={isLoading}
+                    >
+                      <FaSearch className="mr-2" />
+                      Buscar
+                    </Button>
+                  </div>
+                  {personOptions.length > 0 && (
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-600 mb-2">
+                        Seleccionar Persona
+                      </label>
+                      <Select
+                        options={personOptions}
+                        value={selectedPerson}
+                        onChange={(option) => setSelectedPerson(option)}
+                        placeholder="Selecciona una persona..."
+                        className="text-sm"
+                        isClearable
+                      />
+                    </div>
+                  )}
                 </div>
-              ) : searchCriteria === "dni" ? (
+              )}
+              {searchCriteria === "dni" && (
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-600 mb-2">
                     DNI
@@ -681,23 +707,24 @@ const RegisterOrder = () => {
                       Buscar
                     </Button>
                   </div>
-                  {userOptions.length > 0 && (
+                  {personOptions.length > 0 && (
                     <div className="mt-4">
                       <label className="block text-sm font-medium text-gray-600 mb-2">
-                        Seleccionar Usuario
+                        Seleccionar Persona
                       </label>
                       <Select
-                        options={userOptions}
-                        value={selectedUser}
-                        onChange={(option) => setSelectedUser(option)}
-                        placeholder="Selecciona un usuario..."
+                        options={personOptions}
+                        value={selectedPerson}
+                        onChange={(option) => setSelectedPerson(option)}
+                        placeholder="Selecciona una persona..."
                         className="text-sm"
                         isClearable
                       />
                     </div>
                   )}
                 </div>
-              ) : (
+              )}
+              {searchCriteria === "department" && (
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-600 mb-2">
                     Número de Departamento
@@ -730,7 +757,7 @@ const RegisterOrder = () => {
                       <Select
                         options={departmentOptions}
                         value={selectedDepartment}
-                        onChange={(option) => setSelectedDepartment(option)}
+                        onChange={(option) => setSelectedPerson(null) || setSelectedDepartment(option)}
                         placeholder="Selecciona un departamento..."
                         className="text-sm"
                         isClearable
@@ -738,11 +765,11 @@ const RegisterOrder = () => {
                       {selectedDepartment && selectedDepartment.users && (
                         <div className="mt-4">
                           <label className="block text-sm font-medium text-gray-600 mb-2">
-                            Usuarios Asociados
+                            Personas Asociadas
                           </label>
                           <UsersList>
                             {selectedDepartment.users.map((user) => (
-                              <li key={user.ID_USUARIO}>
+                              <li key={user.ID_PERSONA}>
                                 {user.NOMBRES} {user.APELLIDOS} (DNI: {user.DNI})
                               </li>
                             ))}
@@ -766,6 +793,19 @@ const RegisterOrder = () => {
                 <p className="text-xs text-gray-500 mt-1">
                   {description.length}/255 caracteres
                 </p>
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-600 mb-2">
+                  Foto del Paquete
+                </label>
+                <Input
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  onChange={handlePhotoChange}
+                />
+                {photoPreview && (
+                  <ImagePreview src={photoPreview} alt="Vista previa del paquete" />
+                )}
               </div>
               <div className="flex justify-end">
                 <Button
@@ -885,7 +925,7 @@ const RegisterOrder = () => {
                         <td className="py-3 px-4">{encargo.DESCRIPCION}</td>
                         <td className="py-3 px-4">{formatDate(encargo.FECHA_RECEPCION)}</td>
                         <td className="py-3 px-4">{formatDate(encargo.FECHA_ENTREGA)}</td>
-                        <td className="py-3 px-4">{encargo.RECEPCIONISTA}</td>
+                        <td className="py-3 px-4">{encargo.RECEPCIONISTA || "-"}</td>
                         <td className="py-3 px-4">{encargo.ENTREGADO_A || "-"}</td>
                         <td className="py-3 px-4">{encargo.USUARIOS_ASOCIADOS || "-"}</td>
                         <td className="py-3 px-4">
