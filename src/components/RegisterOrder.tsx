@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import styled, { keyframes } from "styled-components";
-import { FaBox, FaSave, FaFileExport, FaCheck, FaSearch, FaCamera, FaTimes, FaUser, FaIdCard, FaBuilding } from "react-icons/fa";
+import { FaBox, FaSave, FaFileExport, FaCheck, FaSearch, FaCamera, FaTimes, FaUser, FaIdCard, FaBuilding, FaChevronDown, FaChevronUp } from "react-icons/fa";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -71,6 +71,33 @@ const Input = styled.input`
     outline: none;
     border-color: #2563eb;
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+  }
+  &[type="radio"] {
+    appearance: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 2px solid #d1d5db;
+    border-radius: 50%;
+    cursor: pointer;
+    &:checked {
+      background-color: #2563eb;
+      border-color: #2563eb;
+      position: relative;
+      &:after {
+        content: '';
+        width: 0.5rem;
+        height: 0.5rem;
+        background-color: white;
+        border-radius: 50%;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+    }
+    &:focus {
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3);
+    }
   }
 `;
 
@@ -146,6 +173,46 @@ const ImagePreview = styled.img`
   margin-top: 0.5rem;
 `;
 
+const CameraModal = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+`;
+
+const CameraContainer = styled.div`
+  background-color: white;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+`;
+
+const Video = styled.video`
+  width: 100%;
+  max-height: 60vh;
+  object-fit: cover;
+`;
+
+const CameraButtonContainer = styled.div`
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  width: 100%;
+  justify-content: center;
+`;
+
 const FilterContainer = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -203,6 +270,14 @@ const Badge = styled.span`
   font-weight: 600;
 `;
 
+const ToggleButton = styled(Button)`
+  background-color: #2563eb;
+  color: white;
+  &:hover {
+    background-color: #1d4ed8;
+  }
+`;
+
 const formatDate = (dateInput) => {
   if (!dateInput) return "-";
   try {
@@ -236,10 +311,15 @@ const RegisterOrder = () => {
     nroDpto: "",
     descripcion: "",
     fechaRecepcion: "",
-    estado: "1", // Default to Pendientes
+    estado: "1",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showAssociatedUsers, setShowAssociatedUsers] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [stream, setStream] = useState(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
 
   useEffect(() => {
     if (!isAuthenticated || !token) {
@@ -354,7 +434,8 @@ const RegisterOrder = () => {
       }
       const data = await response.json();
       setResults(
-        data.map((person) => ({
+        data.map((person, index) => ({
+          index,
           ID_PERSONA: person.ID_PERSONA,
           NOMBRES: person.NOMBRES,
           APELLIDOS: person.APELLIDOS,
@@ -437,6 +518,8 @@ const RegisterOrder = () => {
     setPhotoPreview(null);
     setDescription("");
     setError("");
+    setShowAssociatedUsers(false);
+    stopCamera();
   };
 
   const handleDepartmentInputChange = (e) => {
@@ -447,19 +530,98 @@ const RegisterOrder = () => {
     }
   };
 
+  const startCamera = async () => {
+    try {
+      console.log("Attempting to start camera...");
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      });
+      console.log("Camera stream obtained:", newStream);
+      setStream(newStream);
+      setIsCameraActive(true);
+      if (videoRef.current) {
+        videoRef.current.srcObject = newStream;
+        videoRef.current.play().then(() => {
+          console.log("Video playback started");
+        }).catch((err) => {
+          console.error("Error playing video:", err);
+        });
+      } else {
+        console.error("Video ref is not available");
+      }
+    } catch (err) {
+      console.error("Error starting camera:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo acceder a la cámara. Verifica los permisos o usa 'Seleccionar Foto'.",
+        timer: 3000,
+        showConfirmButton: false,
+      });
+    }
+  };
+
+  const stopCamera = () => {
+    console.log("Stopping camera...");
+    if (stream) {
+      stream.getTracks().forEach((track) => {
+        track.stop();
+        console.log("Camera track stopped:", track);
+      });
+      setStream(null);
+    }
+    setIsCameraActive(false);
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) {
+      console.error("Video or canvas ref is missing");
+      return;
+    }
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+    console.log("Photo captured from video");
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const file = new File([blob], "captured-photo.jpg", { type: "image/jpeg" });
+        setPhoto(file);
+        setPhotoPreview(URL.createObjectURL(file));
+        console.log("Photo set and preview generated");
+        stopCamera();
+      } else {
+        console.error("Failed to generate photo blob");
+      }
+    }, "image/jpeg");
+  };
+
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setPhoto(file);
       setPhotoPreview(URL.createObjectURL(file));
-    } else {
-      setPhoto(null);
-      setPhotoPreview(null);
+      console.log("Photo selected from file input:", file.name);
     }
+  };
+
+  const clearPhoto = () => {
+    setPhoto(null);
+    setPhotoPreview(null);
+    document.getElementById("fileInput").value = null;
+    stopCamera();
+    console.log("Photo cleared");
   };
 
   const clearResidentSelection = () => {
     setSelectedMainResident(null);
+    setShowAssociatedUsers(false);
+    console.log("Resident selection cleared");
+  };
+
+  const toggleAssociatedUsers = () => {
+    setShowAssociatedUsers(!showAssociatedUsers);
   };
 
   const showConfirmationModal = async () => {
@@ -489,19 +651,10 @@ const RegisterOrder = () => {
     const modalContent = `
       <div style="text-align: left;">
         <p><strong>Persona Principal:</strong> ${selectedMainResident.NOMBRES} ${selectedMainResident.APELLIDOS}</p>
-        <p><strong>DNI:</strong> ${selectedMainResident.DNI}</p>
-        <p><strong>Departamento:</strong> ${selectedMainResident.NRO_DPTO} (${selectedMainResident.FASE})</p>
+        <p><strong>Fase:</strong> ${selectedMainResident.FASE}</p>
+        <p><strong>Departamento:</strong> ${selectedMainResident.NRO_DPTO}</p>
         <p><strong>Descripción del encargo:</strong> ${description}</p>
-        ${photoPreview ? '<p><strong>Foto del paquete:</strong></p><img src="' + photoPreview + '" style="max-width: 150px;" />' : ''}
-        <p><strong>Personas asociadas:</strong></p>
-        <ul style="list-style-type: disc; margin-left: 20px;">
-          ${selectedMainResident.USUARIOS_ASOCIADOS
-            .map(
-              (user) =>
-                `<li>${user.NOMBRES} ${user.APELLIDOS} (DNI: ${user.DNI})${user.ES_PROPIETARIO ? " (Propietario)" : ""}</li>`
-            )
-            .join("")}
-        </ul>
+        <p><strong>Foto:</strong> ${photo ? "Foto cargada" : "No se ha cargado ninguna foto"}</p>
       </div>
     `;
 
@@ -568,6 +721,8 @@ const RegisterOrder = () => {
       setSearchCriteria("");
       setFilter({ nroDpto: "", descripcion: "", fechaRecepcion: "", estado: "1" });
       setActiveTab("history");
+      setShowAssociatedUsers(false);
+      stopCamera();
     } catch (error) {
       console.error("Error en handleRegister:", error);
       setError(error.message || "No se pudo registrar el encargo.");
@@ -849,16 +1004,16 @@ const RegisterOrder = () => {
                     </thead>
                     <tbody>
                       {results.map((result, index) => (
-                        <TableRow key={result.ID_PERSONA} $delay={index * 0.1}>
+                        <TableRow key={`resident-${result.index}`} $delay={index * 0.1}>
                           <TableCell>
-                            <input
+                            <Input
                               type="radio"
                               name="mainResident"
-                              value={result.ID_PERSONA}
-                              checked={selectedMainResident?.ID_PERSONA === result.ID_PERSONA}
+                              value={result.index}
+                              checked={selectedMainResident?.index === result.index}
                               onChange={() => {
-                                console.log("Selecting resident:", result);
                                 setSelectedMainResident(result);
+                                console.log("Selected resident index:", result.index);
                               }}
                             />
                           </TableCell>
@@ -897,25 +1052,45 @@ const RegisterOrder = () => {
                       </span>
                     </div>
                   </ResidentCard>
-                  <h3 className="text-sm font-medium text-gray-600 mb-2">
-                    Personas Asociadas al Departamento
-                  </h3>
-                  <AssociatedUsersContainer>
-                    {selectedMainResident.USUARIOS_ASOCIADOS.map((user) => (
-                      <UserCard key={user.ID_PERSONA}>
-                        <UserInfo>
-                          <FaUser className="text-gray-500" />
-                          <span className="text-gray-700">
-                            {user.NOMBRES} {user.APELLIDOS}
-                          </span>
-                        </UserInfo>
-                        <UserInfo>
-                          <span className="text-gray-600">DNI: {user.DNI}</span>
-                          {user.ES_PROPIETARIO && <Badge>Propietario</Badge>}
-                        </UserInfo>
-                      </UserCard>
-                    ))}
-                  </AssociatedUsersContainer>
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-sm font-medium text-gray-600">
+                      Personas Asociadas al Departamento
+                    </h3>
+                    <ToggleButton
+                      onClick={toggleAssociatedUsers}
+                      title={showAssociatedUsers ? "Ocultar personas asociadas" : "Mostrar personas asociadas"}
+                    >
+                      {showAssociatedUsers ? (
+                        <>
+                          <FaChevronUp className="mr-2" />
+                          Ocultar
+                        </>
+                      ) : (
+                        <>
+                          <FaChevronDown className="mr-2" />
+                          Mostrar
+                        </>
+                      )}
+                    </ToggleButton>
+                  </div>
+                  {showAssociatedUsers && (
+                    <AssociatedUsersContainer>
+                      {selectedMainResident.USUARIOS_ASOCIADOS.map((user) => (
+                        <UserCard key={user.ID_PERSONA}>
+                          <UserInfo>
+                            <FaUser className="text-gray-500" />
+                            <span className="text-gray-700">
+                              {user.NOMBRES} {user.APELLIDOS}
+                            </span>
+                          </UserInfo>
+                          <UserInfo>
+                            <span className="text-gray-600">DNI: {user.DNI}</span>
+                            {user.ES_PROPIETARIO && <Badge>Propietario</Badge>}
+                          </UserInfo>
+                        </UserCard>
+                      ))}
+                    </AssociatedUsersContainer>
+                  )}
                 </div>
               )}
               <div className="mb-6">
@@ -936,11 +1111,67 @@ const RegisterOrder = () => {
                 <label className="block text-sm font-medium text-gray-600 mb-2">
                   Foto del Paquete
                 </label>
+                <div className="flex gap-2">
+                  <Button
+                    className="bg-blue-600 text-white hover:bg-blue-700"
+                    onClick={() => document.getElementById("fileInput").click()}
+                    title="Seleccionar foto desde el dispositivo"
+                  >
+                    <FaFileExport className="mr-2" />
+                    Seleccionar Foto
+                  </Button>
+                  <Button
+                    className="bg-blue-600 text-white hover:bg-blue-700"
+                    onClick={isCameraActive ? stopCamera : startCamera}
+                    title={isCameraActive ? "Cerrar cámara" : "Tomar foto con la cámara"}
+                  >
+                    <FaCamera className="mr-2" />
+                    {isCameraActive ? "Cerrar Cámara" : "Tomar Foto"}
+                  </Button>
+                  {photoPreview && (
+                    <Button
+                      className="bg-red-600 text-white hover:bg-red-700"
+                      onClick={clearPhoto}
+                      title="Eliminar foto seleccionada"
+                    >
+                      <FaTimes className="mr-2" />
+                      Eliminar Foto
+                    </Button>
+                  )}
+                </div>
                 <Input
+                  id="fileInput"
                   type="file"
                   accept="image/jpeg,image/png"
                   onChange={handlePhotoChange}
+                  style={{ display: "none" }}
                 />
+                {isCameraActive && (
+                  <CameraModal>
+                    <CameraContainer>
+                      <Video ref={videoRef} autoPlay playsInline />
+                      <CameraButtonContainer>
+                        <Button
+                          className="bg-green-600 text-white hover:bg-green-700"
+                          onClick={capturePhoto}
+                          title="Capturar foto desde la cámara"
+                        >
+                          <FaCamera className="mr-2" />
+                          Capturar
+                        </Button>
+                        <Button
+                          className="bg-red-600 text-white hover:bg-red-700"
+                          onClick={stopCamera}
+                          title="Cerrar cámara"
+                        >
+                          <FaTimes className="mr-2" />
+                          Cerrar
+                        </Button>
+                      </CameraButtonContainer>
+                    </CameraContainer>
+                  </CameraModal>
+                )}
+                <canvas ref={canvasRef} style={{ display: "none" }} />
                 {photoPreview && (
                   <ImagePreview src={photoPreview} alt="Vista previa del paquete" />
                 )}
