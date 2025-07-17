@@ -429,7 +429,7 @@ const RegisterOrder = () => {
             FECHA_RECEPCION: encargo.FECHA_RECEPCION,
             FECHA_ENTREGA: encargo.FECHA_ENTREGA,
             FASE: encargo.FASE || "No especificada",
-            PERSONA_DESTINATARIO: encargo.PERSONA_DESTINATARIO || "-", // Usar el campo PERSONA_DESTINATARIO directamente
+            PERSONA_DESTINATARIO: encargo.PERSONA_DESTINATARIO || "-",
           }))
           .sort(
             (a, b) =>
@@ -628,7 +628,9 @@ const RegisterOrder = () => {
         return;
       }
     }
-    fetchPersons(searchQuery, searchCriteria, selectedPhase);
+    await fetchPersons(searchQuery, searchCriteria, selectedPhase);
+    setSearchQuery("");
+    setSelectedPhase("all");
   };
 
   const handleCriteriaChange = (e) => {
@@ -889,114 +891,113 @@ const RegisterOrder = () => {
     return result.isConfirmed;
   };
 
-async function handleRegister() {
-  console.log(
-    "Estado de selectedMainResident:",
-    JSON.stringify(selectedMainResident, null, 2)
-  );
-  console.log("Datos antes de registrar el encargo:", {
-    description: description.trim(),
-    personId: selectedMainResident?.ID_PERSONA,
-    department: selectedMainResident?.ID_DEPARTAMENTO,
-    receptionistId: userId,
-    hasPhoto: !!photo,
-  });
-
-  // Limpiar descripción de datos no deseados de forma genérica
-  const cleanDescription = description
-    .trim()
-    .replace(
-      /N[úu]mero de Documento: \d+|Departamento: \d+ \(Fase[^)]+\)|\b[A-Z][a-zA-Z\s]+ (?:[A-Z][a-zA-Z\s]+ )*[A-Z][a-zA-Z\s]+\b/gi,
-      ""
-    )
-    .trim();
-
-  if (!cleanDescription || cleanDescription.length < 5) {
-    setError("La descripción del encargo debe tener al menos 5 caracteres y no puede estar vacía.");
-    Swal.fire({
-      icon: "warning",
-      title: "Descripción inválida",
-      text: "Por favor, proporciona una descripción válida para el encargo (mínimo 5 caracteres).",
-      timer: 2000,
-      showConfirmButton: false,
+  async function handleRegister() {
+    console.log(
+      "Estado de selectedMainResident:",
+      JSON.stringify(selectedMainResident, null, 2)
+    );
+    console.log("Datos antes de registrar el encargo:", {
+      description: description.trim(),
+      personId: selectedMainResident?.ID_PERSONA,
+      department: selectedMainResident?.ID_DEPARTAMENTO,
+      receptionistId: userId,
+      hasPhoto: !!photo,
     });
-    return;
-  }
 
-  const confirmed = await showConfirmationModal();
-  if (!confirmed) return;
+    const cleanDescription = description
+      .trim()
+      .replace(
+        /N[úu]mero de Documento: \d+|Departamento: \d+ \(Fase[^)]+\)/gi,
+        ""
+      )
+      .trim();
 
-  if (
-    !selectedMainResident?.ID_PERSONA ||
-    !selectedMainResident?.ID_DEPARTAMENTO
-  ) {
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: "Debe seleccionar una persona principal y un departamento válido.",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-
-  setIsLoading(true);
-  try {
-    const formData = new FormData();
-    formData.append("description", cleanDescription); // Usar descripción limpia
-    formData.append("personId", selectedMainResident.ID_PERSONA);
-    formData.append("department", selectedMainResident.ID_DEPARTAMENTO);
-    formData.append("receptionistId", userId || "0");
-    if (photo) {
-      formData.append("photo", photo);
-      formData.append("photoFormat", photo.name.split(".").pop());
+    if (!cleanDescription || cleanDescription.length < 5) {
+      setError("La descripción del encargo debe tener al menos 5 caracteres y no puede estar vacía.");
+      Swal.fire({
+        icon: "warning",
+        title: "Descripción inválida",
+        text: "Por favor, proporciona una descripción válida para el encargo (mínimo 5 caracteres).",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
     }
 
-    const response = await fetch(`${API_URL}/`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
+    const confirmed = await showConfirmationModal();
+    if (!confirmed) return;
 
-    const responseData = await response.json();
-    console.log("Respuesta de la API:", responseData);
-
-    if (!response.ok) {
-      throw new Error(responseData.message || `Error ${response.status}`);
+    if (
+      !selectedMainResident?.ID_PERSONA ||
+      !selectedMainResident?.ID_DEPARTAMENTO
+    ) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Debe seleccionar una persona principal y un departamento válido.",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
     }
 
-    Swal.fire({
-      icon: "success",
-      title: "Éxito",
-      text: "Encargo registrado correctamente",
-      timer: 1500,
-      showConfirmButton: false,
-    });
+    setIsLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("description", cleanDescription);
+      formData.append("personId", selectedMainResident.ID_PERSONA);
+      formData.append("department", selectedMainResident.ID_DEPARTAMENTO);
+      formData.append("receptionistId", userId || "0");
+      if (photo) {
+        formData.append("photo", photo);
+        formData.append("photoFormat", photo.name.split(".").pop());
+      }
 
-    fetchEncargos();
-    setDescription("");
-    setSelectedMainResident(null);
-    setPhoto(null);
-    setPhotoPreview(null);
-  } catch (error) {
-    console.error("Error en handleRegister:", error);
-    const errorMessage = error.message.includes("residente activo")
-      ? `No se pudo registrar el encargo: La persona (ID: ${selectedMainResident?.ID_PERSONA}) no está registrada como residente activo en el departamento (ID: ${selectedMainResident?.ID_DEPARTAMENTO}). Verifica los datos.`
-      : error.message || "No se pudo registrar el encargo.";
-    setError(errorMessage);
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: errorMessage,
-      timer: 3000,
-      showConfirmButton: false,
-    });
-  } finally {
-    setIsLoading(false);
+      const response = await fetch(`${API_URL}/`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const responseData = await response.json();
+      console.log("Respuesta de la API:", responseData);
+
+      if (!response.ok) {
+        throw new Error(responseData.message || `Error ${response.status}`);
+      }
+
+      Swal.fire({
+        icon: "success",
+        title: "Éxito",
+        text: "Encargo registrado correctamente",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+
+      fetchEncargos();
+      setDescription("");
+      setSelectedMainResident(null);
+      setPhoto(null);
+      setPhotoPreview(null);
+    } catch (error) {
+      console.error("Error en handleRegister:", error);
+      const errorMessage = error.message.includes("residente activo")
+        ? `No se pudo registrar el encargo: La persona (ID: ${selectedMainResident?.ID_PERSONA}) no está registrada como residente activo en el departamento (ID: ${selectedMainResident?.ID_DEPARTAMENTO}). Verifica los datos.`
+        : error.message || "No se pudo registrar el encargo.";
+      setError(errorMessage);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: errorMessage,
+        timer: 3000,
+        showConfirmButton: false,
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
-}
 
   const handleMarkDelivered = async (idEncargo) => {
     const usersResponse = await fetch(
@@ -1180,6 +1181,7 @@ async function handleRegister() {
       },
     });
   }
+
   const filteredEncargos = encargos.filter((encargo) => {
     const fechaRecepcion = formatDate(encargo.FECHA_RECEPCION);
     return (
@@ -1502,12 +1504,12 @@ async function handleRegister() {
                           <UserInfo>
                             <FaUser className="text-gray-500" />
                             <span className="text-gray-700">
-                              {user.NOMBRES} ${user.APELLIDOS}
+                              {user.NOMBRES} {user.APELLIDOS}
                             </span>
                           </UserInfo>
                           <UserInfo>
                             <span className="text-gray-600">
-                              Número de Documento: ${user.DNI}
+                              Número de Documento: {user.DNI}
                             </span>
                             {user.ES_PROPIETARIO && <Badge>Propietario</Badge>}
                           </UserInfo>
@@ -1554,7 +1556,7 @@ async function handleRegister() {
                         : "Tomar foto con la cámara"
                     }
                   >
-                    <FaCamera className="mr-2" />$
+                    <FaCamera className="mr-2" />
                     {isCameraActive ? "Cerrar Cámara" : "Tomar Foto"}
                   </Button>
                   {photoPreview && (
@@ -1615,7 +1617,7 @@ async function handleRegister() {
                   disabled={isLoading}
                   title="Registrar nuevo encargo"
                 >
-                  <FaSave className="mr-2" />$
+                  <FaSave className="mr-2" />
                   {isLoading ? "Registrando..." : "Registrar Encargo"}
                 </Button>
               </div>
