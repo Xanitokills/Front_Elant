@@ -342,6 +342,7 @@ const RegisterOrder = () => {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [stream, setStream] = useState(null);
   const [showSearchResults, setShowSearchResults] = useState(true);
+  const [hasSearched, setHasSearched] = useState(false); // Nuevo estado para rastrear si se ha buscado
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -504,6 +505,7 @@ const RegisterOrder = () => {
           showConfirmButton: false,
         });
         setResults([]);
+        setHasSearched(true); // Indica que se realizó una búsqueda
         return;
       }
       setResults(
@@ -521,6 +523,7 @@ const RegisterOrder = () => {
         }))
       );
       setShowSearchResults(true);
+      setHasSearched(true); // Indica que se realizó una búsqueda
     } catch (error) {
       console.error("Error en fetchPersons:", error);
       Swal.fire({
@@ -531,6 +534,7 @@ const RegisterOrder = () => {
         showConfirmButton: false,
       });
       setResults([]);
+      setHasSearched(true); // Indica que se realizó una búsqueda
     } finally {
       setIsLoading(false);
     }
@@ -596,6 +600,7 @@ const RegisterOrder = () => {
     setError("");
     setShowAssociatedUsers(false);
     setShowSearchResults(true);
+    setHasSearched(false); // Resetea el estado de búsqueda
     stopCamera();
     if (newCriteria === "department") {
       fetchAllPhases();
@@ -770,6 +775,7 @@ const RegisterOrder = () => {
     setSelectedMainResident(null);
     setShowAssociatedUsers(false);
     setShowSearchResults(true);
+    setHasSearched(false); // Resetea el estado de búsqueda
     console.log("Resident selection cleared");
   };
 
@@ -880,6 +886,7 @@ const RegisterOrder = () => {
       setActiveTab("history");
       setShowAssociatedUsers(false);
       setShowSearchResults(true);
+      setHasSearched(false); // Resetea el estado de búsqueda
       stopCamera();
     } catch (error) {
       console.error("Error en handleRegister:", error);
@@ -1216,7 +1223,7 @@ const RegisterOrder = () => {
                   )}
                 </div>
               )}
-              {results.length === 0 && searchCriteria && !isLoading && (
+              {results.length === 0 && searchCriteria && !isLoading && hasSearched && (
                 <div className="mb-6 text-center text-gray-500">
                   No se encontraron registros para los criterios ingresados.
                 </div>
