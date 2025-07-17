@@ -837,73 +837,73 @@ const RegisterOrder = () => {
     return result.isConfirmed;
   };
 
-  const handleRegister = async () => {
-    const confirmed = await showConfirmationModal();
-    if (!confirmed) return;
+const handleRegister = async () => {
+  const confirmed = await showConfirmationModal();
+  if (!confirmed) return;
 
-    setIsLoading(true);
-    try {
-      const formData = new FormData();
-      formData.append("description", description.trim());
-      formData.append("personId", selectedMainResident.ID_PERSONA);
-      formData.append("department", selectedMainResident.ID_DEPARTAMENTO);
-      formData.append("receptionistId", userId || "0");
-      if (photo) {
-        formData.append("photo", photo);
-      }
-
-      const response = await fetch(`${API_URL}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error al registrar el encargo");
-      }
-
-      Swal.fire({
-        icon: "success",
-        title: "Éxito",
-        text: "Encargo registrado correctamente",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-
-      await fetchEncargos();
-      setDescription("");
-      setSearchQuery("");
-      setSelectedPhase("all");
-      setPhaseOptions([{ value: "all", label: "Todas las fases" }]);
-      setResults([]);
-      setSelectedMainResident(null);
-      setPhoto(null);
-      setPhotoPreview(null);
-      setError("");
-      setSearchCriteria("");
-      setFilter({ nroDpto: "", descripcion: "", fechaRecepcion: "", estado: "1" });
-      setActiveTab("history");
-      setShowAssociatedUsers(false);
-      setShowSearchResults(true);
-      setHasSearched(false);
-      stopCamera();
-    } catch (error) {
-      console.error("Error en handleRegister:", error);
-      setError(error.message || "No se pudo registrar el encargo.");
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: error.message || "No se pudo registrar el encargo.",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-    } finally {
-      setIsLoading(false);
+  setIsLoading(true);
+  try {
+    const formData = new FormData();
+    formData.append("description", description.trim());
+    formData.append("personId", selectedMainResident.ID_PERSONA);
+    formData.append("department", selectedMainResident.ID_DEPARTAMENTO); // Usar ID_DEPARTAMENTO seleccionado
+    formData.append("receptionistId", userId || "0");
+    if (photo) {
+      formData.append("photo", photo);
     }
-  };
+
+    const response = await fetch(`${API_URL}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Error al registrar el encargo");
+    }
+
+    Swal.fire({
+      icon: "success",
+      title: "Éxito",
+      text: "Encargo registrado correctamente",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+
+    await fetchEncargos();
+    setDescription("");
+    setSearchQuery("");
+    setSelectedPhase("all");
+    setPhaseOptions([{ value: "all", label: "Todas las fases" }]);
+    setResults([]);
+    setSelectedMainResident(null);
+    setPhoto(null);
+    setPhotoPreview(null);
+    setError("");
+    setSearchCriteria("");
+    setFilter({ nroDpto: "", descripcion: "", fechaRecepcion: "", estado: "1" });
+    setActiveTab("history");
+    setShowAssociatedUsers(false);
+    setShowSearchResults(true);
+    setHasSearched(false);
+    stopCamera();
+  } catch (error) {
+    console.error("Error en handleRegister:", error);
+    setError(error.message || "No se pudo registrar el encargo.");
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: error.message || "No se pudo registrar el encargo.",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleMarkDelivered = async (idEncargo) => {
     const usersResponse = await fetch(
