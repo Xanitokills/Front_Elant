@@ -207,6 +207,7 @@ const Video = styled.video`
   width: 100%;
   max-height: 60vh;
   object-fit: cover;
+  background-color: black;
 `;
 
 const CameraButtonContainer = styled.div`
@@ -349,6 +350,36 @@ const RegisterOrder = () => {
       navigate("/login");
     }
   }, [isAuthenticated, token, navigate]);
+
+  const checkDevices = async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter((device) => device.kind === "videoinput");
+      console.log("Cámaras disponibles:", videoDevices);
+      if (videoDevices.length === 0) {
+        Swal.fire({
+          icon: "error",
+          title: "Sin cámaras",
+          text: "No se encontraron cámaras en el dispositivo. Usa 'Seleccionar Foto' para cargar una imagen.",
+          timer: 3000,
+          showConfirmButton: false,
+        });
+      }
+    } catch (err) {
+      console.error("Error al enumerar dispositivos:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo verificar las cámaras disponibles. Verifica los permisos del navegador.",
+        timer: 3000,
+        showConfirmButton: false,
+      });
+    }
+  };
+
+  useEffect(() => {
+    checkDevices();
+  }, []);
 
   const fetchEncargos = async () => {
     try {
@@ -577,70 +608,143 @@ const RegisterOrder = () => {
   };
 
   const startCamera = async () => {
-    try {
-      console.log("Attempting to start camera...");
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-      });
-      console.log("Camera stream obtained:", newStream);
-      setStream(newStream);
-      setIsCameraActive(true);
-      if (videoRef.current) {
-        videoRef.current.srcObject = newStream;
-        videoRef.current.play().then(() => {
-          console.log("Video playback started");
-        }).catch((err) => {
-          console.error("Error playing video:", err);
-        });
-      } else {
-        console.error("Video ref is not available");
-      }
-    } catch (err) {
-      console.error("Error starting camera:", err);
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.error("getUserMedia no es compatible con este navegador");
       Swal.fire({
         icon: "error",
-        title: "Error",
-        text: "No se pudo acceder a la cámara. Verifica los permisos o usa 'Seleccionar Foto'.",
+        title: "Navegador no compatible",
+        text: "Este navegador no soporta el acceso a la cámara. Usa un navegador moderno como Chrome o Firefox.",
         timer: 3000,
         showConfirmButton: false,
       });
+      return;
+    }
+
+    try {
+      console.log("Iniciando cámara...");
+      const constraints = {
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      };
+      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log("Stream obtenido:", newStream);
+      setStream(newStream);
+      setIsCameraActive(true);
+    } catch (err) {
+      console.error("Error al iniciar la cámara:", err.name, err.message);
+      let errorMessage = "No se pudo acceder a la cámara.";
+      if (err.name === "NotAllowedError") {
+        errorMessage = "Permiso de cámara denegado. Habilita el acceso en la configuración del navegador.";
+      } else if (err.name === "NotFoundError") {
+        errorMessage = "No se encontró una cámara en el dispositivo.";
+      } else if (err.name === "NotReadableError") {
+        errorMessage = "La cámara está en uso por otra aplicación.";
+      }
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: `${errorMessage} Verifica los permisos o usa 'Seleccionar Foto'.`,
+        timer: 4000,
+        showConfirmButton: false,
+      });
+      setIsCameraActive(false);
     }
   };
 
   const stopCamera = () => {
-    console.log("Stopping camera...");
+    console.log("Deteniendo cámara...");
     if (stream) {
       stream.getTracks().forEach((track) => {
         track.stop();
-        console.log("Camera track stopped:", track);
+        console.log("Pista detenida:", track.kind);
       });
       setStream(null);
     }
     setIsCameraActive(false);
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+      console.log("Stream desasignado del elemento de video");
+    }
   };
+
+  useEffect(() => {
+    if (isCameraActive && stream && videoRef.current) {
+      console.log("Asignando stream al elemento de video");
+      videoRef.current.srcObject = stream;
+      videoRef.current.onloadedmetadata = () => {
+        if (videoRef.current) {
+          videoRef.current
+            .play()
+            .then(() => {
+              console.log("Reproducción de video iniciada");
+            })
+            .catch((err) => {
+              console.error("Error al reproducir el video:", err);
+              Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "No se pudo reproducir el video de la cámara. Verifica la configuración.",
+                timer: 3000,
+                showConfirmButton: false,
+              });
+              stopCamera();
+            });
+        }
+      };
+    }
+
+    return () => {
+      if (isCameraActive) {
+        console.log("Limpieza: Deteniendo cámara en useEffect");
+        stopCamera();
+      }
+    };
+  }, [isCameraActive, stream]);
 
   const capturePhoto = () => {
     if (!videoRef.current || !canvasRef.current) {
-      console.error("Video or canvas ref is missing");
+      console.error("Falta el elemento de video o canvas");
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se puede capturar la foto. Verifica que la cámara esté activa.",
+        timer: 3000,
+        showConfirmButton: false,
+      });
       return;
     }
     const canvas = canvasRef.current;
     const video = videoRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
-    console.log("Photo captured from video");
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const file = new File([blob], "captured-photo.jpg", { type: "image/jpeg" });
-        setPhoto(file);
-        setPhotoPreview(URL.createObjectURL(file));
-        console.log("Photo set and preview generated");
-        stopCamera();
-      } else {
-        console.error("Failed to generate photo blob");
-      }
-    }, "image/jpeg");
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    console.log("Foto capturada desde el video");
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          const file = new File([blob], `captured-photo-${Date.now()}.jpg`, { type: "image/jpeg" });
+          setPhoto(file);
+          setPhotoPreview(URL.createObjectURL(file));
+          console.log("Foto establecida y vista previa generada:", file.name);
+          stopCamera();
+        } else {
+          console.error("No se pudo generar el blob de la foto");
+          Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "No se pudo capturar la foto. Intenta de nuevo.",
+            timer: 3000,
+            showConfirmButton: false,
+          });
+        }
+      },
+      "image/jpeg",
+      0.95
+    );
   };
 
   const handlePhotoChange = (e) => {
