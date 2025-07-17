@@ -342,7 +342,7 @@ const RegisterOrder = () => {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [stream, setStream] = useState(null);
   const [showSearchResults, setShowSearchResults] = useState(true);
-  const [hasSearched, setHasSearched] = useState(false); // Nuevo estado para rastrear si se ha buscado
+  const [hasSearched, setHasSearched] = useState(false);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -389,6 +389,7 @@ const RegisterOrder = () => {
       });
       if (!response.ok) throw new Error("Error al obtener los encargos");
       const data = await response.json();
+      console.log("Datos de encargos recibidos:", data); // Depuración para verificar FASE
       setEncargos(
         data
           .map((encargo) => ({
@@ -396,6 +397,7 @@ const RegisterOrder = () => {
             ESTADO: encargo.ESTADO === true ? 1 : encargo.ESTADO === false ? 0 : encargo.ESTADO,
             FECHA_RECEPCION: encargo.FECHA_RECEPCION,
             FECHA_ENTREGA: encargo.FECHA_ENTREGA,
+            FASE: encargo.FASE || "No especificada", // Valor por defecto si FASE no está presente
           }))
           .sort(
             (a, b) =>
@@ -505,7 +507,7 @@ const RegisterOrder = () => {
           showConfirmButton: false,
         });
         setResults([]);
-        setHasSearched(true); // Indica que se realizó una búsqueda
+        setHasSearched(true);
         return;
       }
       setResults(
@@ -518,12 +520,12 @@ const RegisterOrder = () => {
           ID_DEPARTAMENTO: person.ID_DEPARTAMENTO,
           NRO_DPTO: person.NRO_DPTO,
           FASE: person.FASE,
-          ES_PROPIETARIO: person.ES_PROPIETARIO,
+          ES_PROPIETARIO: person.ID_CLASIFICACION === 1,
           USUARIOS_ASOCIADOS: person.USUARIOS_ASOCIADOS || [],
         }))
       );
       setShowSearchResults(true);
-      setHasSearched(true); // Indica que se realizó una búsqueda
+      setHasSearched(true);
     } catch (error) {
       console.error("Error en fetchPersons:", error);
       Swal.fire({
@@ -534,7 +536,7 @@ const RegisterOrder = () => {
         showConfirmButton: false,
       });
       setResults([]);
-      setHasSearched(true); // Indica que se realizó una búsqueda
+      setHasSearched(true);
     } finally {
       setIsLoading(false);
     }
@@ -600,7 +602,7 @@ const RegisterOrder = () => {
     setError("");
     setShowAssociatedUsers(false);
     setShowSearchResults(true);
-    setHasSearched(false); // Resetea el estado de búsqueda
+    setHasSearched(false);
     stopCamera();
     if (newCriteria === "department") {
       fetchAllPhases();
@@ -775,7 +777,7 @@ const RegisterOrder = () => {
     setSelectedMainResident(null);
     setShowAssociatedUsers(false);
     setShowSearchResults(true);
-    setHasSearched(false); // Resetea el estado de búsqueda
+    setHasSearched(false);
     console.log("Resident selection cleared");
   };
 
@@ -814,7 +816,7 @@ const RegisterOrder = () => {
     const modalContent = `
       <div style="text-align: left;">
         <p><strong>Persona Principal:</strong> ${selectedMainResident.NOMBRES} ${selectedMainResident.APELLIDOS}</p>
-        <p><strong>Fase:</strong> ${selectedMainResident.FASE}</p>
+        <p><strong>Fase:</strong> ${selectedMainResident.FASE || "No especificada"}</p>
         <p><strong>Departamento:</strong> ${selectedMainResident.NRO_DPTO}</p>
         <p><strong>Descripción del encargo:</strong> ${description}</p>
         <p><strong>Foto:</strong> ${photo ? "Foto cargada" : "No se ha cargado ninguna foto"}</p>
@@ -886,7 +888,7 @@ const RegisterOrder = () => {
       setActiveTab("history");
       setShowAssociatedUsers(false);
       setShowSearchResults(true);
-      setHasSearched(false); // Resetea el estado de búsqueda
+      setHasSearched(false);
       stopCamera();
     } catch (error) {
       console.error("Error en handleRegister:", error);
@@ -1024,7 +1026,7 @@ const RegisterOrder = () => {
       "ID Encargo,Número Dpto,Fase,Descripción,Fecha Recepción,Fecha Entrega,Recepcionista,Entregado A,Usuarios Asociados,Estado\n";
     const rows = filteredEncargos
       .map((encargo) => {
-        return `${encargo.ID_ENCARGO},${encargo.NRO_DPTO},${encargo.FASE || "-"},${encargo.DESCRIPCION},${formatDate(
+        return `${encargo.ID_ENCARGO},${encargo.NRO_DPTO},${encargo.FASE || "No especificada"},${encargo.DESCRIPCION},${formatDate(
           encargo.FECHA_RECEPCION
         )},${formatDate(encargo.FECHA_ENTREGA)},${encargo.RECEPCIONISTA || "-"},${
           encargo.ENTREGADO_A || "-"
@@ -1213,7 +1215,7 @@ const RegisterOrder = () => {
                                 }}
                               />
                             </TableCell>
-                            <TableCell>{result.FASE}</TableCell>
+                            <TableCell>{result.FASE || "No especificada"}</TableCell>
                             <TableCell>{result.NRO_DPTO}</TableCell>
                             <TableCell>{`${result.NOMBRES} ${result.APELLIDOS} (DNI: ${result.DNI})${result.ES_PROPIETARIO ? " (Propietario)" : ""}`}</TableCell>
                           </TableRow>
@@ -1250,7 +1252,7 @@ const RegisterOrder = () => {
                     <div className="flex items-center gap-2">
                       <FaBuilding className="text-gray-500" />
                       <span className="text-gray-600">
-                        Departamento: {selectedMainResident.NRO_DPTO} ({selectedMainResident.FASE})
+                        Departamento: {selectedMainResident.NRO_DPTO} ({selectedMainResident.FASE || "No especificada"})
                       </span>
                     </div>
                   </ResidentCard>
@@ -1506,7 +1508,7 @@ const RegisterOrder = () => {
                       >
                         <TableCell>{encargo.ID_ENCARGO}</TableCell>
                         <TableCell>{encargo.NRO_DPTO}</TableCell>
-                        <TableCell>{encargo.FASE || "-"}</TableCell>
+                        <TableCell>{encargo.FASE || "No especificada"}</TableCell>
                         <TableCell>{encargo.DESCRIPCION}</TableCell>
                         <TableCell>{formatDate(encargo.FECHA_RECEPCION)}</TableCell>
                         <TableCell>{formatDate(encargo.FECHA_ENTREGA)}</TableCell>
