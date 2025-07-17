@@ -1110,65 +1110,101 @@ const RegisterOrder = () => {
     }
   };
 
-  function showDetailsModal(
-    encargo,
-    associatedUsers,
-    photoUrl,
-    deliveredPhotoUrl
-  ) {
+  const fetchAssociatedUsers = async (nroDpto) => {
+    try {
+      const response = await fetch(
+        `${API_URL}?criteria=department&query=${encodeURIComponent(nroDpto)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Error al obtener personas asociadas");
+      }
+      const data = await response.json();
+      return data.map((person) => ({
+        ID_PERSONA: person.ID_PERSONA,
+        NOMBRES: person.NOMBRES,
+        APELLIDOS: person.APELLIDOS,
+        DNI: person.DNI,
+        ES_PROPIETARIO: person.ID_CLASIFICACION === 1,
+        DETALLE_CLASIFICACION: person.ID_CLASIFICACION === 1 ? "Propietario" : person.DETALLE_CLASIFICACION || "Residente",
+      }));
+    } catch (error) {
+      console.error("Error en fetchAssociatedUsers:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudieron cargar las personas asociadas",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return [];
+    }
+  };
+
+  const showDetailsModal = async (encargo) => {
+    const associatedUsers = await fetchAssociatedUsers(encargo.NRO_DPTO);
+    const photoUrl = encargo.FOTO
+      ? `${API_URL}/photos/${encargo.ID_ENCARGO}`
+      : null;
+    const deliveredPhotoUrl = encargo.FOTO_ENTREGA
+      ? `${API_URL}/photos/delivered/${encargo.ID_ENCARGO}`
+      : null;
+
     const modalContent = `
-        <div style="text-align: left; font-size: 14px;">
-            <p><strong>Persona Principal:</strong> ${
-              encargo.PERSONA_DESTINATARIO || "No asignado"
-            } (DNI: ${encargo.DNI || "-"}) ${
+      <div style="text-align: left; font-size: 14px;">
+        <p><strong>Persona Principal:</strong> ${
+          encargo.PERSONA_DESTINATARIO || "No asignado"
+        } (DNI: ${encargo.DNI || "-"}) ${
       encargo.TIPO_RESIDENTE && encargo.TIPO_RESIDENTE !== "-"
         ? `(${encargo.TIPO_RESIDENTE})`
         : ""
     }</p>
-            <p><strong>Personas Asociadas:</strong></p>
-            <ul style="margin-left: 20px;">
-                ${
-                  associatedUsers.length > 0
-                    ? associatedUsers
-                        .map(
-                          (user) =>
-                            `<li>${user.NOMBRES} ${user.APELLIDOS} (DNI: ${
-                              user.DNI
-                            }) ${
-                              user.ID_CLASIFICACION
-                                ? `(${
-                                    user.DETALLE_CLASIFICACION || "Desconocido"
-                                  })`
-                                : ""
-                            }</li>`
-                        )
-                        .join("")
-                    : "<li>No hay personas asociadas</li>"
-                }
-            </ul>
-            <p><strong>Descripción del Encargo:</strong> ${
-              encargo.DESCRIPCION
-            }</p>
-            <p><strong>Foto del Encargo:</strong> ${
-              encargo.FOTO
-                ? `<a href="${photoUrl}" target="_blank" style="color: #2563eb; text-decoration: underline;">Ver foto</a>`
-                : "No disponible"
-            }</p>
-            ${
-              encargo.ESTADO === 0 && encargo.ENTREGADO_A
-                ? `
-                      <p><strong>Persona que Recibió:</strong> ${
-                        encargo.ENTREGADO_A
-                      } (DNI: ${encargo.DNI_ENTREGADO || "-"})</p>
-                      <p><strong>Foto de Entrega:</strong> ${
-                        deliveredPhotoUrl
-                          ? `<a href="${deliveredPhotoUrl}" target="_blank" style="color: #2563eb; text-decoration: underline;">Ver foto</a>`
-                          : "No disponible"
-                      }</p>
-                    `
-                : ""
-            }
-        </div>
+        <p><strong>Personas Asociadas:</strong></p>
+        <ul style="margin-left: 20px;">
+          ${
+            associatedUsers.length > 0
+              ? associatedUsers
+                  .map(
+                    (user) =>
+                      `<li>${user.NOMBRES} ${user.APELLIDOS} (DNI: ${
+                        user.DNI
+                      }) ${
+                        user.ID_CLASIFICACION
+                          ? `(${
+                              user.DETALLE_CLASIFICACION || "Desconocido"
+                            })`
+                          : ""
+                      }</li>`
+                  )
+                  .join("")
+              : "<li>No hay personas asociadas</li>"
+          }
+        </ul>
+        <p><strong>Descripción del Encargo:</strong> ${
+          encargo.DESCRIPCION
+        }</p>
+        <p><strong>Foto del Encargo:</strong> ${
+          photoUrl
+            ? `<a href="${photoUrl}" target="_blank" style="color: #2563eb; text-decoration: underline;">Ver foto</a>`
+            : "No disponible"
+        }</p>
+        ${
+          encargo.ESTADO === 0 && encargo.ENTREGADO_A
+            ? `
+                <p><strong>Persona que Recibió:</strong> ${
+                  encargo.ENTREGADO_A
+                } (DNI: ${encargo.DNI_ENTREGADO || "-"})</p>
+                <p><strong>Foto de Entrega:</strong> ${
+                  deliveredPhotoUrl
+                    ? `<a href="${deliveredPhotoUrl}" target="_blank" style="color: #2563eb; text-decoration: underline;">Ver foto</a>`
+                    : "No disponible"
+                }</p>
+              `
+            : ""
+        }
+      </div>
     `;
     Swal.fire({
       title: `Detalles del Encargo #${encargo.ID_ENCARGO}`,
@@ -1180,7 +1216,7 @@ const RegisterOrder = () => {
           "bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600",
       },
     });
-  }
+  };
 
   const filteredEncargos = encargos.filter((encargo) => {
     const fechaRecepcion = formatDate(encargo.FECHA_RECEPCION);
