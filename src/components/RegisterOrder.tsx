@@ -838,73 +838,86 @@ const RegisterOrder = () => {
     return result.isConfirmed;
   };
 
-  const handleRegister = async () => {
+async function handleRegister() {
+    console.log("Datos antes de registrar el encargo:", {
+        description: description.trim(),
+        personId: selectedMainResident?.ID_PERSONA,
+        department: selectedMainResident?.ID_DEPARTAMENTO,
+        receptionistId: userId,
+        hasPhoto: !!photo
+    });
+
     const confirmed = await showConfirmationModal();
     if (!confirmed) return;
 
+    if (!selectedMainResident?.ID_PERSONA || !selectedMainResident?.ID_DEPARTAMENTO) {
+        Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "Debe seleccionar una persona principal y un departamento válido.",
+            timer: 2000,
+            showConfirmButton: false
+        });
+        return;
+    }
+
     setIsLoading(true);
     try {
-      const formData = new FormData();
-      formData.append("description", description.trim());
-      formData.append("personId", selectedMainResident.ID_PERSONA);
-      formData.append("department", selectedMainResident.ID_DEPARTAMENTO);
-      formData.append("receptionistId", userId || "0");
-      if (photo) {
-        formData.append("photo", photo);
-      }
+        const formData = new FormData();
+        formData.append("description", description.trim());
+        formData.append("personId", selectedMainResident.ID_PERSONA);
+        formData.append("department", selectedMainResident.ID_DEPARTAMENTO);
+        formData.append("receptionistId", userId || "0");
+        if (photo) {
+            formData.append("photo", photo);
+            formData.append("photoFormat", photo.name.split(".").pop());
+        }
 
-      const response = await fetch(`${API_URL}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
+        const response = await fetch(`${API_URL}/`, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+            body: formData
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error al registrar el encargo");
-      }
+        if (!response.ok) {
+            const errorText = await response.text(); // Obtener el texto de la respuesta para depuración
+            console.error("Respuesta del servidor (error):", errorText);
+            throw new Error(`Error ${response.status}: ${errorText}`);
+        }
 
-      Swal.fire({
-        icon: "success",
-        title: "Éxito",
-        text: "Encargo registrado correctamente",
-        timer: 2000,
-        showConfirmButton: false,
-      });
+        const responseData = await response.json();
+        console.log("Respuesta de la API:", responseData);
 
-      await fetchEncargos();
-      setDescription("");
-      setSearchQuery("");
-      setSelectedPhase("all");
-      setPhaseOptions([{ value: "all", label: "Todas las fases" }]);
-      setResults([]);
-      setSelectedMainResident(null);
-      setPhoto(null);
-      setPhotoPreview(null);
-      setError("");
-      setSearchCriteria("");
-      setFilter({ nroDpto: "", descripcion: "", fechaRecepcion: "", estado: "1" });
-      setActiveTab("history");
-      setShowAssociatedUsers(false);
-      setShowSearchResults(true);
-      setHasSearched(false);
-      stopCamera();
+        Swal.fire({
+            icon: "success",
+            title: "Éxito",
+            text: "Encargo registrado correctamente",
+            timer: 1500,
+            showConfirmButton: false
+        });
+
+        // Actualizar la tabla
+        fetchEncargos(); // Asegúrate de que esta función esté definida
+        setDescription("");
+        setSelectedMainResident(null);
+        setPhoto(null);
+        setPhotoPreview(null);
     } catch (error) {
-      console.error("Error en handleRegister:", error);
-      setError(error.message || "No se pudo registrar el encargo.");
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: error.message || "No se pudo registrar el encargo.",
-        timer: 2000,
-        showConfirmButton: false,
-      });
+        console.error("Error en handleRegister:", error);
+        setError(error.message || "No se pudo registrar el encargo.");
+        Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: error.message || "No se pudo registrar el encargo.",
+            timer: 2000,
+            showConfirmButton: false
+        });
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
-  };
+}
 
   const handleMarkDelivered = async (idEncargo) => {
     const usersResponse = await fetch(
@@ -1011,78 +1024,49 @@ const RegisterOrder = () => {
     }
   };
 
-  const showDetailsModal = async (encargo) => {
-    try {
-      // Obtener personas asociadas al departamento
-      const usersResponse = await fetch(
-        `${API_URL}?criteria=department&query=${encargo.NRO_DPTO}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      if (!usersResponse.ok) {
-        throw new Error("No se pudo obtener la lista de personas asociadas");
-      }
-      const associatedUsers = await usersResponse.json();
-
-      // Construir URLs para las fotos
-      const photoUrl = `${API_URL}/photo/${encargo.ID_ENCARGO}`;
-      const deliveredPhotoUrl = encargo.ESTADO === 0 ? `${API_URL}/photo/${encargo.ID_ENCARGO}/delivered` : null;
-
-      // Construir el contenido del modal
-      const modalContent = `
+function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl) {
+    const modalContent = `
         <div style="text-align: left; font-size: 14px;">
-          <p><strong>Persona Principal:</strong> ${encargo.PERSONA_DESTINATARIO} (DNI: ${encargo.DNI || "-"})</p>
-          <p><strong>Personas Asociadas:</strong></p>
-          <ul style="margin-left: 20px;">
+            <p><strong>Persona Principal:</strong> ${encargo.PERSONA_DESTINATARIO || "No asignado"} (DNI: ${encargo.DNI || "-"}) ${encargo.TIPO_RESIDENTE && encargo.TIPO_RESIDENTE !== "-" ? `(${encargo.TIPO_RESIDENTE})` : ""}</p>
+            <p><strong>Personas Asociadas:</strong></p>
+            <ul style="margin-left: 20px;">
+                ${
+                    associatedUsers.length > 0
+                        ? associatedUsers
+                              .map(
+                                  (user) =>
+                                      `<li>${user.NOMBRES} ${user.APELLIDOS} (DNI: ${user.DNI}) ${user.ID_CLASIFICACION ? `(${user.DETALLE_CLASIFICACION || "Desconocido"})` : ""}</li>`
+                              )
+                              .join("")
+                        : "<li>No hay personas asociadas</li>"
+                }
+            </ul>
+            <p><strong>Descripción del Encargo:</strong> ${encargo.DESCRIPCION}</p>
+            <p><strong>Foto del Encargo:</strong> ${
+                encargo.FOTO ? `<a href="${photoUrl}" target="_blank" style="color: #2563eb; text-decoration: underline;">Ver foto</a>` : "No disponible"
+            }</p>
             ${
-              associatedUsers.length > 0
-                ? associatedUsers
-                    .map(
-                      (user) =>
-                        `<li>${user.NOMBRES} ${user.APELLIDOS} (DNI: ${user.DNI})${user.ID_CLASIFICACION === 1 ? " (Propietario)" : ""}</li>`
-                    )
-                    .join("")
-                : "<li>No hay personas asociadas</li>"
+                encargo.ESTADO === 0 && encargo.ENTREGADO_A
+                    ? `
+                      <p><strong>Persona que Recibió:</strong> ${encargo.ENTREGADO_A} (DNI: ${encargo.DNI_ENTREGADO || "-"})</p>
+                      <p><strong>Foto de Entrega:</strong> ${
+                          deliveredPhotoUrl ? `<a href="${deliveredPhotoUrl}" target="_blank" style="color: #2563eb; text-decoration: underline;">Ver foto</a>` : "No disponible"
+                      }</p>
+                    `
+                    : ""
             }
-          </ul>
-          <p><strong>Descripción del Encargo:</strong> ${encargo.DESCRIPCION}</p>
-          <p><strong>Foto del Encargo:</strong> ${
-            encargo.FOTO ? `<a href="${photoUrl}" target="_blank" style="color: #2563eb; text-decoration: underline;">Ver foto</a>` : "No disponible"
-          }</p>
-          ${
-            encargo.ESTADO === 0 && encargo.ENTREGADO_A
-              ? `
-                <p><strong>Persona que Recibió:</strong> ${encargo.ENTREGADO_A} (DNI: ${encargo.DNI_ENTREGADO || "-"})</p>
-                <p><strong>Foto de Entrega:</strong> ${
-                  deliveredPhotoUrl ? `<a href="${deliveredPhotoUrl}" target="_blank" style="color: #2563eb; text-decoration: underline;">Ver foto</a>` : "No disponible"
-                }</p>
-              `
-              : ""
-          }
         </div>
-      `;
-
-      await Swal.fire({
+    `;
+    Swal.fire({
         title: `Detalles del Encargo #${encargo.ID_ENCARGO}`,
         html: modalContent,
-        icon: "info",
+        showConfirmButton: true,
         confirmButtonText: "Cerrar",
-        confirmButtonColor: "#2563eb",
-        width: "600px",
-      });
-    } catch (error) {
-      console.error("Error en showDetailsModal:", error);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "No se pudieron cargar los detalles del encargo",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-    }
-  };
-
+        customClass: {
+            confirmButton: "bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+        }
+    });
+}
   const filteredEncargos = encargos.filter((encargo) => {
     const fechaRecepcion = formatDate(encargo.FECHA_RECEPCION);
     return (
