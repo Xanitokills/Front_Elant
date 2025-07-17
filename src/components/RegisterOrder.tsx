@@ -503,6 +503,8 @@ const RegisterOrder = () => {
           timer: 2000,
           showConfirmButton: false,
         });
+        setResults([]);
+        return;
       }
       setResults(
         data.map((person, index) => ({
@@ -515,7 +517,7 @@ const RegisterOrder = () => {
           NRO_DPTO: person.NRO_DPTO,
           FASE: person.FASE,
           ES_PROPIETARIO: person.ES_PROPIETARIO,
-          USUARIOS_ASOCIADOS: person.USUARIOS_ASOCIADOS,
+          USUARIOS_ASOCIADOS: person.USUARIOS_ASOCIADOS || [],
         }))
       );
       setShowSearchResults(true);
@@ -1079,8 +1081,8 @@ const RegisterOrder = () => {
                   onChange={handleCriteriaChange}
                 >
                   <option value="">Selecciona un criterio</option>
-                  <option value="name">Nombre</option>
-                  <option value="dni">DNI</option>
+                  <option value="name">Apellidos y Nombres</option>
+                  <option value="dni">Número de Documento</option>
                   <option value="department">Departamento</option>
                 </SelectInput>
               </div>
@@ -1088,9 +1090,9 @@ const RegisterOrder = () => {
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-600 mb-2">
                     {searchCriteria === "name"
-                      ? "Nombres y Apellidos"
+                      ? "Apellidos y Nombres"
                       : searchCriteria === "dni"
-                      ? "DNI"
+                      ? "Número de Documento"
                       : "Número de Departamento"}
                   </label>
                   <SearchContainer>
@@ -1121,14 +1123,14 @@ const RegisterOrder = () => {
                         searchCriteria === "name"
                           ? "Escribe para buscar..."
                           : searchCriteria === "dni"
-                          ? "Ingresa el DNI..."
+                          ? "Ingresa el Número de Documento..."
                           : "Ingresa el número de departamento..."
                       }
                       title={
                         searchCriteria === "name"
                           ? "Ingresa el nombre completo"
                           : searchCriteria === "dni"
-                          ? "Ingresa el DNI"
+                          ? "Ingresa el Número de Documento"
                           : "Ingresa el número de departamento"
                       }
                     />
@@ -1214,6 +1216,11 @@ const RegisterOrder = () => {
                   )}
                 </div>
               )}
+              {results.length === 0 && searchCriteria && !isLoading && (
+                <div className="mb-6 text-center text-gray-500">
+                  No se encontraron registros para los criterios ingresados.
+                </div>
+              )}
               {selectedMainResident && (
                 <div className="mb-6">
                   <h3 className="text-sm font-medium text-gray-600 mb-2">
@@ -1231,7 +1238,7 @@ const RegisterOrder = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <FaIdCard className="text-gray-500" />
-                      <span className="text-gray-600">DNI: {selectedMainResident.DNI}</span>
+                      <span className="text-gray-600">Número de Documento: {selectedMainResident.DNI}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <FaBuilding className="text-gray-500" />
@@ -1272,7 +1279,7 @@ const RegisterOrder = () => {
                             </span>
                           </UserInfo>
                           <UserInfo>
-                            <span className="text-gray-600">DNI: {user.DNI}</span>
+                            <span className="text-gray-600">Número de Documento: {user.DNI}</span>
                             {user.ES_PROPIETARIO && <Badge>Propietario</Badge>}
                           </UserInfo>
                         </UserCard>
