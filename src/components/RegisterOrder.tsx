@@ -3,7 +3,22 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import styled, { keyframes } from "styled-components";
-import { FaBox, FaSave, FaFileExport, FaCheck, FaSearch, FaCamera, FaTimes, FaUser, FaIdCard, FaBuilding, FaChevronDown, FaChevronUp, FaSpinner, FaEye } from "react-icons/fa";
+import {
+  FaBox,
+  FaSave,
+  FaFileExport,
+  FaCheck,
+  FaSearch,
+  FaCamera,
+  FaTimes,
+  FaUser,
+  FaIdCard,
+  FaBuilding,
+  FaChevronDown,
+  FaChevronUp,
+  FaSpinner,
+  FaEye,
+} from "react-icons/fa";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -84,7 +99,7 @@ const Input = styled.input`
       border-color: #2563eb;
       position: relative;
       &:after {
-        content: '';
+        content: "";
         width: 0.5rem;
         height: 0.5rem;
         background-color: white;
@@ -296,8 +311,12 @@ const SearchContainer = styled.div`
 const Spinner = styled(FaSpinner)`
   animation: spin 1s linear infinite;
   @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
   }
 `;
 
@@ -323,7 +342,9 @@ const RegisterOrder = () => {
   const [searchCriteria, setSearchCriteria] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPhase, setSelectedPhase] = useState("all");
-  const [phaseOptions, setPhaseOptions] = useState([{ value: "all", label: "Todas las fases" }]);
+  const [phaseOptions, setPhaseOptions] = useState([
+    { value: "all", label: "Todas las fases" },
+  ]);
   const [results, setResults] = useState([]);
   const [selectedMainResident, setSelectedMainResident] = useState(null);
   const [description, setDescription] = useState("");
@@ -355,7 +376,9 @@ const RegisterOrder = () => {
   const checkDevices = async () => {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter((device) => device.kind === "videoinput");
+      const videoDevices = devices.filter(
+        (device) => device.kind === "videoinput"
+      );
       console.log("Cámaras disponibles:", videoDevices);
       if (videoDevices.length === 0) {
         Swal.fire({
@@ -389,21 +412,30 @@ const RegisterOrder = () => {
       });
       if (!response.ok) throw new Error("Error al obtener los encargos");
       const data = await response.json();
-      console.log("Datos de encargos recibidos:", data);
+      console.log(
+        "Datos de encargos recibidos:",
+        JSON.stringify(data, null, 2)
+      );
       setEncargos(
         data
           .map((encargo) => ({
             ...encargo,
-            ESTADO: encargo.ESTADO === true ? 1 : encargo.ESTADO === false ? 0 : encargo.ESTADO,
+            ESTADO:
+              encargo.ESTADO === true
+                ? 1
+                : encargo.ESTADO === false
+                ? 0
+                : encargo.ESTADO,
             FECHA_RECEPCION: encargo.FECHA_RECEPCION,
             FECHA_ENTREGA: encargo.FECHA_ENTREGA,
             FASE: encargo.FASE || "No especificada",
-            PERSONA_DESTINATARIO: encargo.NOMBRES && encargo.APELLIDOS ? `${encargo.NOMBRES} ${encargo.APELLIDOS}` : "-",
+            PERSONA_DESTINATARIO: encargo.PERSONA_DESTINATARIO || "-", // Usar el campo PERSONA_DESTINATARIO directamente
           }))
           .sort(
             (a, b) =>
               b.ESTADO - a.ESTADO ||
-              new Date(b.FECHA_RECEPCION).getTime() - new Date(a.FECHA_RECEPCION).getTime()
+              new Date(b.FECHA_RECEPCION).getTime() -
+                new Date(a.FECHA_RECEPCION).getTime()
           )
       );
     } catch (err) {
@@ -426,7 +458,12 @@ const RegisterOrder = () => {
 
   useEffect(() => {
     if (activeTab === "history") {
-      setFilter({ nroDpto: "", descripcion: "", fechaRecepcion: "", estado: "1" });
+      setFilter({
+        nroDpto: "",
+        descripcion: "",
+        fechaRecepcion: "",
+        estado: "1",
+      });
     }
   }, [activeTab]);
 
@@ -488,9 +525,14 @@ const RegisterOrder = () => {
 
     setIsLoading(true);
     try {
-      const url = phase && phase !== "all"
-        ? `${API_URL}?criteria=${criteria}&query=${encodeURIComponent(query)}&phase=${encodeURIComponent(phase)}`
-        : `${API_URL}?criteria=${criteria}&query=${encodeURIComponent(query)}`;
+      const url =
+        phase && phase !== "all"
+          ? `${API_URL}?criteria=${criteria}&query=${encodeURIComponent(
+              query
+            )}&phase=${encodeURIComponent(phase)}`
+          : `${API_URL}?criteria=${criteria}&query=${encodeURIComponent(
+              query
+            )}`;
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -647,7 +689,8 @@ const RegisterOrder = () => {
       console.error("Error al iniciar la cámara:", err.name, err.message);
       let errorMessage = "No se pudo acceder a la cámara.";
       if (err.name === "NotAllowedError") {
-        errorMessage = "Permiso de cámara denegado. Habilita el acceso en la configuración del navegador.";
+        errorMessage =
+          "Permiso de cámara denegado. Habilita el acceso en la configuración del navegador.";
       } else if (err.name === "NotFoundError") {
         errorMessage = "No se encontró una cámara en el dispositivo.";
       } else if (err.name === "NotReadableError") {
@@ -736,7 +779,9 @@ const RegisterOrder = () => {
     canvas.toBlob(
       (blob) => {
         if (blob) {
-          const file = new File([blob], `captured-photo-${Date.now()}.jpg`, { type: "image/jpeg" });
+          const file = new File([blob], `captured-photo-${Date.now()}.jpg`, {
+            type: "image/jpeg",
+          });
           setPhoto(file);
           setPhotoPreview(URL.createObjectURL(file));
           console.log("Foto establecida y vista previa generada:", file.name);
@@ -816,11 +861,17 @@ const RegisterOrder = () => {
 
     const modalContent = `
       <div style="text-align: left;">
-        <p><strong>Persona Principal:</strong> ${selectedMainResident.NOMBRES} ${selectedMainResident.APELLIDOS}</p>
-        <p><strong>Fase:</strong> ${selectedMainResident.FASE || "No especificada"}</p>
+        <p><strong>Persona Principal:</strong> ${
+          selectedMainResident.NOMBRES
+        } ${selectedMainResident.APELLIDOS}</p>
+        <p><strong>Fase:</strong> ${
+          selectedMainResident.FASE || "No especificada"
+        }</p>
         <p><strong>Departamento:</strong> ${selectedMainResident.NRO_DPTO}</p>
         <p><strong>Descripción del encargo:</strong> ${description}</p>
-        <p><strong>Foto:</strong> ${photo ? "Foto cargada" : "No se ha cargado ninguna foto"}</p>
+        <p><strong>Foto:</strong> ${
+          photo ? "Foto cargada" : "No se ha cargado ninguna foto"
+        }</p>
       </div>
     `;
 
@@ -839,89 +890,119 @@ const RegisterOrder = () => {
   };
 
 async function handleRegister() {
-    console.log("Datos antes de registrar el encargo:", {
-        description: description.trim(),
-        personId: selectedMainResident?.ID_PERSONA,
-        department: selectedMainResident?.ID_DEPARTAMENTO,
-        receptionistId: userId,
-        hasPhoto: !!photo
+  console.log(
+    "Estado de selectedMainResident:",
+    JSON.stringify(selectedMainResident, null, 2)
+  );
+  console.log("Datos antes de registrar el encargo:", {
+    description: description.trim(),
+    personId: selectedMainResident?.ID_PERSONA,
+    department: selectedMainResident?.ID_DEPARTAMENTO,
+    receptionistId: userId,
+    hasPhoto: !!photo,
+  });
+
+  // Limpiar descripción de datos no deseados de forma genérica
+  const cleanDescription = description
+    .trim()
+    .replace(
+      /N[úu]mero de Documento: \d+|Departamento: \d+ \(Fase[^)]+\)|\b[A-Z][a-zA-Z\s]+ (?:[A-Z][a-zA-Z\s]+ )*[A-Z][a-zA-Z\s]+\b/gi,
+      ""
+    )
+    .trim();
+
+  if (!cleanDescription || cleanDescription.length < 5) {
+    setError("La descripción del encargo debe tener al menos 5 caracteres y no puede estar vacía.");
+    Swal.fire({
+      icon: "warning",
+      title: "Descripción inválida",
+      text: "Por favor, proporciona una descripción válida para el encargo (mínimo 5 caracteres).",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    return;
+  }
+
+  const confirmed = await showConfirmationModal();
+  if (!confirmed) return;
+
+  if (
+    !selectedMainResident?.ID_PERSONA ||
+    !selectedMainResident?.ID_DEPARTAMENTO
+  ) {
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: "Debe seleccionar una persona principal y un departamento válido.",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    return;
+  }
+
+  setIsLoading(true);
+  try {
+    const formData = new FormData();
+    formData.append("description", cleanDescription); // Usar descripción limpia
+    formData.append("personId", selectedMainResident.ID_PERSONA);
+    formData.append("department", selectedMainResident.ID_DEPARTAMENTO);
+    formData.append("receptionistId", userId || "0");
+    if (photo) {
+      formData.append("photo", photo);
+      formData.append("photoFormat", photo.name.split(".").pop());
+    }
+
+    const response = await fetch(`${API_URL}/`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
     });
 
-    const confirmed = await showConfirmationModal();
-    if (!confirmed) return;
+    const responseData = await response.json();
+    console.log("Respuesta de la API:", responseData);
 
-    if (!selectedMainResident?.ID_PERSONA || !selectedMainResident?.ID_DEPARTAMENTO) {
-        Swal.fire({
-            icon: "error",
-            title: "Error",
-            text: "Debe seleccionar una persona principal y un departamento válido.",
-            timer: 2000,
-            showConfirmButton: false
-        });
-        return;
+    if (!response.ok) {
+      throw new Error(responseData.message || `Error ${response.status}`);
     }
 
-    setIsLoading(true);
-    try {
-        const formData = new FormData();
-        formData.append("description", description.trim());
-        formData.append("personId", selectedMainResident.ID_PERSONA);
-        formData.append("department", selectedMainResident.ID_DEPARTAMENTO);
-        formData.append("receptionistId", userId || "0");
-        if (photo) {
-            formData.append("photo", photo);
-            formData.append("photoFormat", photo.name.split(".").pop());
-        }
+    Swal.fire({
+      icon: "success",
+      title: "Éxito",
+      text: "Encargo registrado correctamente",
+      timer: 1500,
+      showConfirmButton: false,
+    });
 
-        const response = await fetch(`${API_URL}/`, {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-            body: formData
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text(); // Obtener el texto de la respuesta para depuración
-            console.error("Respuesta del servidor (error):", errorText);
-            throw new Error(`Error ${response.status}: ${errorText}`);
-        }
-
-        const responseData = await response.json();
-        console.log("Respuesta de la API:", responseData);
-
-        Swal.fire({
-            icon: "success",
-            title: "Éxito",
-            text: "Encargo registrado correctamente",
-            timer: 1500,
-            showConfirmButton: false
-        });
-
-        // Actualizar la tabla
-        fetchEncargos(); // Asegúrate de que esta función esté definida
-        setDescription("");
-        setSelectedMainResident(null);
-        setPhoto(null);
-        setPhotoPreview(null);
-    } catch (error) {
-        console.error("Error en handleRegister:", error);
-        setError(error.message || "No se pudo registrar el encargo.");
-        Swal.fire({
-            icon: "error",
-            title: "Error",
-            text: error.message || "No se pudo registrar el encargo.",
-            timer: 2000,
-            showConfirmButton: false
-        });
-    } finally {
-        setIsLoading(false);
-    }
+    fetchEncargos();
+    setDescription("");
+    setSelectedMainResident(null);
+    setPhoto(null);
+    setPhotoPreview(null);
+  } catch (error) {
+    console.error("Error en handleRegister:", error);
+    const errorMessage = error.message.includes("residente activo")
+      ? `No se pudo registrar el encargo: La persona (ID: ${selectedMainResident?.ID_PERSONA}) no está registrada como residente activo en el departamento (ID: ${selectedMainResident?.ID_DEPARTAMENTO}). Verifica los datos.`
+      : error.message || "No se pudo registrar el encargo.";
+    setError(errorMessage);
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: errorMessage,
+      timer: 3000,
+      showConfirmButton: false,
+    });
+  } finally {
+    setIsLoading(false);
+  }
 }
 
   const handleMarkDelivered = async (idEncargo) => {
     const usersResponse = await fetch(
-      `${API_URL}?criteria=department&query=${encargos.find(e => e.ID_ENCARGO === idEncargo)?.NRO_DPTO}`,
+      `${API_URL}?criteria=department&query=${
+        encargos.find((e) => e.ID_ENCARGO === idEncargo)?.NRO_DPTO
+      }`,
       {
         headers: { Authorization: `Bearer ${token}` },
       }
@@ -937,7 +1018,7 @@ async function handleRegister() {
       return;
     }
     const deptData = await usersResponse.json();
-    const users = deptData.map(person => ({
+    const users = deptData.map((person) => ({
       ID_PERSONA: person.ID_PERSONA,
       NOMBRES: person.NOMBRES,
       APELLIDOS: person.APELLIDOS,
@@ -947,7 +1028,9 @@ async function handleRegister() {
 
     const userOptions = users.map((user) => ({
       value: user.ID_PERSONA,
-      label: `${user.NOMBRES} ${user.APELLIDOS} (DNI: ${user.DNI})${user.ES_PROPIETARIO ? " (Propietario)" : ""}`,
+      label: `${user.NOMBRES} ${user.APELLIDOS} (DNI: ${user.DNI})${
+        user.ES_PROPIETARIO ? " (Propietario)" : ""
+      }`,
     }));
 
     const { value: selectedPersonId, inputValue: photoFile } = await Swal.fire({
@@ -956,7 +1039,9 @@ async function handleRegister() {
         <select id="swal-input1" class="swal2-select">
           <option value="">Selecciona una persona</option>
           ${userOptions
-            .map((user) => `<option value="${user.value}">${user.label}</option>`)
+            .map(
+              (user) => `<option value="${user.value}">${user.label}</option>`
+            )
             .join("")}
         </select>
         <div style="margin-top: 1rem;">
@@ -1024,56 +1109,88 @@ async function handleRegister() {
     }
   };
 
-function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl) {
+  function showDetailsModal(
+    encargo,
+    associatedUsers,
+    photoUrl,
+    deliveredPhotoUrl
+  ) {
     const modalContent = `
         <div style="text-align: left; font-size: 14px;">
-            <p><strong>Persona Principal:</strong> ${encargo.PERSONA_DESTINATARIO || "No asignado"} (DNI: ${encargo.DNI || "-"}) ${encargo.TIPO_RESIDENTE && encargo.TIPO_RESIDENTE !== "-" ? `(${encargo.TIPO_RESIDENTE})` : ""}</p>
+            <p><strong>Persona Principal:</strong> ${
+              encargo.PERSONA_DESTINATARIO || "No asignado"
+            } (DNI: ${encargo.DNI || "-"}) ${
+      encargo.TIPO_RESIDENTE && encargo.TIPO_RESIDENTE !== "-"
+        ? `(${encargo.TIPO_RESIDENTE})`
+        : ""
+    }</p>
             <p><strong>Personas Asociadas:</strong></p>
             <ul style="margin-left: 20px;">
                 ${
-                    associatedUsers.length > 0
-                        ? associatedUsers
-                              .map(
-                                  (user) =>
-                                      `<li>${user.NOMBRES} ${user.APELLIDOS} (DNI: ${user.DNI}) ${user.ID_CLASIFICACION ? `(${user.DETALLE_CLASIFICACION || "Desconocido"})` : ""}</li>`
-                              )
-                              .join("")
-                        : "<li>No hay personas asociadas</li>"
+                  associatedUsers.length > 0
+                    ? associatedUsers
+                        .map(
+                          (user) =>
+                            `<li>${user.NOMBRES} ${user.APELLIDOS} (DNI: ${
+                              user.DNI
+                            }) ${
+                              user.ID_CLASIFICACION
+                                ? `(${
+                                    user.DETALLE_CLASIFICACION || "Desconocido"
+                                  })`
+                                : ""
+                            }</li>`
+                        )
+                        .join("")
+                    : "<li>No hay personas asociadas</li>"
                 }
             </ul>
-            <p><strong>Descripción del Encargo:</strong> ${encargo.DESCRIPCION}</p>
+            <p><strong>Descripción del Encargo:</strong> ${
+              encargo.DESCRIPCION
+            }</p>
             <p><strong>Foto del Encargo:</strong> ${
-                encargo.FOTO ? `<a href="${photoUrl}" target="_blank" style="color: #2563eb; text-decoration: underline;">Ver foto</a>` : "No disponible"
+              encargo.FOTO
+                ? `<a href="${photoUrl}" target="_blank" style="color: #2563eb; text-decoration: underline;">Ver foto</a>`
+                : "No disponible"
             }</p>
             ${
-                encargo.ESTADO === 0 && encargo.ENTREGADO_A
-                    ? `
-                      <p><strong>Persona que Recibió:</strong> ${encargo.ENTREGADO_A} (DNI: ${encargo.DNI_ENTREGADO || "-"})</p>
+              encargo.ESTADO === 0 && encargo.ENTREGADO_A
+                ? `
+                      <p><strong>Persona que Recibió:</strong> ${
+                        encargo.ENTREGADO_A
+                      } (DNI: ${encargo.DNI_ENTREGADO || "-"})</p>
                       <p><strong>Foto de Entrega:</strong> ${
-                          deliveredPhotoUrl ? `<a href="${deliveredPhotoUrl}" target="_blank" style="color: #2563eb; text-decoration: underline;">Ver foto</a>` : "No disponible"
+                        deliveredPhotoUrl
+                          ? `<a href="${deliveredPhotoUrl}" target="_blank" style="color: #2563eb; text-decoration: underline;">Ver foto</a>`
+                          : "No disponible"
                       }</p>
                     `
-                    : ""
+                : ""
             }
         </div>
     `;
     Swal.fire({
-        title: `Detalles del Encargo #${encargo.ID_ENCARGO}`,
-        html: modalContent,
-        showConfirmButton: true,
-        confirmButtonText: "Cerrar",
-        customClass: {
-            confirmButton: "bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        }
+      title: `Detalles del Encargo #${encargo.ID_ENCARGO}`,
+      html: modalContent,
+      showConfirmButton: true,
+      confirmButtonText: "Cerrar",
+      customClass: {
+        confirmButton:
+          "bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600",
+      },
     });
-}
+  }
   const filteredEncargos = encargos.filter((encargo) => {
     const fechaRecepcion = formatDate(encargo.FECHA_RECEPCION);
     return (
-      (filter.nroDpto === "" || encargo.NRO_DPTO.toString().includes(filter.nroDpto)) &&
+      (filter.nroDpto === "" ||
+        encargo.NRO_DPTO.toString().includes(filter.nroDpto)) &&
       (filter.descripcion === "" ||
-        encargo.DESCRIPCION.toLowerCase().includes(filter.descripcion.toLowerCase())) &&
-      (filter.fechaRecepcion === "" || fechaRecepcion === filter.fechaRecepcion) &&
+        encargo.DESCRIPCION.toLowerCase().includes(
+          filter.descripcion.toLowerCase()
+        )) &&
+      (filter.fechaRecepcion === "" ||
+        fechaRecepcion === filter.fechaRecepcion) &&
       (filter.estado === "" || encargo.ESTADO.toString() === filter.estado)
     );
   });
@@ -1083,11 +1200,13 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
       "ID Encargo,Fase,Número Dpto,Persona Destinatario,Fecha Recepción,Fecha Entrega,Recepcionista,Estado\n";
     const rows = filteredEncargos
       .map((encargo) => {
-        return `${encargo.ID_ENCARGO},${encargo.FASE || "No especificada"},${encargo.NRO_DPTO},${encargo.PERSONA_DESTINATARIO || "-"},${formatDate(
+        return `${encargo.ID_ENCARGO},${encargo.FASE || "No especificada"},${
+          encargo.NRO_DPTO
+        },${encargo.PERSONA_DESTINATARIO || "-"},${formatDate(
           encargo.FECHA_RECEPCION
-        )},${formatDate(encargo.FECHA_ENTREGA)},${encargo.RECEPCIONISTA || "-"},${
-          encargo.ESTADO === 1 ? "Pendiente" : "Entregado"
-        }`;
+        )},${formatDate(encargo.FECHA_ENTREGA)},${
+          encargo.RECEPCIONISTA || "-"
+        },${encargo.ESTADO === 1 ? "Pendiente" : "Entregado"}`;
       })
       .join("\n");
     const csv = headers + rows;
@@ -1108,7 +1227,12 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
   };
 
   const clearFilters = () => {
-    setFilter({ nroDpto: "", descripcion: "", fechaRecepcion: "", estado: "1" });
+    setFilter({
+      nroDpto: "",
+      descripcion: "",
+      fechaRecepcion: "",
+      estado: "1",
+    });
   };
 
   return (
@@ -1133,9 +1257,13 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
       <TabContent>
         {activeTab === "create" && (
           <Card>
-            <h2 className="text-lg font-semibold mb-4">Registrar Nuevo Encargo</h2>
+            <h2 className="text-lg font-semibold mb-4">
+              Registrar Nuevo Encargo
+            </h2>
             {error && (
-              <p className="text-red-500 mb-4 bg-red-50 p-2 rounded-lg">{error}</p>
+              <p className="text-red-500 mb-4 bg-red-50 p-2 rounded-lg">
+                {error}
+              </p>
             )}
             <div className="space-y-6">
               <div className="mb-6">
@@ -1207,7 +1335,11 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
                       disabled={isLoading}
                       title="Buscar residente"
                     >
-                      {isLoading ? <Spinner className="mr-2" /> : <FaSearch className="mr-2" />}
+                      {isLoading ? (
+                        <Spinner className="mr-2" />
+                      ) : (
+                        <FaSearch className="mr-2" />
+                      )}
                       {isLoading ? "Buscando..." : "Buscar"}
                     </Button>
                   </SearchContainer>
@@ -1230,7 +1362,11 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
                       </Button>
                       <ToggleButton
                         onClick={toggleSearchResults}
-                        title={showSearchResults ? "Ocultar resultados" : "Mostrar resultados"}
+                        title={
+                          showSearchResults
+                            ? "Ocultar resultados"
+                            : "Mostrar resultados"
+                        }
                       >
                         {showSearchResults ? (
                           <>
@@ -1258,23 +1394,37 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
                       </thead>
                       <tbody>
                         {results.map((result, index) => (
-                          <TableRow key={`resident-${result.index}`} $delay={index * 0.1}>
+                          <TableRow
+                            key={`resident-${result.index}`}
+                            $delay={index * 0.1}
+                          >
                             <TableCell>
                               <Input
                                 type="radio"
                                 name="mainResident"
                                 value={result.index}
-                                checked={selectedMainResident?.index === result.index}
+                                checked={
+                                  selectedMainResident?.index === result.index
+                                }
                                 onChange={() => {
                                   setSelectedMainResident(result);
                                   setShowSearchResults(false);
-                                  console.log("Selected resident index:", result.index);
+                                  console.log(
+                                    "Selected resident index:",
+                                    result.index
+                                  );
                                 }}
                               />
                             </TableCell>
-                            <TableCell>{result.FASE || "No especificada"}</TableCell>
+                            <TableCell>
+                              {result.FASE || "No especificada"}
+                            </TableCell>
                             <TableCell>{result.NRO_DPTO}</TableCell>
-                            <TableCell>{`${result.NOMBRES} ${result.APELLIDOS} (DNI: ${result.DNI})${result.ES_PROPIETARIO ? " (Propietario)" : ""}`}</TableCell>
+                            <TableCell>{`${result.NOMBRES} ${
+                              result.APELLIDOS
+                            } (DNI: ${result.DNI})${
+                              result.ES_PROPIETARIO ? " (Propietario)" : ""
+                            }`}</TableCell>
                           </TableRow>
                         ))}
                       </tbody>
@@ -1282,11 +1432,14 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
                   )}
                 </div>
               )}
-              {results.length === 0 && searchCriteria && !isLoading && hasSearched && (
-                <div className="mb-6 text-center text-gray-500">
-                  No se encontraron registros para los criterios ingresados.
-                </div>
-              )}
+              {results.length === 0 &&
+                searchCriteria &&
+                !isLoading &&
+                hasSearched && (
+                  <div className="mb-6 text-center text-gray-500">
+                    No se encontraron registros para los criterios ingresados.
+                  </div>
+                )}
               {selectedMainResident && (
                 <div className="mb-6">
                   <h3 className="text-sm font-medium text-gray-600 mb-2">
@@ -1296,7 +1449,8 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
                     <div className="flex items-center gap-2">
                       <FaUser className="text-gray-500" />
                       <span className="font-semibold text-gray-700">
-                        {selectedMainResident.NOMBRES} {selectedMainResident.APELLIDOS}
+                        {selectedMainResident.NOMBRES}{" "}
+                        {selectedMainResident.APELLIDOS}
                       </span>
                       {selectedMainResident.ES_PROPIETARIO && (
                         <Badge>Propietario</Badge>
@@ -1304,12 +1458,15 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
                     </div>
                     <div className="flex items-center gap-2">
                       <FaIdCard className="text-gray-500" />
-                      <span className="text-gray-600">Número de Documento: {selectedMainResident.DNI}</span>
+                      <span className="text-gray-600">
+                        Número de Documento: {selectedMainResident.DNI}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <FaBuilding className="text-gray-500" />
                       <span className="text-gray-600">
-                        Departamento: {selectedMainResident.NRO_DPTO} ({selectedMainResident.FASE || "No especificada"})
+                        Departamento: {selectedMainResident.NRO_DPTO} (
+                        {selectedMainResident.FASE || "No especificada"})
                       </span>
                     </div>
                   </ResidentCard>
@@ -1319,7 +1476,11 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
                     </h3>
                     <ToggleButton
                       onClick={toggleAssociatedUsers}
-                      title={showAssociatedUsers ? "Ocultar personas asociadas" : "Mostrar personas asociadas"}
+                      title={
+                        showAssociatedUsers
+                          ? "Ocultar personas asociadas"
+                          : "Mostrar personas asociadas"
+                      }
                     >
                       {showAssociatedUsers ? (
                         <>
@@ -1345,7 +1506,9 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
                             </span>
                           </UserInfo>
                           <UserInfo>
-                            <span className="text-gray-600">Número de Documento: ${user.DNI}</span>
+                            <span className="text-gray-600">
+                              Número de Documento: ${user.DNI}
+                            </span>
                             {user.ES_PROPIETARIO && <Badge>Propietario</Badge>}
                           </UserInfo>
                         </UserCard>
@@ -1366,7 +1529,7 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
                   title="Describe el paquete (máx. 255 caracteres)"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  ${description.length}/255 caracteres
+                  {description.length}/255 caracteres
                 </p>
               </div>
               <div className="mb-6">
@@ -1385,10 +1548,14 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
                   <Button
                     className="bg-blue-600 text-white hover:bg-blue-700"
                     onClick={isCameraActive ? stopCamera : startCamera}
-                    title={isCameraActive ? "Cerrar cámara" : "Tomar foto con la cámara"}
+                    title={
+                      isCameraActive
+                        ? "Cerrar cámara"
+                        : "Tomar foto con la cámara"
+                    }
                   >
-                    <FaCamera className="mr-2" />
-                    ${isCameraActive ? "Cerrar Cámara" : "Tomar Foto"}
+                    <FaCamera className="mr-2" />$
+                    {isCameraActive ? "Cerrar Cámara" : "Tomar Foto"}
                   </Button>
                   {photoPreview && (
                     <Button
@@ -1435,7 +1602,10 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
                 )}
                 <canvas ref={canvasRef} style={{ display: "none" }} />
                 {photoPreview && (
-                  <ImagePreview src={photoPreview} alt="Vista previa del paquete" />
+                  <ImagePreview
+                    src={photoPreview}
+                    alt="Vista previa del paquete"
+                  />
                 )}
               </div>
               <div className="flex justify-end">
@@ -1445,8 +1615,8 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
                   disabled={isLoading}
                   title="Registrar nuevo encargo"
                 >
-                  <FaSave className="mr-2" />
-                  ${isLoading ? "Registrando..." : "Registrar Encargo"}
+                  <FaSave className="mr-2" />$
+                  {isLoading ? "Registrando..." : "Registrar Encargo"}
                 </Button>
               </div>
             </div>
@@ -1454,7 +1624,9 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
         )}
         {activeTab === "history" && (
           <Card>
-            <h2 className="text-lg font-semibold mb-4">Historial de Encargos</h2>
+            <h2 className="text-lg font-semibold mb-4">
+              Historial de Encargos
+            </h2>
             <FilterContainer>
               <div className="flex-1 min-w-[150px]">
                 <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -1481,7 +1653,12 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
                   type="text"
                   name="descripcion"
                   value={filter.descripcion}
-                  onChange={(e) => setFilter((prev) => ({ ...prev, descripcion: e.target.value }))}
+                  onChange={(e) =>
+                    setFilter((prev) => ({
+                      ...prev,
+                      descripcion: e.target.value,
+                    }))
+                  }
                   placeholder="Ejemplo: Paquete de Amazon"
                   title="Filtrar por descripción del encargo"
                 />
@@ -1494,7 +1671,12 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
                   type="date"
                   name="fechaRecepcion"
                   value={filter.fechaRecepcion}
-                  onChange={(e) => setFilter((prev) => ({ ...prev, fechaRecepcion: e.target.value }))}
+                  onChange={(e) =>
+                    setFilter((prev) => ({
+                      ...prev,
+                      fechaRecepcion: e.target.value,
+                    }))
+                  }
                   title="Filtrar por fecha de recepción"
                 />
               </div>
@@ -1505,7 +1687,9 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
                 <SelectInput
                   name="estado"
                   value={filter.estado}
-                  onChange={(e) => setFilter((prev) => ({ ...prev, estado: e.target.value }))}
+                  onChange={(e) =>
+                    setFilter((prev) => ({ ...prev, estado: e.target.value }))
+                  }
                   title="Filtrar por estado del encargo"
                 >
                   <option value="">Todos los estados</option>
@@ -1536,22 +1720,43 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
               <Table>
                 <thead>
                   <tr>
-                    <TableHeader title="Identificador único del encargo">ID Encargo</TableHeader>
+                    <TableHeader title="Identificador único del encargo">
+                      ID Encargo
+                    </TableHeader>
                     <TableHeader title="Fase del edificio">Fase</TableHeader>
-                    <TableHeader title="Número del departamento">Nº Dpto</TableHeader>
-                    <TableHeader title="Persona que recibirá el encargo">Persona Destinatario</TableHeader>
-                    <TableHeader title="Fecha de recepción del paquete">Fecha Recepción</TableHeader>
-                    <TableHeader title="Fecha de entrega del paquete">Fecha Entrega</TableHeader>
-                    <TableHeader title="Persona que recibió el paquete">Recepcionista</TableHeader>
-                    <TableHeader title="Mostrar detalles del encargo">Mostrar Datos</TableHeader>
-                    <TableHeader title="Estado actual del encargo">Estado</TableHeader>
-                    <TableHeader title="Acciones disponibles">Acciones</TableHeader>
+                    <TableHeader title="Número del departamento">
+                      Nº Dpto
+                    </TableHeader>
+                    <TableHeader title="Persona que recibirá el encargo">
+                      Persona Destinatario
+                    </TableHeader>
+                    <TableHeader title="Fecha de recepción del paquete">
+                      Fecha Recepción
+                    </TableHeader>
+                    <TableHeader title="Fecha de entrega del paquete">
+                      Fecha Entrega
+                    </TableHeader>
+                    <TableHeader title="Persona que recibió el paquete">
+                      Recepcionista
+                    </TableHeader>
+                    <TableHeader title="Mostrar detalles del encargo">
+                      Mostrar Datos
+                    </TableHeader>
+                    <TableHeader title="Estado actual del encargo">
+                      Estado
+                    </TableHeader>
+                    <TableHeader title="Acciones disponibles">
+                      Acciones
+                    </TableHeader>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredEncargos.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="text-center text-gray-500 py-4">
+                      <TableCell
+                        colSpan={10}
+                        className="text-center text-gray-500 py-4"
+                      >
                         No hay encargos que coincidan con los filtros.
                       </TableCell>
                     </TableRow>
@@ -1563,11 +1768,19 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
                         $delay={index * 0.1}
                       >
                         <TableCell>{encargo.ID_ENCARGO}</TableCell>
-                        <TableCell>{encargo.FASE || "No especificada"}</TableCell>
+                        <TableCell>
+                          {encargo.FASE || "No especificada"}
+                        </TableCell>
                         <TableCell>{encargo.NRO_DPTO}</TableCell>
-                        <TableCell>{encargo.PERSONA_DESTINATARIO || "-"}</TableCell>
-                        <TableCell>{formatDate(encargo.FECHA_RECEPCION)}</TableCell>
-                        <TableCell>{formatDate(encargo.FECHA_ENTREGA)}</TableCell>
+                        <TableCell>
+                          {encargo.PERSONA_DESTINATARIO || "-"}
+                        </TableCell>
+                        <TableCell>
+                          {formatDate(encargo.FECHA_RECEPCION)}
+                        </TableCell>
+                        <TableCell>
+                          {formatDate(encargo.FECHA_ENTREGA)}
+                        </TableCell>
                         <TableCell>{encargo.RECEPCIONISTA || "-"}</TableCell>
                         <TableCell>
                           <Button
@@ -1594,7 +1807,9 @@ function showDetailsModal(encargo, associatedUsers, photoUrl, deliveredPhotoUrl)
                           {encargo.ESTADO === 1 && (
                             <Button
                               className="bg-blue-600 text-white hover:bg-blue-700 text-xs py-1 px-2"
-                              onClick={() => handleMarkDelivered(encargo.ID_ENCARGO)}
+                              onClick={() =>
+                                handleMarkDelivered(encargo.ID_ENCARGO)
+                              }
                               title="Marcar como entregado"
                             >
                               <FaCheck className="mr-1" />
