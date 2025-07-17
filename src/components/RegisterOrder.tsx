@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import styled, { keyframes } from "styled-components";
-import { FaBox, FaSave, FaFileExport, FaCheck, FaSearch, FaCamera, FaTimes, FaUser, FaIdCard, FaBuilding, FaChevronDown, FaChevronUp, FaSpinner } from "react-icons/fa";
+import { FaBox, FaSave, FaFileExport, FaCheck, FaSearch, FaCamera, FaTimes, FaUser, FaIdCard, FaBuilding, FaChevronDown, FaChevronUp, FaSpinner, FaEye } from "react-icons/fa";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -389,7 +389,7 @@ const RegisterOrder = () => {
       });
       if (!response.ok) throw new Error("Error al obtener los encargos");
       const data = await response.json();
-      console.log("Datos de encargos recibidos:", data); // Depuración para verificar FASE
+      console.log("Datos de encargos recibidos:", data);
       setEncargos(
         data
           .map((encargo) => ({
@@ -397,7 +397,8 @@ const RegisterOrder = () => {
             ESTADO: encargo.ESTADO === true ? 1 : encargo.ESTADO === false ? 0 : encargo.ESTADO,
             FECHA_RECEPCION: encargo.FECHA_RECEPCION,
             FECHA_ENTREGA: encargo.FECHA_ENTREGA,
-            FASE: encargo.FASE || "No especificada", // Valor por defecto si FASE no está presente
+            FASE: encargo.FASE || "No especificada",
+            PERSONA_DESTINATARIO: encargo.NOMBRES && encargo.APELLIDOS ? `${encargo.NOMBRES} ${encargo.APELLIDOS}` : "-",
           }))
           .sort(
             (a, b) =>
@@ -837,73 +838,73 @@ const RegisterOrder = () => {
     return result.isConfirmed;
   };
 
-const handleRegister = async () => {
-  const confirmed = await showConfirmationModal();
-  if (!confirmed) return;
+  const handleRegister = async () => {
+    const confirmed = await showConfirmationModal();
+    if (!confirmed) return;
 
-  setIsLoading(true);
-  try {
-    const formData = new FormData();
-    formData.append("description", description.trim());
-    formData.append("personId", selectedMainResident.ID_PERSONA);
-    formData.append("department", selectedMainResident.ID_DEPARTAMENTO); // Usar ID_DEPARTAMENTO seleccionado
-    formData.append("receptionistId", userId || "0");
-    if (photo) {
-      formData.append("photo", photo);
+    setIsLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("description", description.trim());
+      formData.append("personId", selectedMainResident.ID_PERSONA);
+      formData.append("department", selectedMainResident.ID_DEPARTAMENTO);
+      formData.append("receptionistId", userId || "0");
+      if (photo) {
+        formData.append("photo", photo);
+      }
+
+      const response = await fetch(`${API_URL}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al registrar el encargo");
+      }
+
+      Swal.fire({
+        icon: "success",
+        title: "Éxito",
+        text: "Encargo registrado correctamente",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+
+      await fetchEncargos();
+      setDescription("");
+      setSearchQuery("");
+      setSelectedPhase("all");
+      setPhaseOptions([{ value: "all", label: "Todas las fases" }]);
+      setResults([]);
+      setSelectedMainResident(null);
+      setPhoto(null);
+      setPhotoPreview(null);
+      setError("");
+      setSearchCriteria("");
+      setFilter({ nroDpto: "", descripcion: "", fechaRecepcion: "", estado: "1" });
+      setActiveTab("history");
+      setShowAssociatedUsers(false);
+      setShowSearchResults(true);
+      setHasSearched(false);
+      stopCamera();
+    } catch (error) {
+      console.error("Error en handleRegister:", error);
+      setError(error.message || "No se pudo registrar el encargo.");
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: error.message || "No se pudo registrar el encargo.",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    } finally {
+      setIsLoading(false);
     }
-
-    const response = await fetch(`${API_URL}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Error al registrar el encargo");
-    }
-
-    Swal.fire({
-      icon: "success",
-      title: "Éxito",
-      text: "Encargo registrado correctamente",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-
-    await fetchEncargos();
-    setDescription("");
-    setSearchQuery("");
-    setSelectedPhase("all");
-    setPhaseOptions([{ value: "all", label: "Todas las fases" }]);
-    setResults([]);
-    setSelectedMainResident(null);
-    setPhoto(null);
-    setPhotoPreview(null);
-    setError("");
-    setSearchCriteria("");
-    setFilter({ nroDpto: "", descripcion: "", fechaRecepcion: "", estado: "1" });
-    setActiveTab("history");
-    setShowAssociatedUsers(false);
-    setShowSearchResults(true);
-    setHasSearched(false);
-    stopCamera();
-  } catch (error) {
-    console.error("Error en handleRegister:", error);
-    setError(error.message || "No se pudo registrar el encargo.");
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: error.message || "No se pudo registrar el encargo.",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   const handleMarkDelivered = async (idEncargo) => {
     const usersResponse = await fetch(
@@ -928,7 +929,7 @@ const handleRegister = async () => {
       NOMBRES: person.NOMBRES,
       APELLIDOS: person.APELLIDOS,
       DNI: person.DNI,
-      ES_PROPIETARIO: person.ES_PROPIETARIO,
+      ES_PROPIETARIO: person.ID_CLASIFICACION === 1,
     }));
 
     const userOptions = users.map((user) => ({
@@ -1010,6 +1011,78 @@ const handleRegister = async () => {
     }
   };
 
+  const showDetailsModal = async (encargo) => {
+    try {
+      // Obtener personas asociadas al departamento
+      const usersResponse = await fetch(
+        `${API_URL}?criteria=department&query=${encargo.NRO_DPTO}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!usersResponse.ok) {
+        throw new Error("No se pudo obtener la lista de personas asociadas");
+      }
+      const associatedUsers = await usersResponse.json();
+
+      // Construir URLs para las fotos
+      const photoUrl = `${API_URL}/photo/${encargo.ID_ENCARGO}`;
+      const deliveredPhotoUrl = encargo.ESTADO === 0 ? `${API_URL}/photo/${encargo.ID_ENCARGO}/delivered` : null;
+
+      // Construir el contenido del modal
+      const modalContent = `
+        <div style="text-align: left; font-size: 14px;">
+          <p><strong>Persona Principal:</strong> ${encargo.PERSONA_DESTINATARIO} (DNI: ${encargo.DNI || "-"})</p>
+          <p><strong>Personas Asociadas:</strong></p>
+          <ul style="margin-left: 20px;">
+            ${
+              associatedUsers.length > 0
+                ? associatedUsers
+                    .map(
+                      (user) =>
+                        `<li>${user.NOMBRES} ${user.APELLIDOS} (DNI: ${user.DNI})${user.ID_CLASIFICACION === 1 ? " (Propietario)" : ""}</li>`
+                    )
+                    .join("")
+                : "<li>No hay personas asociadas</li>"
+            }
+          </ul>
+          <p><strong>Descripción del Encargo:</strong> ${encargo.DESCRIPCION}</p>
+          <p><strong>Foto del Encargo:</strong> ${
+            encargo.FOTO ? `<a href="${photoUrl}" target="_blank" style="color: #2563eb; text-decoration: underline;">Ver foto</a>` : "No disponible"
+          }</p>
+          ${
+            encargo.ESTADO === 0 && encargo.ENTREGADO_A
+              ? `
+                <p><strong>Persona que Recibió:</strong> ${encargo.ENTREGADO_A} (DNI: ${encargo.DNI_ENTREGADO || "-"})</p>
+                <p><strong>Foto de Entrega:</strong> ${
+                  deliveredPhotoUrl ? `<a href="${deliveredPhotoUrl}" target="_blank" style="color: #2563eb; text-decoration: underline;">Ver foto</a>` : "No disponible"
+                }</p>
+              `
+              : ""
+          }
+        </div>
+      `;
+
+      await Swal.fire({
+        title: `Detalles del Encargo #${encargo.ID_ENCARGO}`,
+        html: modalContent,
+        icon: "info",
+        confirmButtonText: "Cerrar",
+        confirmButtonColor: "#2563eb",
+        width: "600px",
+      });
+    } catch (error) {
+      console.error("Error en showDetailsModal:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudieron cargar los detalles del encargo",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  };
+
   const filteredEncargos = encargos.filter((encargo) => {
     const fechaRecepcion = formatDate(encargo.FECHA_RECEPCION);
     return (
@@ -1023,14 +1096,14 @@ const handleRegister = async () => {
 
   const exportToCSV = () => {
     const headers =
-      "ID Encargo,Número Dpto,Fase,Descripción,Fecha Recepción,Fecha Entrega,Recepcionista,Entregado A,Usuarios Asociados,Estado\n";
+      "ID Encargo,Fase,Número Dpto,Persona Destinatario,Fecha Recepción,Fecha Entrega,Recepcionista,Estado\n";
     const rows = filteredEncargos
       .map((encargo) => {
-        return `${encargo.ID_ENCARGO},${encargo.NRO_DPTO},${encargo.FASE || "No especificada"},${encargo.DESCRIPCION},${formatDate(
+        return `${encargo.ID_ENCARGO},${encargo.FASE || "No especificada"},${encargo.NRO_DPTO},${encargo.PERSONA_DESTINATARIO || "-"},${formatDate(
           encargo.FECHA_RECEPCION
         )},${formatDate(encargo.FECHA_ENTREGA)},${encargo.RECEPCIONISTA || "-"},${
-          encargo.ENTREGADO_A || "-"
-        },${encargo.USUARIOS_ASOCIADOS || "-"},${encargo.ESTADO === 1 ? "Pendiente" : "Entregado"}`;
+          encargo.ESTADO === 1 ? "Pendiente" : "Entregado"
+        }`;
       })
       .join("\n");
     const csv = headers + rows;
@@ -1284,11 +1357,11 @@ const handleRegister = async () => {
                           <UserInfo>
                             <FaUser className="text-gray-500" />
                             <span className="text-gray-700">
-                              {user.NOMBRES} {user.APELLIDOS}
+                              {user.NOMBRES} ${user.APELLIDOS}
                             </span>
                           </UserInfo>
                           <UserInfo>
-                            <span className="text-gray-600">Número de Documento: {user.DNI}</span>
+                            <span className="text-gray-600">Número de Documento: ${user.DNI}</span>
                             {user.ES_PROPIETARIO && <Badge>Propietario</Badge>}
                           </UserInfo>
                         </UserCard>
@@ -1309,7 +1382,7 @@ const handleRegister = async () => {
                   title="Describe el paquete (máx. 255 caracteres)"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  {description.length}/255 caracteres
+                  ${description.length}/255 caracteres
                 </p>
               </div>
               <div className="mb-6">
@@ -1331,7 +1404,7 @@ const handleRegister = async () => {
                     title={isCameraActive ? "Cerrar cámara" : "Tomar foto con la cámara"}
                   >
                     <FaCamera className="mr-2" />
-                    {isCameraActive ? "Cerrar Cámara" : "Tomar Foto"}
+                    ${isCameraActive ? "Cerrar Cámara" : "Tomar Foto"}
                   </Button>
                   {photoPreview && (
                     <Button
@@ -1389,7 +1462,7 @@ const handleRegister = async () => {
                   title="Registrar nuevo encargo"
                 >
                   <FaSave className="mr-2" />
-                  {isLoading ? "Registrando..." : "Registrar Encargo"}
+                  ${isLoading ? "Registrando..." : "Registrar Encargo"}
                 </Button>
               </div>
             </div>
@@ -1480,14 +1553,13 @@ const handleRegister = async () => {
                 <thead>
                   <tr>
                     <TableHeader title="Identificador único del encargo">ID Encargo</TableHeader>
-                    <TableHeader title="Número del departamento">Nº Dpto</TableHeader>
                     <TableHeader title="Fase del edificio">Fase</TableHeader>
-                    <TableHeader title="Descripción del paquete">Descripción</TableHeader>
+                    <TableHeader title="Número del departamento">Nº Dpto</TableHeader>
+                    <TableHeader title="Persona que recibirá el encargo">Persona Destinatario</TableHeader>
                     <TableHeader title="Fecha de recepción del paquete">Fecha Recepción</TableHeader>
                     <TableHeader title="Fecha de entrega del paquete">Fecha Entrega</TableHeader>
                     <TableHeader title="Persona que recibió el paquete">Recepcionista</TableHeader>
-                    <TableHeader title="Persona que retiró el paquete">Entregado A</TableHeader>
-                    <TableHeader title="Usuarios asociados al departamento">Usuarios Asociados</TableHeader>
+                    <TableHeader title="Mostrar detalles del encargo">Mostrar Datos</TableHeader>
                     <TableHeader title="Estado actual del encargo">Estado</TableHeader>
                     <TableHeader title="Acciones disponibles">Acciones</TableHeader>
                   </tr>
@@ -1495,7 +1567,7 @@ const handleRegister = async () => {
                 <tbody>
                   {filteredEncargos.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={11} className="text-center text-gray-500 py-4">
+                      <TableCell colSpan={10} className="text-center text-gray-500 py-4">
                         No hay encargos que coincidan con los filtros.
                       </TableCell>
                     </TableRow>
@@ -1507,14 +1579,22 @@ const handleRegister = async () => {
                         $delay={index * 0.1}
                       >
                         <TableCell>{encargo.ID_ENCARGO}</TableCell>
-                        <TableCell>{encargo.NRO_DPTO}</TableCell>
                         <TableCell>{encargo.FASE || "No especificada"}</TableCell>
-                        <TableCell>{encargo.DESCRIPCION}</TableCell>
+                        <TableCell>{encargo.NRO_DPTO}</TableCell>
+                        <TableCell>{encargo.PERSONA_DESTINATARIO || "-"}</TableCell>
                         <TableCell>{formatDate(encargo.FECHA_RECEPCION)}</TableCell>
                         <TableCell>{formatDate(encargo.FECHA_ENTREGA)}</TableCell>
                         <TableCell>{encargo.RECEPCIONISTA || "-"}</TableCell>
-                        <TableCell>{encargo.ENTREGADO_A || "-"}</TableCell>
-                        <TableCell>{encargo.USUARIOS_ASOCIADOS || "-"}</TableCell>
+                        <TableCell>
+                          <Button
+                            className="bg-blue-600 text-white hover:bg-blue-700 text-xs py-1 px-2"
+                            onClick={() => showDetailsModal(encargo)}
+                            title="Ver detalles del encargo"
+                          >
+                            <FaEye className="mr-1" />
+                            Ver
+                          </Button>
+                        </TableCell>
                         <TableCell>
                           <span
                             className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
