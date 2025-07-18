@@ -1202,25 +1202,30 @@ const fetchPersons = async (query, criteria, phase) => {
     }
   };
 
-  const showDetailsModal = async (encargo) => {
-    const associatedUsers = await fetchAssociatedUsers(encargo.NRO_DPTO);
-    const photoUrl =
-      encargo.TIENE_FOTO > 0
-        ? `${API_URL}/photos/${encargo.ID_ENCARGO}?tipo=PAQUETE`
-        : null;
-    const deliveredPhotoUrl =
-      encargo.TIENE_FOTO_ENTREGA > 0
-        ? `${API_URL}/photos/${encargo.ID_ENCARGO}?tipo=ENTREGA`
-        : null;
-    const token = localStorage.getItem("token");
+const showDetailsModal = async (encargo) => {
+  const associatedUsers = await fetchAssociatedUsers(encargo.NRO_DPTO);
+  const photoUrl =
+    encargo.TIENE_FOTO > 0
+      ? `${API_URL}/photos/${encargo.ID_ENCARGO}?tipo=PAQUETE`
+      : null;
+  const deliveredPhotoUrl =
+    encargo.TIENE_FOTO_ENTREGA > 0
+      ? `${API_URL}/photos/${encargo.ID_ENCARGO}?tipo=ENTREGA`
+      : null;
+  const token = localStorage.getItem("token");
 
-    // Filter out the main person from associated users
-    const filteredAssociatedUsers = associatedUsers.filter(
-      (user) => user.DNI !== encargo.DNI
-    );
+  // Filter out the main person from associated users
+  const filteredAssociatedUsers = associatedUsers.filter(
+    (user) => user.DNI !== encargo.DNI
+  );
 
-    // Define modal content to reuse in both initial and "Atrás" scenarios
-    const getModalContent = () => `
+  // Get delivery person details
+  const deliveryPerson = encargo.ESTADO === 0 && encargo.ENTREGADO_A && encargo.ENTREGADO_A !== '-'
+    ? { NOMBRES_APELLIDOS: encargo.ENTREGADO_A, DNI: encargo.DNI_ENTREGADO }
+    : null;
+
+  // Define modal content to reuse in both initial and "Atrás" scenarios
+  const getModalContent = () => `
     <div class="text-left font-sans p-4">
       <div class="mb-4">
         <span class="inline-block px-3 py-1 rounded-full text-sm font-semibold ${
@@ -1240,8 +1245,8 @@ const fetchPersons = async (query, criteria, phase) => {
         </h3>
         <p class="text-gray-600">
           ${encargo.PERSONA_DESTINATARIO || "No asignado"} (DNI: ${
-      encargo.DNI || "-"
-    }) 
+    encargo.DNI || "-"
+  }) 
           ${
             encargo.TIPO_RESIDENTE && encargo.TIPO_RESIDENTE !== "-"
               ? `<span class="inline-block px-2 py-1 bg-blue-500 text-white text-xs rounded-full ml-2">${encargo.TIPO_RESIDENTE}</span>`
@@ -1305,7 +1310,7 @@ const fetchPersons = async (query, criteria, phase) => {
         </div>
       </div>
       ${
-        encargo.ESTADO === 0 && encargo.ENTREGADO_A
+        encargo.ESTADO === 0 && deliveryPerson
           ? `
             <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
               <h3 class="text-lg font-semibold text-gray-700 mb-2 flex items-center">
@@ -1314,9 +1319,9 @@ const fetchPersons = async (query, criteria, phase) => {
                 </svg>
                 Persona que Recibió
               </h3>
-              <p class="text-gray-600">${encargo.ENTREGADO_A} (DNI: ${
-              encargo.DNI_ENTREGADO || "-"
-            })</p>
+              <p class="text-gray-600">
+                ${deliveryPerson.NOMBRES_APELLIDOS} (DNI: ${deliveryPerson.DNI})
+              </p>
             </div>
             <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
               <h3 class="text-lg font-semibold text-gray-700 mb-2 flex items-center">
@@ -1339,98 +1344,99 @@ const fetchPersons = async (query, criteria, phase) => {
     </div>
   `;
 
-    // Function to show the main details modal
-    const showMainModal = () => {
-      Swal.fire({
-        title: `Detalles del Encargo #${encargo.ID_ENCARGO}`,
-        html: getModalContent(),
-        showConfirmButton: true,
-        confirmButtonText: "Cerrar",
-        customClass: {
-          popup: "swal2-popup-custom",
-          confirmButton:
-            "bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600",
-        },
-        didOpen: () => {
-          const popup = Swal.getPopup();
-          popup.style.maxWidth = "750px";
-          popup.style.width = "90%";
+  // Function to show the main details modal
+  const showMainModal = () => {
+    Swal.fire({
+      title: `Detalles del Encargo #${encargo.ID_ENCARGO}`,
+      html: getModalContent(),
+      showConfirmButton: true,
+      confirmButtonText: "Cerrar",
+      customClass: {
+        popup: "swal2-popup-custom",
+        confirmButton:
+          "bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600",
+      },
+      didOpen: () => {
+        const popup = Swal.getPopup();
+        popup.style.maxWidth = "750px";
+        popup.style.width = "90%";
 
-          // Function to show photo in a new modal
-          const showPhotoInModal = async (url, title) => {
-            try {
-              const response = await fetch(url, {
-                headers: { Authorization: `Bearer ${token}` },
-              });
-              if (!response.ok) {
-                throw new Error(
-                  `Error ${response.status}: ${response.statusText}`
-                );
-              }
-              const blob = await response.blob();
-              const imageUrl = URL.createObjectURL(blob);
-              Swal.fire({
-                title,
-                html: `<img src="${imageUrl}" alt="${title}" class="max-w-[80vw] max-h-[80vh] w-auto h-auto rounded-lg shadow-sm object-contain" />`,
-                showConfirmButton: true,
-                confirmButtonText: "Atrás",
-                customClass: {
-                  popup: "swal2-popup-custom",
-                  confirmButton:
-                    "bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600",
-                },
-                didOpen: () => {
-                  const newPopup = Swal.getPopup();
-                  newPopup.style.maxWidth = "90vw";
-                  newPopup.style.maxHeight = "90vh";
-                  newPopup.style.width = "auto";
-                  newPopup.style.padding = "1rem";
-                },
-                willClose: () => {
-                  URL.revokeObjectURL(imageUrl); // Clean up the object URL
-                },
-                preConfirm: () => {
-                  // Reopen the main modal when "Atrás" is clicked
-                  showMainModal();
-                  return false; // Prevent the photo modal from closing until explicitly handled
-                },
-              });
-            } catch (error) {
-              console.error(`Error al cargar la foto: ${error.message}`);
-              Swal.fire({
-                icon: "error",
-                title: "Error",
-                text: "No se pudo cargar la foto. Verifica tu conexión o inicia sesión nuevamente.",
-                timer: 3000,
-                showConfirmButton: false,
-              });
+        // Function to show photo in a new modal
+        const showPhotoInModal = async (url, title) => {
+          try {
+            const response = await fetch(url, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!response.ok) {
+              throw new Error(
+                `Error ${response.status}: ${response.statusText}`
+              );
             }
-          };
-
-          // Handle "Ver Foto" button click
-          const showPhotoBtn = document.getElementById("show-photo-btn");
-          if (showPhotoBtn && photoUrl) {
-            showPhotoBtn.addEventListener("click", () => {
-              showPhotoInModal(photoUrl, "Foto del Encargo");
+            const blob = await response.blob();
+            const imageUrl = URL.createObjectURL(blob);
+            Swal.fire({
+              title,
+              html: `<img src="${imageUrl}" alt="${title}" class="max-w-[80vw] max-h-[80vh] w-auto h-auto rounded-lg shadow-sm object-contain" />`,
+              showConfirmButton: true,
+              confirmButtonText: "Atrás",
+              customClass: {
+                popup: "swal2-popup-custom",
+                confirmButton:
+                  "bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600",
+              },
+              didOpen: () => {
+                const newPopup = Swal.getPopup();
+                newPopup.style.maxWidth = "90vw";
+                newPopup.style.maxHeight = "90vh";
+                newPopup.style.width = "auto";
+                newPopup.style.padding = "1rem";
+              },
+              willClose: () => {
+                URL.revokeObjectURL(imageUrl); // Clean up the object URL
+              },
+              preConfirm: () => {
+                // Reopen the main modal when "Atrás" is clicked
+                showMainModal();
+                return false; // Prevent the photo modal from closing until explicitly handled
+              },
+            });
+          } catch (error) {
+            console.error(`Error al cargar la foto: ${error.message}`);
+            Swal.fire({
+              icon: "error",
+              title: "Error",
+              text: "No se pudo cargar la foto. Verifica tu conexión o inicia sesión nuevamente.",
+              timer: 3000,
+              showConfirmButton: false,
             });
           }
+        };
 
-          // Handle "Ver Foto de Entrega" button click
-          const showDeliveredPhotoBtn = document.getElementById(
-            "show-delivered-photo-btn"
-          );
-          if (showDeliveredPhotoBtn && deliveredPhotoUrl) {
-            showDeliveredPhotoBtn.addEventListener("click", () => {
-              showPhotoInModal(deliveredPhotoUrl, "Foto de Entrega");
-            });
-          }
-        },
-      });
-    };
+        // Handle "Ver Foto" button click
+        const showPhotoBtn = document.getElementById("show-photo-btn");
+        if (showPhotoBtn && photoUrl) {
+          showPhotoBtn.addEventListener("click", () => {
+            showPhotoInModal(photoUrl, "Foto del Encargo");
+          });
+        }
 
-    // Open the main modal initially
-    showMainModal();
+        // Handle "Ver Foto de Entrega" button click
+        const showDeliveredPhotoBtn = document.getElementById(
+          "show-delivered-photo-btn"
+        );
+        if (showDeliveredPhotoBtn && deliveredPhotoUrl) {
+          showDeliveredPhotoBtn.addEventListener("click", () => {
+            showPhotoInModal(deliveredPhotoUrl, "Foto de Entrega");
+          });
+        }
+      },
+    });
   };
+
+  // Open the main modal initially
+  showMainModal();
+};
+
   const filteredEncargos = encargos.filter((encargo) => {
     const fechaRecepcion = formatDate(encargo.FECHA_RECEPCION);
     return (
