@@ -510,95 +510,102 @@ const RegisterOrder = () => {
     }
   };
 
-  const fetchPersons = async (query, criteria, phase) => {
-    if (!token) {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "No se encontró el token de autenticación",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      navigate("/login");
-      return;
+const fetchPersons = async (query, criteria, phase) => {
+  if (!token) {
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: "No se encontró el token de autenticación",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    navigate("/login");
+    return;
+  }
+
+  setIsLoading(true);
+  try {
+    const url =
+      phase && phase !== "all"
+        ? `${API_URL}?criteria=${criteria}&query=${encodeURIComponent(query)}&phase=${encodeURIComponent(phase)}`
+        : `${API_URL}?criteria=${criteria}&query=${encodeURIComponent(query)}`;
+    console.log("URL de fetchPersons:", url);
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Error del servidor");
     }
-
-    setIsLoading(true);
-    try {
-      const url =
-        phase && phase !== "all"
-          ? `${API_URL}?criteria=${criteria}&query=${encodeURIComponent(
-              query
-            )}&phase=${encodeURIComponent(phase)}`
-          : `${API_URL}?criteria=${criteria}&query=${encodeURIComponent(
-              query
-            )}`;
-      console.log("URL de fetchPersons:", url);
-      const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error al buscar personas");
-      }
-      const data = await response.json();
-      console.log("Respuesta de fetchPersons:", JSON.stringify(data, null, 2));
-      if (data.length === 0) {
-        Swal.fire({
-          icon: "info",
-          title: "Sin resultados",
-          text: "No se encontraron personas que coincidan con los criterios de búsqueda.",
-          timer: 2000,
-          showConfirmButton: false,
-        });
-        setResults([]);
-        setHasSearched(true);
-        return;
-      }
-
-      // Mapear los resultados directamente, usando los datos de la API
-      const resultsWithAssociatedUsers = data.map((person, index) => ({
-        index,
-        ID_PERSONA: person.ID_PERSONA,
-        NOMBRES: person.NOMBRES,
-        APELLIDOS: person.APELLIDOS,
-        DNI: person.DNI,
-        ID_DEPARTAMENTO: person.ID_DEPARTAMENTO,
-        NRO_DPTO: person.NRO_DPTO,
-        FASE: person.FASE,
-        ES_PROPIETARIO: person.ES_PROPIETARIO, // Usar directamente ES_PROPIETARIO
-        USUARIOS_ASOCIADOS:
-          person.USUARIOS_ASOCIADOS.map((user) => ({
-            ID_PERSONA: user.ID_PERSONA,
-            NOMBRES: user.NOMBRES,
-            APELLIDOS: user.APELLIDOS,
-            DNI: user.DNI,
-            ES_PROPIETARIO: user.ID_CLASIFICACION === 1, // Calcular ES_PROPIETARIO para usuarios asociados
-          })) || [], // Mapear USUARIOS_ASOCIADOS y asegurar que sea un array
-      }));
-
-      console.log(
-        "Resultados finales con USUARIOS_ASOCIADOS:",
-        JSON.stringify(resultsWithAssociatedUsers, null, 2)
-      );
-      setResults(resultsWithAssociatedUsers);
-      setShowSearchResults(true);
-      setHasSearched(true);
-    } catch (error) {
-      console.error("Error en fetchPersons:", error);
+    const data = await response.json();
+    console.log("Respuesta de fetchPersons:", JSON.stringify(data, null, 2));
+    if (data.length === 0) {
       Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: error.message || "No se pudo realizar la búsqueda",
+        icon: "info",
+        title: "Sin resultados",
+        text: "No se encontraron personas que coincidan con los criterios de búsqueda.",
         timer: 2000,
         showConfirmButton: false,
       });
       setResults([]);
       setHasSearched(true);
-    } finally {
-      setIsLoading(false);
+      return;
     }
-  };
+
+    const resultsWithAssociatedUsers = data.map((person, index) => ({
+      index,
+      ID_PERSONA: person.ID_PERSONA,
+      NOMBRES: person.NOMBRES,
+      APELLIDOS: person.APELLIDOS,
+      DNI: person.DNI,
+      ID_DEPARTAMENTO: person.ID_DEPARTAMENTO,
+      NRO_DPTO: person.NRO_DPTO,
+      FASE: person.FASE,
+      ES_PROPIETARIO: person.ES_PROPIETARIO,
+      USUARIOS_ASOCIADOS:
+        person.USUARIOS_ASOCIADOS.map((user) => ({
+          ID_PERSONA: user.ID_PERSONA,
+          NOMBRES: user.NOMBRES,
+          APELLIDOS: user.APELLIDOS,
+          DNI: user.DNI,
+          ES_PROPIETARIO: user.ID_CLASIFICACION === 1,
+        })) || [],
+    }));
+
+    console.log(
+      "Resultados finales con USUARIOS_ASOCIADOS:",
+      JSON.stringify(resultsWithAssociatedUsers, null, 2)
+    );
+    setResults(resultsWithAssociatedUsers);
+    setShowSearchResults(true);
+    setHasSearched(true);
+  } catch (error) {
+    console.error("Error en fetchPersons:", error);
+    let errorMessage = "No se pudo realizar la búsqueda.";
+    if (error.message.includes("Criterio de búsqueda inválido")) {
+      errorMessage = "Por favor, selecciona un criterio de búsqueda válido.";
+    } else if (error.message.includes("La consulta no puede estar vacía")) {
+      errorMessage = "La consulta de búsqueda no puede estar vacía.";
+    } else if (error.message.includes("al menos 3 caracteres")) {
+      errorMessage = "La consulta debe tener al menos 3 caracteres.";
+    } else if (error.message.includes("número de departamento debe ser válido")) {
+      errorMessage = "Ingresa un número de departamento válido.";
+    } else if (error.message.includes("Error del servidor")) {
+      errorMessage = "Error en el servidor. Por favor, intenta de nuevo más tarde.";
+    }
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: errorMessage,
+      timer: 3000,
+      showConfirmButton: false,
+    });
+    setResults([]);
+    setHasSearched(true);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleSearch = async () => {
     if (!searchCriteria) {
@@ -1681,7 +1688,6 @@ const RegisterOrder = () => {
                 !isLoading &&
                 hasSearched && (
                   <div className="mb-6 text-center text-gray-500">
-                    No se encontraron registros para los criterios ingresados.
                   </div>
                 )}
               {selectedMainResident && (
