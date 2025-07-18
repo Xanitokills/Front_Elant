@@ -1056,49 +1056,50 @@ const RegisterOrder = () => {
   }
 
 const handleMarkDelivered = async (idEncargo) => {
-    const usersResponse = await fetch(
-      `${API_URL}?criteria=department&query=${
-        encargos.find((e) => e.ID_ENCARGO === idEncargo)?.NRO_DPTO
-      }`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
-    if (!usersResponse.ok) {
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "No se pudo obtener la lista de personas",
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      return;
+  const usersResponse = await fetch(
+    `${API_URL}?criteria=department&query=${
+      encargos.find((e) => e.ID_ENCARGO === idEncargo)?.NRO_DPTO
+    }`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
     }
-    const deptData = await usersResponse.json();
-    const users = deptData.map((person) => ({
-      ID_PERSONA: person.ID_PERSONA,
-      NOMBRES: person.NOMBRES,
-      APELLIDOS: person.APELLIDOS,
-      DNI: person.DNI,
-      ES_PROPIETARIO: person.ID_CLASIFICACION === 1,
-    }));
+  );
+  if (!usersResponse.ok) {
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: "No se pudo obtener la lista de personas",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    return;
+  }
+  const deptData = await usersResponse.json();
+  const users = deptData.map((person) => ({
+    ID_PERSONA: person.ID_PERSONA,
+    NOMBRES: person.NOMBRES,
+    APELLIDOS: person.APELLIDOS,
+    DNI: person.DNI,
+    ES_PROPIETARIO: person.ID_CLASIFICACION === 1,
+  }));
 
-    const userOptions = users.map((user) => ({
-      value: user.ID_PERSONA,
-      label: `${user.NOMBRES} ${user.APELLIDOS} (DNI: ${user.DNI})${
-        user.ES_PROPIETARIO ? " (Propietario)" : ""
-      }`,
-    }));
+  const userOptions = users.map((user) => ({
+    value: user.ID_PERSONA,
+    label: `${user.NOMBRES} ${user.APELLIDOS} (DNI: ${user.DNI})${
+      user.ES_PROPIETARIO ? " (Propietario)" : ""
+    }`,
+  }));
 
-    let selectedPersonId = null;
+  let selectedPersonId = null;
 
-    const result = await Swal.fire({
-      title: "Seleccionar persona que retira",
-      html: `
-        <div class="text-left font-sans p-4">
-          <div class="mb-4">
-            <label for="swal-input1" class="block text-sm font-medium text-gray-600 mb-2">Persona que retira</label>
-            <select id="swal-input1" class="swal2-select w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+  const result = await Swal.fire({
+    title: "Confirmar Entrega",
+    html: `
+      <div class="font-sans p-6 bg-gray-50 rounded-lg">
+        <div class="space-y-6">
+          <div>
+            <label for="swal-input1" class="block text-sm font-medium text-gray-700 mb-2">Persona que retira</label>
+            <select id="swal-input1" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
               <option value="">Selecciona una persona</option>
               ${userOptions
                 .map(
@@ -1108,140 +1109,140 @@ const handleMarkDelivered = async (idEncargo) => {
                 .join("")}
             </select>
           </div>
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-600 mb-2">Foto de entrega (obligatoria)</label>
-            <div id="photo-preview" class="mb-2"></div>
-            <div class="flex gap-2">
-              <button id="select-photo-btn" type="button" class="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                Seleccionar Foto
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Foto de entrega (obligatoria)</label>
+            <div id="photo-preview" class="mb-3 rounded-lg overflow-hidden"></div>
+            <div class="flex gap-3">
+              <button id="select-photo-btn" type="button" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center justify-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                Seleccionar
               </button>
-              <button id="take-photo-btn" type="button" class="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h2l2-2h4l2 2h2a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              <button id="take-photo-btn" type="button" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center justify-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h2l2-2h4l2 2h2a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                 Tomar Foto
               </button>
-              <button id="remove-photo-btn" type="button" class="inline-flex items-center px-3 py-1 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 transition-colors hidden">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                Eliminar Foto
+              <button id="remove-photo-btn" type="button" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center justify-center hidden">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                Eliminar
               </button>
             </div>
-            <input type="file" id="delivery-photo-input" class="swal2-file hidden" accept="image/jpeg,image/png">
+            <input type="file" id="delivery-photo-input" class="hidden" accept="image/jpeg,image/png">
           </div>
         </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: "Confirmar",
-      cancelButtonText: "Cancelar",
-      confirmButtonColor: "#2563eb",
-      cancelButtonColor: "#d33",
-      customClass: {
-        popup: "swal2-popup-custom",
-        confirmButton:
-          "bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600",
-        cancelButton:
-          "bg-red-500 text-white px-4 py-2 rounded hover:bg-red-500",
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: "Confirmar",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "#2563eb",
+    cancelButtonColor: "#dc2626",
+    customClass: {
+      popup: "rounded-xl shadow-xl",
+      title: "text-xl font-semibold text-gray-800",
+      confirmButton: "px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200",
+      cancelButton: "px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200",
+    },
+    didOpen: () => {
+      const popup = Swal.getPopup();
+      popup.style.maxWidth = "600px";
+      popup.style.width = "90%";
+      popup.style.overflowY = "visible";
+
+      const selectPhotoBtn = document.getElementById("select-photo-btn");
+      const takePhotoBtn = document.getElementById("take-photo-btn");
+      const removePhotoBtn = document.getElementById("remove-photo-btn");
+      const photoInput = document.getElementById("delivery-photo-input");
+
+      selectPhotoBtn.addEventListener("click", () => {
+        photoInput.click();
+      });
+
+      photoInput.addEventListener("change", (e) => {
+        handleDeliveryPhotoChange(e);
+      });
+
+      takePhotoBtn.addEventListener("click", () => {
+        startDeliveryCamera();
+      });
+
+      removePhotoBtn.addEventListener("click", () => {
+        clearDeliveryPhoto();
+      });
+    },
+    preConfirm: () => {
+      selectedPersonId = document.getElementById("swal-input1").value;
+      if (!selectedPersonId) {
+        Swal.showValidationMessage("Debes seleccionar una persona");
+        return false;
+      }
+      if (!deliveryPhotoRef.current) {
+        Swal.showValidationMessage("La foto de entrega es obligatoria");
+        return false;
+      }
+      return true;
+    },
+    willClose: () => {
+      stopDeliveryCamera();
+    },
+  });
+
+  if (!result.isConfirmed || !selectedPersonId) {
+    stopDeliveryCamera();
+    return;
+  }
+
+  setIsLoading(true);
+  try {
+    const formData = new FormData();
+    formData.append("personId", selectedPersonId.toString());
+    if (deliveryPhotoRef.current) {
+      formData.append("photo", deliveryPhotoRef.current);
+    }
+
+    for (let [key, value] of formData.entries()) {
+      console.log(`FormData (markDelivered) - ${key}:`, value);
+    }
+
+    const response = await fetch(`${API_URL}/${idEncargo}/deliver`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
       },
-      didOpen: () => {
-        const popup = Swal.getPopup();
-        popup.style.maxWidth = "750px";
-        popup.style.width = "90%";
-        popup.style.overflow = "hidden";
-
-        const selectPhotoBtn = document.getElementById("select-photo-btn");
-        const takePhotoBtn = document.getElementById("take-photo-btn");
-        const removePhotoBtn = document.getElementById("remove-photo-btn");
-        const photoInput = document.getElementById("delivery-photo-input");
-
-        selectPhotoBtn.addEventListener("click", () => {
-          photoInput.click();
-        });
-
-        photoInput.addEventListener("change", (e) => {
-          handleDeliveryPhotoChange(e);
-        });
-
-        takePhotoBtn.addEventListener("click", () => {
-          startDeliveryCamera();
-        });
-
-        removePhotoBtn.addEventListener("click", () => {
-          clearDeliveryPhoto();
-        });
-      },
-      preConfirm: () => {
-        selectedPersonId = document.getElementById("swal-input1").value;
-        if (!selectedPersonId) {
-          Swal.showValidationMessage("Debes seleccionar una persona");
-          return false;
-        }
-        if (!deliveryPhotoRef.current) {
-          Swal.showValidationMessage("La foto de entrega es obligatoria");
-          return false;
-        }
-        return true;
-      },
-      willClose: () => {
-        stopDeliveryCamera();
-      },
+      body: formData,
     });
 
-    if (!result.isConfirmed || !selectedPersonId) {
-      stopDeliveryCamera();
-      return;
+    const responseData = await response.json();
+    console.log("Respuesta de la API (markDelivered):", responseData);
+
+    if (!response.ok) {
+      throw new Error(responseData.message || `Error ${response.status}`);
     }
 
-    setIsLoading(true);
-    try {
-      const formData = new FormData();
-      formData.append("personId", selectedPersonId.toString());
-      if (deliveryPhotoRef.current) {
-        formData.append("photo", deliveryPhotoRef.current);
-      }
+    Swal.fire({
+      icon: "success",
+      title: "Éxito",
+      text: "Encargo marcado como entregado",
+      timer: 1500,
+      showConfirmButton: false,
+    });
 
-      for (let [key, value] of formData.entries()) {
-        console.log(`FormData (markDelivered) - ${key}:`, value);
-      }
-
-      const response = await fetch(`${API_URL}/${idEncargo}/deliver`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      const responseData = await response.json();
-      console.log("Respuesta de la API (markDelivered):", responseData);
-
-      if (!response.ok) {
-        throw new Error(responseData.message || `Error ${response.status}`);
-      }
-
-      Swal.fire({
-        icon: "success",
-        title: "Éxito",
-        text: "Encargo marcado como entregado",
-        timer: 1500,
-        showConfirmButton: false,
-      });
-
-      await fetchEncargos();
-      setDeliveryPhoto(null);
-      setDeliveryPhotoPreview(null);
-    } catch (error) {
-      console.error("Error en handleMarkDelivered:", error);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: error.message || "No se pudo marcar el encargo como entregado",
-        timer: 3000,
-        showConfirmButton: false,
-      });
-    } finally {
-      setIsLoading(false);
-      stopDeliveryCamera();
-    }
-  };
+    await fetchEncargos();
+    setDeliveryPhoto(null);
+    setDeliveryPhotoPreview(null);
+  } catch (error) {
+    console.error("Error en handleMarkDelivered:", error);
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: error.message || "No se pudo marcar el encargo como entregado",
+      timer: 3000,
+      showConfirmButton: false,
+    });
+  } finally {
+    setIsLoading(false);
+    stopDeliveryCamera();
+  }
+};
 
   const fetchAssociatedUsers = async (nroDpto, phase) => {
     try {
