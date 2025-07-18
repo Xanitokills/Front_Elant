@@ -510,102 +510,109 @@ const RegisterOrder = () => {
     }
   };
 
-const fetchPersons = async (query, criteria, phase) => {
-  if (!token) {
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: "No se encontró el token de autenticación",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    navigate("/login");
-    return;
-  }
-
-  setIsLoading(true);
-  try {
-    const url =
-      phase && phase !== "all"
-        ? `${API_URL}?criteria=${criteria}&query=${encodeURIComponent(query)}&phase=${encodeURIComponent(phase)}`
-        : `${API_URL}?criteria=${criteria}&query=${encodeURIComponent(query)}`;
-    console.log("URL de fetchPersons:", url);
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Error del servidor");
-    }
-    const data = await response.json();
-    console.log("Respuesta de fetchPersons:", JSON.stringify(data, null, 2));
-    if (data.length === 0) {
+  const fetchPersons = async (query, criteria, phase) => {
+    if (!token) {
       Swal.fire({
-        icon: "info",
-        title: "Sin resultados",
-        text: "No se encontraron personas que coincidan con los criterios de búsqueda.",
+        icon: "error",
+        title: "Error",
+        text: "No se encontró el token de autenticación",
         timer: 2000,
+        showConfirmButton: false,
+      });
+      navigate("/login");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const url =
+        phase && phase !== "all"
+          ? `${API_URL}?criteria=${criteria}&query=${encodeURIComponent(
+              query
+            )}&phase=${encodeURIComponent(phase)}`
+          : `${API_URL}?criteria=${criteria}&query=${encodeURIComponent(
+              query
+            )}`;
+      console.log("URL de fetchPersons:", url);
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error del servidor");
+      }
+      const data = await response.json();
+      console.log("Respuesta de fetchPersons:", JSON.stringify(data, null, 2));
+      if (data.length === 0) {
+        Swal.fire({
+          icon: "info",
+          title: "Sin resultados",
+          text: "No se encontraron personas que coincidan con los criterios de búsqueda.",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+        setResults([]);
+        setHasSearched(true);
+        return;
+      }
+
+      const resultsWithAssociatedUsers = data.map((person, index) => ({
+        index,
+        ID_PERSONA: person.ID_PERSONA,
+        NOMBRES: person.NOMBRES,
+        APELLIDOS: person.APELLIDOS,
+        DNI: person.DNI,
+        ID_DEPARTAMENTO: person.ID_DEPARTAMENTO,
+        NRO_DPTO: person.NRO_DPTO,
+        FASE: person.FASE,
+        ES_PROPIETARIO: person.ES_PROPIETARIO,
+        USUARIOS_ASOCIADOS:
+          person.USUARIOS_ASOCIADOS.map((user) => ({
+            ID_PERSONA: user.ID_PERSONA,
+            NOMBRES: user.NOMBRES,
+            APELLIDOS: user.APELLIDOS,
+            DNI: user.DNI,
+            ES_PROPIETARIO: user.ID_CLASIFICACION === 1,
+          })) || [],
+      }));
+
+      console.log(
+        "Resultados finales con USUARIOS_ASOCIADOS:",
+        JSON.stringify(resultsWithAssociatedUsers, null, 2)
+      );
+      setResults(resultsWithAssociatedUsers);
+      setShowSearchResults(true);
+      setHasSearched(true);
+    } catch (error) {
+      console.error("Error en fetchPersons:", error);
+      let errorMessage = "No se pudo realizar la búsqueda.";
+      if (error.message.includes("Criterio de búsqueda inválido")) {
+        errorMessage = "Por favor, selecciona un criterio de búsqueda válido.";
+      } else if (error.message.includes("La consulta no puede estar vacía")) {
+        errorMessage = "La consulta de búsqueda no puede estar vacía.";
+      } else if (error.message.includes("al menos 3 caracteres")) {
+        errorMessage = "La consulta debe tener al menos 3 caracteres.";
+      } else if (
+        error.message.includes("número de departamento debe ser válido")
+      ) {
+        errorMessage = "Ingresa un número de departamento válido.";
+      } else if (error.message.includes("Error del servidor")) {
+        errorMessage =
+          "Error en el servidor. Por favor, intenta de nuevo más tarde.";
+      }
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: errorMessage,
+        timer: 3000,
         showConfirmButton: false,
       });
       setResults([]);
       setHasSearched(true);
-      return;
+    } finally {
+      setIsLoading(false);
     }
-
-    const resultsWithAssociatedUsers = data.map((person, index) => ({
-      index,
-      ID_PERSONA: person.ID_PERSONA,
-      NOMBRES: person.NOMBRES,
-      APELLIDOS: person.APELLIDOS,
-      DNI: person.DNI,
-      ID_DEPARTAMENTO: person.ID_DEPARTAMENTO,
-      NRO_DPTO: person.NRO_DPTO,
-      FASE: person.FASE,
-      ES_PROPIETARIO: person.ES_PROPIETARIO,
-      USUARIOS_ASOCIADOS:
-        person.USUARIOS_ASOCIADOS.map((user) => ({
-          ID_PERSONA: user.ID_PERSONA,
-          NOMBRES: user.NOMBRES,
-          APELLIDOS: user.APELLIDOS,
-          DNI: user.DNI,
-          ES_PROPIETARIO: user.ID_CLASIFICACION === 1,
-        })) || [],
-    }));
-
-    console.log(
-      "Resultados finales con USUARIOS_ASOCIADOS:",
-      JSON.stringify(resultsWithAssociatedUsers, null, 2)
-    );
-    setResults(resultsWithAssociatedUsers);
-    setShowSearchResults(true);
-    setHasSearched(true);
-  } catch (error) {
-    console.error("Error en fetchPersons:", error);
-    let errorMessage = "No se pudo realizar la búsqueda.";
-    if (error.message.includes("Criterio de búsqueda inválido")) {
-      errorMessage = "Por favor, selecciona un criterio de búsqueda válido.";
-    } else if (error.message.includes("La consulta no puede estar vacía")) {
-      errorMessage = "La consulta de búsqueda no puede estar vacía.";
-    } else if (error.message.includes("al menos 3 caracteres")) {
-      errorMessage = "La consulta debe tener al menos 3 caracteres.";
-    } else if (error.message.includes("número de departamento debe ser válido")) {
-      errorMessage = "Ingresa un número de departamento válido.";
-    } else if (error.message.includes("Error del servidor")) {
-      errorMessage = "Error en el servidor. Por favor, intenta de nuevo más tarde.";
-    }
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: errorMessage,
-      timer: 3000,
-      showConfirmButton: false,
-    });
-    setResults([]);
-    setHasSearched(true);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   const handleSearch = async () => {
     if (!searchCriteria) {
@@ -1202,30 +1209,31 @@ const fetchPersons = async (query, criteria, phase) => {
     }
   };
 
-const showDetailsModal = async (encargo) => {
-  const associatedUsers = await fetchAssociatedUsers(encargo.NRO_DPTO);
-  const photoUrl =
-    encargo.TIENE_FOTO > 0
-      ? `${API_URL}/photos/${encargo.ID_ENCARGO}?tipo=PAQUETE`
-      : null;
-  const deliveredPhotoUrl =
-    encargo.TIENE_FOTO_ENTREGA > 0
-      ? `${API_URL}/photos/${encargo.ID_ENCARGO}?tipo=ENTREGA`
-      : null;
-  const token = localStorage.getItem("token");
+  const showDetailsModal = async (encargo) => {
+    const associatedUsers = await fetchAssociatedUsers(encargo.NRO_DPTO);
+    const photoUrl =
+      encargo.TIENE_FOTO > 0
+        ? `${API_URL}/photos/${encargo.ID_ENCARGO}?tipo=PAQUETE`
+        : null;
+    const deliveredPhotoUrl =
+      encargo.TIENE_FOTO_ENTREGA > 0
+        ? `${API_URL}/photos/${encargo.ID_ENCARGO}?tipo=ENTREGA`
+        : null;
+    const token = localStorage.getItem("token");
 
-  // Filter out the main person from associated users
-  const filteredAssociatedUsers = associatedUsers.filter(
-    (user) => user.DNI !== encargo.DNI
-  );
+    // Filter out the main person from associated users
+    const filteredAssociatedUsers = associatedUsers.filter(
+      (user) => user.DNI !== encargo.DNI
+    );
 
-  // Get delivery person details
-  const deliveryPerson = encargo.ESTADO === 0 && encargo.ENTREGADO_A && encargo.ENTREGADO_A !== '-'
-    ? { NOMBRES_APELLIDOS: encargo.ENTREGADO_A, DNI: encargo.DNI_ENTREGADO }
-    : null;
+    // Get delivery person details
+    const deliveryPerson =
+      encargo.ESTADO === 0 && encargo.ENTREGADO_A && encargo.ENTREGADO_A !== "-"
+        ? { NOMBRES_APELLIDOS: encargo.ENTREGADO_A, DNI: encargo.DNI_ENTREGADO }
+        : null;
 
-  // Define modal content to reuse in both initial and "Atrás" scenarios
-  const getModalContent = () => `
+    // Define modal content to reuse in both initial and "Atrás" scenarios
+    const getModalContent = () => `
     <div class="text-left font-sans p-4">
       <div class="mb-4">
         <span class="inline-block px-3 py-1 rounded-full text-sm font-semibold ${
@@ -1236,206 +1244,257 @@ const showDetailsModal = async (encargo) => {
           ${encargo.ESTADO === 1 ? "Pendiente" : "Entregado"}
         </span>
       </div>
-      <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
-        <h3 class="text-lg font-semibold text-gray-700 mb-2 flex items-center">
-          <svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-          </svg>
-          Persona Principal
-        </h3>
-        <p class="text-gray-600">
-          ${encargo.PERSONA_DESTINATARIO || "No asignado"} (DNI: ${
-    encargo.DNI || "-"
-  }) 
+      ${
+        encargo.ESTADO === 0
+          ? `
+            <div class="flex border-b border-gray-200 mb-4">
+              <button id="tab-antes" class="tab-button px-4 py-2 text-sm font-medium text-blue-600 border-b-2 border-blue-600 focus:outline-none active-tab" data-tab="antes">Previo</button>
+              <button id="tab-despues" class="tab-button px-4 py-2 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-blue-600 hover:border-blue-600 focus:outline-none" data-tab="despues">Entregado</button>
+            </div>
+          `
+          : ""
+      }
+      <div id="tab-content-antes" class="tab-content ${
+        encargo.ESTADO === 0 ? "block" : "block"
+      }">
+        <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
+          <h3 class="text-lg font-semibold text-gray-700 mb-2 flex items-center">
+            <svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+            </svg>
+            Persona Principal
+          </h3>
+          <p class="text-gray-600">
+            ${encargo.PERSONA_DESTINATARIO || "No asignado"} (DNI: ${
+      encargo.DNI || "-"
+    }) 
+            ${
+              encargo.TIPO_RESIDENTE && encargo.TIPO_RESIDENTE !== "-"
+                ? `<span class="inline-block px-2 py-1 bg-blue-500 text-white text-xs rounded-full ml-2">${encargo.TIPO_RESIDENTE}</span>`
+                : ""
+            }
+          </p>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
+          <h3 class="text-lg font-semibold text-gray-700 mb-2 flex items-center">
+            <svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 005.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+            </svg>
+            Personas Asociadas
+          </h3>
           ${
-            encargo.TIPO_RESIDENTE && encargo.TIPO_RESIDENTE !== "-"
-              ? `<span class="inline-block px-2 py-1 bg-blue-500 text-white text-xs rounded-full ml-2">${encargo.TIPO_RESIDENTE}</span>`
-              : ""
+            filteredAssociatedUsers.length > 0
+              ? `<div class="grid gap-2">
+                  ${filteredAssociatedUsers
+                    .map(
+                      (user) => `
+                        <div class="bg-gray-50 border border-gray-100 rounded-md p-2 flex justify-between items-center">
+                          <span class="text-gray-600">${user.NOMBRES} ${
+                        user.APELLIDOS
+                      } (DNI: ${user.DNI})</span>
+                          ${
+                            user.ES_PROPIETARIO
+                              ? `<span class="inline-block px-2 py-1 bg-blue-500 text-white text-xs rounded-full">Propietario</span>`
+                              : `<span class="inline-block px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded-full">${
+                                  user.DETALLE_CLASIFICACION || "Residente"
+                                }</span>`
+                          }
+                        </div>`
+                    )
+                    .join("")}
+                </div>`
+              : '<p class="text-gray-500">No hay personas asociadas</p>'
           }
-        </p>
-      </div>
-      <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
-        <h3 class="text-lg font-semibold text-gray-700 mb-2 flex items-center">
-          <svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 005.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-          </svg>
-          Personas Asociadas
-        </h3>
-        ${
-          filteredAssociatedUsers.length > 0
-            ? `<div class="grid gap-2">
-                ${filteredAssociatedUsers
-                  .map(
-                    (user) => `
-                      <div class="bg-gray-50 border border-gray-100 rounded-md p-2 flex justify-between items-center">
-                        <span class="text-gray-600">${user.NOMBRES} ${
-                      user.APELLIDOS
-                    } (DNI: ${user.DNI})</span>
-                        ${
-                          user.ES_PROPIETARIO
-                            ? `<span class="inline-block px-2 py-1 bg-blue-500 text-white text-xs rounded-full">Propietario</span>`
-                            : `<span class="inline-block px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded-full">${
-                                user.DETALLE_CLASIFICACION || "Residente"
-                              }</span>`
-                        }
-                      </div>`
-                  )
-                  .join("")}
-              </div>`
-            : '<p class="text-gray-500">No hay personas asociadas</p>'
-        }
-      </div>
-      <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
-        <h3 class="text-lg font-semibold text-gray-700 mb-2 flex items-center">
-          <svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-          </svg>
-          Descripción del Encargo
-        </h3>
-        <p class="text-gray-600">${encargo.DESCRIPCION}</p>
-      </div>
-      <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
-        <h3 class="text-lg font-semibold text-gray-700 mb-2 flex items-center">
-          <svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-          </svg>
-          Foto del Encargo
-        </h3>
-        <div id="photo-container" class="text-gray-600">
-          ${
-            photoUrl
-              ? `<button id="show-photo-btn" class="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors">Ver Foto <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M19 12a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg></button>`
-              : "No disponible"
-          }
+        </div>
+        <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
+          <h3 class="text-lg font-semibold text-gray-700 mb-2 flex items-center">
+            <svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+            Descripción del Encargo
+          </h3>
+          <p class="text-gray-600">${encargo.DESCRIPCION}</p>
+        </div>
+        <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
+          <h3 class="text-lg font-semibold text-gray-700 mb-2 flex items-center">
+            <svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+            Foto del Encargo
+          </h3>
+          <div id="photo-container" class="text-gray-600">
+            ${
+              photoUrl
+                ? `<button id="show-photo-btn" class="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors">Ver Foto <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M19 12a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg></button>`
+                : "No disponible"
+            }
+          </div>
         </div>
       </div>
       ${
         encargo.ESTADO === 0 && deliveryPerson
           ? `
-            <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
-              <h3 class="text-lg font-semibold text-gray-700 mb-2 flex items-center">
-                <svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                </svg>
-                Persona que Recibió
-              </h3>
-              <p class="text-gray-600">
-                ${deliveryPerson.NOMBRES_APELLIDOS} (DNI: ${deliveryPerson.DNI})
-              </p>
-            </div>
-            <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
-              <h3 class="text-lg font-semibold text-gray-700 mb-2 flex items-center">
-                <svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-                Foto de Entrega
-              </h3>
-              <div id="delivered-photo-container" class="text-gray-600">
-                ${
-                  deliveredPhotoUrl
-                    ? `<button id="show-delivered-photo-btn" class="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors">Ver Foto de Entrega <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M19 12a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg></button>`
-                    : "No disponible"
-                }
+            <div id="tab-content-despues" class="tab-content hidden">
+              <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2 flex items-center">
+                  <svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                  </svg>
+                  Persona que Recibió
+                </h3>
+                <p class="text-gray-600">
+                  ${deliveryPerson.NOMBRES_APELLIDOS} (DNI: ${
+              deliveryPerson.DNI
+            })
+                </p>
+              </div>
+              <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2 flex items-center">
+                  <svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                  </svg>
+                  Foto de Entrega
+                </h3>
+                <div id="delivered-photo-container" class="text-gray-600">
+                  ${
+                    deliveredPhotoUrl
+                      ? `<button id="show-delivered-photo-btn" class="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors">Ver Foto de Entrega <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M19 12a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg></button>`
+                      : "No disponible"
+                  }
+                </div>
               </div>
             </div>
           `
           : ""
       }
     </div>
+    <style>
+      .tab-content {
+        display: none;
+      }
+      .tab-content.block {
+        display: block;
+      }
+      .tab-button.active-tab {
+        color: #2563eb;
+        border-bottom: 2px solid #2563eb;
+      }
+    </style>
   `;
 
-  // Function to show the main details modal
-  const showMainModal = () => {
-    Swal.fire({
-      title: `Detalles del Encargo #${encargo.ID_ENCARGO}`,
-      html: getModalContent(),
-      showConfirmButton: true,
-      confirmButtonText: "Cerrar",
-      customClass: {
-        popup: "swal2-popup-custom",
-        confirmButton:
-          "bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600",
-      },
-      didOpen: () => {
-        const popup = Swal.getPopup();
-        popup.style.maxWidth = "750px";
-        popup.style.width = "90%";
+    // Function to show the main details modal
+    const showMainModal = () => {
+      Swal.fire({
+        title: `Detalles del Encargo #${encargo.ID_ENCARGO}`,
+        html: getModalContent(),
+        showConfirmButton: true,
+        confirmButtonText: "Cerrar",
+        customClass: {
+          popup: "swal2-popup-custom",
+          confirmButton:
+            "bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600",
+        },
+        didOpen: () => {
+          const popup = Swal.getPopup();
+          popup.style.maxWidth = "750px";
+          popup.style.width = "90%";
 
-        // Function to show photo in a new modal
-        const showPhotoInModal = async (url, title) => {
-          try {
-            const response = await fetch(url, {
-              headers: { Authorization: `Bearer ${token}` },
+          // Tab switching logic
+          const antesTab = document.getElementById("tab-antes");
+          const despuesTab = document.getElementById("tab-despues");
+          const antesContent = document.getElementById("tab-content-antes");
+          const despuesContent = document.getElementById("tab-content-despues");
+
+          if (antesTab && despuesTab && antesContent && despuesContent) {
+            antesTab.addEventListener("click", () => {
+              antesTab.classList.add("active-tab");
+              despuesTab.classList.remove("active-tab");
+              antesContent.classList.add("block");
+              despuesContent.classList.remove("block");
             });
-            if (!response.ok) {
-              throw new Error(
-                `Error ${response.status}: ${response.statusText}`
-              );
-            }
-            const blob = await response.blob();
-            const imageUrl = URL.createObjectURL(blob);
-            Swal.fire({
-              title,
-              html: `<img src="${imageUrl}" alt="${title}" class="max-w-[80vw] max-h-[80vh] w-auto h-auto rounded-lg shadow-sm object-contain" />`,
-              showConfirmButton: true,
-              confirmButtonText: "Atrás",
-              customClass: {
-                popup: "swal2-popup-custom",
-                confirmButton:
-                  "bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600",
-              },
-              didOpen: () => {
-                const newPopup = Swal.getPopup();
-                newPopup.style.maxWidth = "90vw";
-                newPopup.style.maxHeight = "90vh";
-                newPopup.style.width = "auto";
-                newPopup.style.padding = "1rem";
-              },
-              willClose: () => {
-                URL.revokeObjectURL(imageUrl); // Clean up the object URL
-              },
-              preConfirm: () => {
-                // Reopen the main modal when "Atrás" is clicked
-                showMainModal();
-                return false; // Prevent the photo modal from closing until explicitly handled
-              },
-            });
-          } catch (error) {
-            console.error(`Error al cargar la foto: ${error.message}`);
-            Swal.fire({
-              icon: "error",
-              title: "Error",
-              text: "No se pudo cargar la foto. Verifica tu conexión o inicia sesión nuevamente.",
-              timer: 3000,
-              showConfirmButton: false,
+            despuesTab.addEventListener("click", () => {
+              despuesTab.classList.add("active-tab");
+              antesTab.classList.remove("active-tab");
+              despuesContent.classList.add("block");
+              antesContent.classList.remove("block");
             });
           }
-        };
 
-        // Handle "Ver Foto" button click
-        const showPhotoBtn = document.getElementById("show-photo-btn");
-        if (showPhotoBtn && photoUrl) {
-          showPhotoBtn.addEventListener("click", () => {
-            showPhotoInModal(photoUrl, "Foto del Encargo");
-          });
-        }
+          // Function to show photo in a new modal
+          const showPhotoInModal = async (url, title) => {
+            try {
+              const response = await fetch(url, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              if (!response.ok) {
+                throw new Error(
+                  `Error ${response.status}: ${response.statusText}`
+                );
+              }
+              const blob = await response.blob();
+              const imageUrl = URL.createObjectURL(blob);
+              Swal.fire({
+                title,
+                html: `<img src="${imageUrl}" alt="${title}" class="max-w-[80vw] max-h-[80vh] w-auto h-auto rounded-lg shadow-sm object-contain" />`,
+                showConfirmButton: true,
+                confirmButtonText: "Atrás",
+                customClass: {
+                  popup: "swal2-popup-custom",
+                  confirmButton:
+                    "bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600",
+                },
+                didOpen: () => {
+                  const newPopup = Swal.getPopup();
+                  newPopup.style.maxWidth = "90vw";
+                  newPopup.style.maxHeight = "90vh";
+                  newPopup.style.width = "auto";
+                  newPopup.style.padding = "1rem";
+                },
+                willClose: () => {
+                  URL.revokeObjectURL(imageUrl); // Clean up the object URL
+                },
+                preConfirm: () => {
+                  // Reopen the main modal when "Atrás" is clicked
+                  showMainModal();
+                  return false; // Prevent the photo modal from closing until explicitly handled
+                },
+              });
+            } catch (error) {
+              console.error(`Error al cargar la foto: ${error.message}`);
+              Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "No se pudo cargar la foto. Verifica tu conexión o inicia sesión nuevamente.",
+                timer: 3000,
+                showConfirmButton: false,
+              });
+            }
+          };
 
-        // Handle "Ver Foto de Entrega" button click
-        const showDeliveredPhotoBtn = document.getElementById(
-          "show-delivered-photo-btn"
-        );
-        if (showDeliveredPhotoBtn && deliveredPhotoUrl) {
-          showDeliveredPhotoBtn.addEventListener("click", () => {
-            showPhotoInModal(deliveredPhotoUrl, "Foto de Entrega");
-          });
-        }
-      },
-    });
+          // Handle "Ver Foto" button click
+          const showPhotoBtn = document.getElementById("show-photo-btn");
+          if (showPhotoBtn && photoUrl) {
+            showPhotoBtn.addEventListener("click", () => {
+              showPhotoInModal(photoUrl, "Foto del Encargo");
+            });
+          }
+
+          // Handle "Ver Foto de Entrega" button click
+          const showDeliveredPhotoBtn = document.getElementById(
+            "show-delivered-photo-btn"
+          );
+          if (showDeliveredPhotoBtn && deliveredPhotoUrl) {
+            showDeliveredPhotoBtn.addEventListener("click", () => {
+              showPhotoInModal(deliveredPhotoUrl, "Foto de Entrega");
+            });
+          }
+        },
+      });
+    };
+
+    // Open the main modal initially
+    showMainModal();
   };
-
-  // Open the main modal initially
-  showMainModal();
-};
 
   const filteredEncargos = encargos.filter((encargo) => {
     const fechaRecepcion = formatDate(encargo.FECHA_RECEPCION);
@@ -1693,8 +1752,7 @@ const showDetailsModal = async (encargo) => {
                 searchCriteria &&
                 !isLoading &&
                 hasSearched && (
-                  <div className="mb-6 text-center text-gray-500">
-                  </div>
+                  <div className="mb-6 text-center text-gray-500"></div>
                 )}
               {selectedMainResident && (
                 <div className="mb-6">
