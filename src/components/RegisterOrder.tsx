@@ -203,7 +203,8 @@ const CameraModal = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  z-index: ${(props) => (props.$isDelivery ? 1100 : 1000)}; /* Mayor z-index para cámara de entrega */
+  z-index: ${(props) =>
+    props.$isDelivery ? 1100 : 1000}; /* Mayor z-index para cámara de entrega */
   padding: 1rem;
 `;
 
@@ -370,6 +371,7 @@ const RegisterOrder = () => {
   const [deliveryPhotoPreview, setDeliveryPhotoPreview] = useState(null); // Vista previa de foto de entrega
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const deliveryPhotoRef = useRef(null);
   const deliveryVideoRef = useRef(null); // Nuevo ref para video de entrega
   const deliveryCanvasRef = useRef(null); // Nuevo ref para canvas de entrega
 
@@ -410,6 +412,11 @@ const RegisterOrder = () => {
   useEffect(() => {
     checkDevices();
   }, []);
+
+  // Sincronizar deliveryPhotoRef con deliveryPhoto
+  useEffect(() => {
+    deliveryPhotoRef.current = deliveryPhoto;
+  }, [deliveryPhoto]);
 
   const fetchEncargos = async () => {
     try {
@@ -1095,7 +1102,8 @@ const handleMarkDelivered = async (idEncargo) => {
               <option value="">Selecciona una persona</option>
               ${userOptions
                 .map(
-                  (user) => `<option value="${user.value}">${user.label}</option>`
+                  (user) =>
+                    `<option value="${user.value}">${user.label}</option>`
                 )
                 .join("")}
             </select>
@@ -1128,8 +1136,10 @@ const handleMarkDelivered = async (idEncargo) => {
       cancelButtonColor: "#d33",
       customClass: {
         popup: "swal2-popup-custom",
-        confirmButton: "bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600",
-        cancelButton: "bg-red-500 text-white px-4 py-2 rounded hover:bg-red-500",
+        confirmButton:
+          "bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600",
+        cancelButton:
+          "bg-red-500 text-white px-4 py-2 rounded hover:bg-red-500",
       },
       didOpen: () => {
         const popup = Swal.getPopup();
@@ -1141,7 +1151,6 @@ const handleMarkDelivered = async (idEncargo) => {
         const takePhotoBtn = document.getElementById("take-photo-btn");
         const removePhotoBtn = document.getElementById("remove-photo-btn");
         const photoInput = document.getElementById("delivery-photo-input");
-        const photoPreview = document.getElementById("photo-preview");
 
         selectPhotoBtn.addEventListener("click", () => {
           photoInput.click();
@@ -1149,11 +1158,6 @@ const handleMarkDelivered = async (idEncargo) => {
 
         photoInput.addEventListener("change", (e) => {
           handleDeliveryPhotoChange(e);
-          if (deliveryPhoto) {
-            const previewUrl = deliveryPhotoPreview;
-            photoPreview.innerHTML = `<img src="${previewUrl}" alt="Vista previa" class="max-w-[150px] max-h-[150px] object-contain border border-gray-300 rounded mt-2" />`;
-            removePhotoBtn.classList.remove("hidden");
-          }
         });
 
         takePhotoBtn.addEventListener("click", () => {
@@ -1162,8 +1166,6 @@ const handleMarkDelivered = async (idEncargo) => {
 
         removePhotoBtn.addEventListener("click", () => {
           clearDeliveryPhoto();
-          photoPreview.innerHTML = "";
-          removePhotoBtn.classList.add("hidden");
         });
       },
       preConfirm: () => {
@@ -1172,7 +1174,7 @@ const handleMarkDelivered = async (idEncargo) => {
           Swal.showValidationMessage("Debes seleccionar una persona");
           return false;
         }
-        if (!deliveryPhoto) {
+        if (!deliveryPhotoRef.current) {
           Swal.showValidationMessage("La foto de entrega es obligatoria");
           return false;
         }
@@ -1192,8 +1194,8 @@ const handleMarkDelivered = async (idEncargo) => {
     try {
       const formData = new FormData();
       formData.append("personId", selectedPersonId.toString());
-      if (deliveryPhoto) {
-        formData.append("photo", deliveryPhoto);
+      if (deliveryPhotoRef.current) {
+        formData.append("photo", deliveryPhotoRef.current);
       }
 
       for (let [key, value] of formData.entries()) {
@@ -1655,10 +1657,15 @@ const handleMarkDelivered = async (idEncargo) => {
       setDeliveryStream(newStream);
       setIsDeliveryCameraActive(true);
     } catch (err) {
-      console.error("Error al iniciar la cámara de entrega:", err.name, err.message);
+      console.error(
+        "Error al iniciar la cámara de entrega:",
+        err.name,
+        err.message
+      );
       let errorMessage = "No se pudo acceder a la cámara.";
       if (err.name === "NotAllowedError") {
-        errorMessage = "Permiso de cámara denegado. Habilita el acceso en la configuración del navegador.";
+        errorMessage =
+          "Permiso de cámara denegado. Habilita el acceso en la configuración del navegador.";
       } else if (err.name === "NotFoundError") {
         errorMessage = "No se encontró una cámara en el dispositivo.";
       } else if (err.name === "NotReadableError") {
@@ -1752,7 +1759,25 @@ const handleMarkDelivered = async (idEncargo) => {
           });
           setDeliveryPhoto(file);
           setDeliveryPhotoPreview(URL.createObjectURL(file));
-          console.log("Foto de entrega establecida y vista previa generada:", file.name);
+          console.log(
+            "Foto de entrega establecida y vista previa generada:",
+            file.name
+          );
+
+          // Actualizar el contenedor photo-preview en el modal de SweetAlert2
+          const photoPreview = document.getElementById("photo-preview");
+          if (photoPreview) {
+            photoPreview.innerHTML = `<img src="${URL.createObjectURL(
+              file
+            )}" alt="Vista previa" class="max-w-[150px] max-h-[150px] object-contain border border-gray-300 rounded mt-2" />`;
+            const removePhotoBtn = document.getElementById("remove-photo-btn");
+            if (removePhotoBtn) {
+              removePhotoBtn.classList.remove("hidden");
+            }
+          } else {
+            console.error("No se encontró el contenedor photo-preview");
+          }
+
           stopDeliveryCamera();
         } else {
           console.error("No se pudo generar el blob de la foto de entrega");
@@ -1776,152 +1801,289 @@ const handleMarkDelivered = async (idEncargo) => {
       setDeliveryPhoto(file);
       setDeliveryPhotoPreview(URL.createObjectURL(file));
       console.log("Foto de entrega seleccionada desde archivo:", file.name);
+
+      // Actualizar el contenedor photo-preview en el modal de SweetAlert2
+      const photoPreview = document.getElementById("photo-preview");
+      if (photoPreview) {
+        photoPreview.innerHTML = `<img src="${URL.createObjectURL(
+          file
+        )}" alt="Vista previa" class="max-w-[150px] max-h-[150px] object-contain border border-gray-300 rounded mt-2" />`;
+        const removePhotoBtn = document.getElementById("remove-photo-btn");
+        if (removePhotoBtn) {
+          removePhotoBtn.classList.remove("hidden");
+        }
+      } else {
+        console.error("No se encontró el contenedor photo-preview");
+      }
     }
   };
 
   const clearDeliveryPhoto = () => {
     setDeliveryPhoto(null);
     setDeliveryPhotoPreview(null);
-    document.getElementById(`delivery-photo-input`).value = null;
+    const photoInput = document.getElementById("delivery-photo-input");
+    if (photoInput) {
+      photoInput.value = null;
+    }
+    const photoPreview = document.getElementById("photo-preview");
+    if (photoPreview) {
+      photoPreview.innerHTML = "";
+    }
+    const removePhotoBtn = document.getElementById("remove-photo-btn");
+    if (removePhotoBtn) {
+      removePhotoBtn.classList.add("hidden");
+    }
     stopDeliveryCamera();
     console.log("Foto de entrega eliminada");
   };
 
-
-return (
-  <Container>
-    <Title>Gestión de Encargos</Title>
-    <div className="mb-6">
-      <div className="flex space-x-4 border-b">
-        <TabButton
-          active={activeTab === "create"}
-          onClick={() => setActiveTab("create")}
-        >
-          Registrar Encargo
-        </TabButton>
-        <TabButton
-          active={activeTab === "history"}
-          onClick={() => setActiveTab("history")}
-        >
-          Historial de Encargos
-        </TabButton>
+  return (
+    <Container>
+      <Title>Gestión de Encargos</Title>
+      <div className="mb-6">
+        <div className="flex space-x-4 border-b">
+          <TabButton
+            active={activeTab === "create"}
+            onClick={() => setActiveTab("create")}
+          >
+            Registrar Encargo
+          </TabButton>
+          <TabButton
+            active={activeTab === "history"}
+            onClick={() => setActiveTab("history")}
+          >
+            Historial de Encargos
+          </TabButton>
+        </div>
       </div>
-    </div>
-    <TabContent>
-      {activeTab === "create" && (
-        <Card>
-          <h2 className="text-lg font-semibold mb-4">
-            Registrar Nuevo Encargo
-          </h2>
-          {error && (
-            <p className="text-red-500 mb-4 bg-red-50 p-2 rounded-lg">
-              {error}
-            </p>
-          )}
-          <div className="space-y-6">
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-600 mb-2">
-                Buscar por:
-              </label>
-              <SelectInput
-                value={searchCriteria}
-                onChange={handleCriteriaChange}
-              >
-                <option value="">Selecciona un criterio</option>
-                <option value="name">Apellidos y Nombres</option>
-                <option value="dni">Número de Documento</option>
-                <option value="department">Departamento</option>
-              </SelectInput>
-            </div>
-            {searchCriteria && (
+      <TabContent>
+        {activeTab === "create" && (
+          <Card>
+            <h2 className="text-lg font-semibold mb-4">
+              Registrar Nuevo Encargo
+            </h2>
+            {error && (
+              <p className="text-red-500 mb-4 bg-red-50 p-2 rounded-lg">
+                {error}
+              </p>
+            )}
+            <div className="space-y-6">
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-600 mb-2">
-                  {searchCriteria === "name"
-                    ? "Apellidos y Nombres"
-                    : searchCriteria === "dni"
-                    ? "Número de Documento"
-                    : "Número de Departamento"}
+                  Buscar por:
                 </label>
-                <SearchContainer>
-                  {searchCriteria === "department" && (
-                    <SelectInput
-                      value={selectedPhase}
-                      onChange={(e) => setSelectedPhase(e.target.value)}
-                      title="Seleccionar fase del edificio"
-                    >
-                      {phaseOptions.map((phase) => (
-                        <option key={phase.value} value={phase.value}>
-                          {phase.label}
-                        </option>
-                      ))}
-                    </SelectInput>
-                  )}
-                  <Input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => {
-                      if (searchCriteria === "department") {
-                        handleDepartmentInputChange(e);
-                      } else {
-                        setSearchQuery(e.target.value);
-                      }
-                    }}
-                    placeholder={
-                      searchCriteria === "name"
-                        ? "Escribe para buscar..."
-                        : searchCriteria === "dni"
-                        ? "Ingresa el Número de Documento..."
-                        : "Ingresa el número de departamento..."
-                    }
-                    title={
-                      searchCriteria === "name"
-                        ? "Ingresa el nombre completo"
-                        : searchCriteria === "dni"
-                        ? "Ingresa el Número de Documento"
-                        : "Ingresa el número de departamento"
-                    }
-                  />
-                  {searchCriteria !== "department" && <div />}
-                  <Button
-                    className="bg-blue-600 text-white hover:bg-blue-700"
-                    onClick={handleSearch}
-                    disabled={isLoading}
-                    title="Buscar residente"
-                  >
-                    {isLoading ? (
-                      <Spinner className="mr-2" />
-                    ) : (
-                      <FaSearch className="mr-2" />
-                    )}
-                    {isLoading ? "Buscando..." : "Buscar"}
-                  </Button>
-                </SearchContainer>
+                <SelectInput
+                  value={searchCriteria}
+                  onChange={handleCriteriaChange}
+                >
+                  <option value="">Selecciona un criterio</option>
+                  <option value="name">Apellidos y Nombres</option>
+                  <option value="dni">Número de Documento</option>
+                  <option value="department">Departamento</option>
+                </SelectInput>
               </div>
-            )}
-            {results.length > 0 && (
-              <div className="mb-6">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-sm font-medium text-gray-600">
-                    Resultados de la búsqueda
-                  </h3>
-                  <div className="flex gap-2">
-                    <Button
-                      className="bg-gray-600 text-white hover:bg-gray-700 text-xs py-1 px-2"
-                      onClick={clearResidentSelection}
-                      title="Limpiar selección de residente"
-                    >
-                      <FaTimes className="mr-1" />
-                      Limpiar Selección
-                    </Button>
-                    <ToggleButton
-                      onClick={toggleSearchResults}
+              {searchCriteria && (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-600 mb-2">
+                    {searchCriteria === "name"
+                      ? "Apellidos y Nombres"
+                      : searchCriteria === "dni"
+                      ? "Número de Documento"
+                      : "Número de Departamento"}
+                  </label>
+                  <SearchContainer>
+                    {searchCriteria === "department" && (
+                      <SelectInput
+                        value={selectedPhase}
+                        onChange={(e) => setSelectedPhase(e.target.value)}
+                        title="Seleccionar fase del edificio"
+                      >
+                        {phaseOptions.map((phase) => (
+                          <option key={phase.value} value={phase.value}>
+                            {phase.label}
+                          </option>
+                        ))}
+                      </SelectInput>
+                    )}
+                    <Input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => {
+                        if (searchCriteria === "department") {
+                          handleDepartmentInputChange(e);
+                        } else {
+                          setSearchQuery(e.target.value);
+                        }
+                      }}
+                      placeholder={
+                        searchCriteria === "name"
+                          ? "Escribe para buscar..."
+                          : searchCriteria === "dni"
+                          ? "Ingresa el Número de Documento..."
+                          : "Ingresa el número de departamento..."
+                      }
                       title={
-                        showSearchResults
-                          ? "Ocultar resultados"
-                          : "Mostrar resultados"
+                        searchCriteria === "name"
+                          ? "Ingresa el nombre completo"
+                          : searchCriteria === "dni"
+                          ? "Ingresa el Número de Documento"
+                          : "Ingresa el número de departamento"
+                      }
+                    />
+                    {searchCriteria !== "department" && <div />}
+                    <Button
+                      className="bg-blue-600 text-white hover:bg-blue-700"
+                      onClick={handleSearch}
+                      disabled={isLoading}
+                      title="Buscar residente"
+                    >
+                      {isLoading ? (
+                        <Spinner className="mr-2" />
+                      ) : (
+                        <FaSearch className="mr-2" />
+                      )}
+                      {isLoading ? "Buscando..." : "Buscar"}
+                    </Button>
+                  </SearchContainer>
+                </div>
+              )}
+              {results.length > 0 && (
+                <div className="mb-6">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-sm font-medium text-gray-600">
+                      Resultados de la búsqueda
+                    </h3>
+                    <div className="flex gap-2">
+                      <Button
+                        className="bg-gray-600 text-white hover:bg-gray-700 text-xs py-1 px-2"
+                        onClick={clearResidentSelection}
+                        title="Limpiar selección de residente"
+                      >
+                        <FaTimes className="mr-1" />
+                        Limpiar Selección
+                      </Button>
+                      <ToggleButton
+                        onClick={toggleSearchResults}
+                        title={
+                          showSearchResults
+                            ? "Ocultar resultados"
+                            : "Mostrar resultados"
+                        }
+                      >
+                        {showSearchResults ? (
+                          <>
+                            <FaChevronUp className="mr-2" />
+                            Ocultar
+                          </>
+                        ) : (
+                          <>
+                            <FaChevronDown className="mr-2" />
+                            Mostrar
+                          </>
+                        )}
+                      </ToggleButton>
+                    </div>
+                  </div>
+                  {showSearchResults && (
+                    <Table>
+                      <thead>
+                        <tr>
+                          <TableHeader>Seleccionar</TableHeader>
+                          <TableHeader>Fase</TableHeader>
+                          <TableHeader>Departamento</TableHeader>
+                          <TableHeader>Nombre</TableHeader>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {results.map((result, index) => (
+                          <TableRow
+                            key={`resident-${result.index}`}
+                            $delay={index * 0.1}
+                          >
+                            <TableCell>
+                              <Input
+                                type="radio"
+                                name="mainResident"
+                                value={result.index}
+                                checked={
+                                  selectedMainResident?.index === result.index
+                                }
+                                onChange={() => {
+                                  setSelectedMainResident(result);
+                                  setShowSearchResults(false);
+                                  console.log(
+                                    "Selected resident index:",
+                                    result.index
+                                  );
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              {result.FASE || "No especificada"}
+                            </TableCell>
+                            <TableCell>{result.NRO_DPTO}</TableCell>
+                            <TableCell>{`${result.NOMBRES} ${
+                              result.APELLIDOS
+                            } (DNI: ${result.DNI})${
+                              result.ES_PROPIETARIO ? " (Propietario)" : ""
+                            }`}</TableCell>
+                          </TableRow>
+                        ))}
+                      </tbody>
+                    </Table>
+                  )}
+                </div>
+              )}
+              {results.length === 0 &&
+                searchCriteria &&
+                !isLoading &&
+                hasSearched && (
+                  <div className="mb-6 text-center text-gray-500">
+                  </div>
+                )}
+              {selectedMainResident && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-medium text-gray-600 mb-2">
+                    Persona Principal Seleccionada
+                  </h3>
+                  <ResidentCard>
+                    <div className="flex items-center gap-2">
+                      <FaUser className="text-gray-500" />
+                      <span className="font-semibold text-gray-700">
+                        {selectedMainResident.NOMBRES}{" "}
+                        {selectedMainResident.APELLIDOS}
+                      </span>
+                      {selectedMainResident.ES_PROPIETARIO && (
+                        <Badge>Propietario</Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FaIdCard className="text-gray-500" />
+                      <span className="text-gray-600">
+                        Número de Documento: {selectedMainResident.DNI}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FaBuilding className="text-gray-500" />
+                      <span className="text-gray-600">
+                        Departamento: {selectedMainResident.NRO_DPTO} (
+                        {selectedMainResident.FASE || "No especificada"})
+                      </span>
+                    </div>
+                  </ResidentCard>
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-sm font-medium text-gray-600">
+                      Personas Asociadas al Departamento
+                    </h3>
+                    <ToggleButton
+                      onClick={toggleAssociatedUsers}
+                      title={
+                        showAssociatedUsers
+                          ? "Ocultar personas asociadas"
+                          : "Mostrar personas asociadas"
                       }
                     >
-                      {showSearchResults ? (
+                      {showAssociatedUsers ? (
                         <>
                           <FaChevronUp className="mr-2" />
                           Ocultar
@@ -1934,499 +2096,394 @@ return (
                       )}
                     </ToggleButton>
                   </div>
-                </div>
-                {showSearchResults && (
-                  <Table>
-                    <thead>
-                      <tr>
-                        <TableHeader>Seleccionar</TableHeader>
-                        <TableHeader>Fase</TableHeader>
-                        <TableHeader>Departamento</TableHeader>
-                        <TableHeader>Nombre</TableHeader>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {results.map((result, index) => (
-                        <TableRow
-                          key={`resident-${result.index}`}
-                          $delay={index * 0.1}
-                        >
-                          <TableCell>
-                            <Input
-                              type="radio"
-                              name="mainResident"
-                              value={result.index}
-                              checked={
-                                selectedMainResident?.index === result.index
-                              }
-                              onChange={() => {
-                                setSelectedMainResident(result);
-                                setShowSearchResults(false);
-                                console.log(
-                                  "Selected resident index:",
-                                  result.index
-                                );
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {result.FASE || "No especificada"}
-                          </TableCell>
-                          <TableCell>{result.NRO_DPTO}</TableCell>
-                          <TableCell>{`${result.NOMBRES} ${
-                            result.APELLIDOS
-                          } (DNI: ${result.DNI})${
-                            result.ES_PROPIETARIO ? " (Propietario)" : ""
-                          }`}</TableCell>
-                        </TableRow>
+                  {showAssociatedUsers && (
+                    <AssociatedUsersContainer>
+                      {selectedMainResident.USUARIOS_ASOCIADOS.filter(
+                        (user) =>
+                          user.ID_PERSONA !== selectedMainResident.ID_PERSONA
+                      ).map((user) => (
+                        <UserCard key={user.ID_PERSONA}>
+                          <UserInfo>
+                            <FaUser className="text-gray-500" />
+                            <span className="text-gray-700">
+                              {user.NOMBRES} {user.APELLIDOS}
+                            </span>
+                          </UserInfo>
+                          <UserInfo>
+                            <span className="text-gray-600">
+                              Número de Documento: {user.DNI}
+                            </span>
+                            {user.ES_PROPIETARIO && <Badge>Propietario</Badge>}
+                          </UserInfo>
+                        </UserCard>
                       ))}
-                    </tbody>
-                  </Table>
-                )}
-              </div>
-            )}
-            {results.length === 0 &&
-              searchCriteria &&
-              !isLoading &&
-              hasSearched && (
-                <div className="mb-6 text-center text-gray-500">
-                  No se encontraron resultados.
+                    </AssociatedUsersContainer>
+                  )}
                 </div>
               )}
-            {selectedMainResident && (
               <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-600 mb-2">
-                  Persona Principal Seleccionada
-                </h3>
-                <ResidentCard>
-                  <div className="flex items-center gap-2">
-                    <FaUser className="text-gray-500" />
-                    <span className="font-semibold text-gray-700">
-                      {selectedMainResident.NOMBRES}{" "}
-                      {selectedMainResident.APELLIDOS}
-                    </span>
-                    {selectedMainResident.ES_PROPIETARIO && (
-                      <Badge>Propietario</Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <FaIdCard className="text-gray-500" />
-                    <span className="text-gray-600">
-                      Número de Documento: {selectedMainResident.DNI}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <FaBuilding className="text-gray-500" />
-                    <span className="text-gray-600">
-                      Departamento: {selectedMainResident.NRO_DPTO} (
-                      {selectedMainResident.FASE || "No especificada"})
-                    </span>
-                  </div>
-                </ResidentCard>
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-sm font-medium text-gray-600">
-                    Personas Asociadas al Departamento
-                  </h3>
-                  <ToggleButton
-                    onClick={toggleAssociatedUsers}
+                <label className="block text-sm font-medium text-gray-600 mb-2">
+                  Descripción del Encargo
+                </label>
+                <Input
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value.slice(0, 255))}
+                  placeholder="Ejemplo: Paquete de Amazon con ropa"
+                  title="Describe el paquete (máx. 255 caracteres)"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {description.length}/255 caracteres
+                </p>
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-600 mb-2">
+                  Foto del Paquete
+                </label>
+                <div className="flex gap-2">
+                  <Button
+                    className="bg-blue-600 text-white hover:bg-blue-700"
+                    onClick={() => document.getElementById("fileInput").click()}
+                    title="Seleccionar foto desde el dispositivo"
+                  >
+                    <FaFileExport className="mr-2" />
+                    Seleccionar Foto
+                  </Button>
+                  <Button
+                    className="bg-blue-600 text-white hover:bg-blue-700"
+                    onClick={isCameraActive ? stopCamera : startCamera}
                     title={
-                      showAssociatedUsers
-                        ? "Ocultar personas asociadas"
-                        : "Mostrar personas asociadas"
+                      isCameraActive
+                        ? "Cerrar cámara"
+                        : "Tomar foto con la cámara"
                     }
                   >
-                    {showAssociatedUsers ? (
-                      <>
-                        <FaChevronUp className="mr-2" />
-                        Ocultar
-                      </>
-                    ) : (
-                      <>
-                        <FaChevronDown className="mr-2" />
-                        Mostrar
-                      </>
-                    )}
-                  </ToggleButton>
+                    <FaCamera className="mr-2" />
+                    {isCameraActive ? "Cerrar Cámara" : "Tomar Foto"}
+                  </Button>
+                  {photoPreview && (
+                    <Button
+                      className="bg-red-600 text-white hover:bg-red-700"
+                      onClick={clearPhoto}
+                      title="Eliminar foto seleccionada"
+                    >
+                      <FaTimes className="mr-2" />
+                      Eliminar Foto
+                    </Button>
+                  )}
                 </div>
-                {showAssociatedUsers && (
-                  <AssociatedUsersContainer>
-                    {selectedMainResident.USUARIOS_ASOCIADOS.filter(
-                      (user) =>
-                        user.ID_PERSONA !== selectedMainResident.ID_PERSONA
-                    ).map((user) => (
-                      <UserCard key={user.ID_PERSONA}>
-                        <UserInfo>
-                          <FaUser className="text-gray-500" />
-                          <span className="text-gray-700">
-                            {user.NOMBRES} {user.APELLIDOS}
-                          </span>
-                        </UserInfo>
-                        <UserInfo>
-                          <span className="text-gray-600">
-                            Número de Documento: {user.DNI}
-                          </span>
-                          {user.ES_PROPIETARIO && <Badge>Propietario</Badge>}
-                        </UserInfo>
-                      </UserCard>
-                    ))}
-                  </AssociatedUsersContainer>
+                <Input
+                  id="fileInput"
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  onChange={handlePhotoChange}
+                  style={{ display: "none" }}
+                />
+                {isCameraActive && (
+                  <CameraModal>
+                    <CameraContainer>
+                      <Video ref={videoRef} autoPlay playsInline />
+                      <CameraButtonContainer>
+                        <Button
+                          className="bg-green-600 text-white hover:bg-green-700"
+                          onClick={capturePhoto}
+                          title="Capturar foto desde la cámara"
+                        >
+                          <FaCamera className="mr-2" />
+                          Capturar
+                        </Button>
+                        <Button
+                          className="bg-red-600 text-white hover:bg-red-700"
+                          onClick={stopCamera}
+                          title="Cerrar cámara"
+                        >
+                          <FaTimes className="mr-2" />
+                          Cerrar
+                        </Button>
+                      </CameraButtonContainer>
+                    </CameraContainer>
+                  </CameraModal>
+                )}
+                <canvas ref={canvasRef} style={{ display: "none" }} />
+                {photoPreview && (
+                  <ImagePreview
+                    src={photoPreview}
+                    alt="Vista previa del paquete"
+                  />
                 )}
               </div>
-            )}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-600 mb-2">
-                Descripción del Encargo
-              </label>
-              <Input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value.slice(0, 255))}
-                placeholder="Ejemplo: Paquete de Amazon con ropa"
-                title="Describe el paquete (máx. 255 caracteres)"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                {description.length}/255 caracteres
-              </p>
+              <div className="flex justify-end">
+                <Button
+                  className="bg-green-600 text-white hover:bg-green-700"
+                  onClick={handleRegister}
+                  disabled={isLoading}
+                  title="Registrar nuevo encargo"
+                >
+                  <FaSave className="mr-2" />
+                  {isLoading ? "Registrando..." : "Registrar Encargo"}
+                </Button>
+              </div>
             </div>
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-600 mb-2">
-                Foto del Paquete
-              </label>
+          </Card>
+        )}
+        {activeTab === "history" && (
+          <Card>
+            <h2 className="text-lg font-semibold mb-4">
+              Historial de Encargos
+            </h2>
+            <FilterContainer>
+              <div className="flex-1 min-w-[150px]">
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Número de Departamento
+                </label>
+                <Input
+                  type="text"
+                  name="nroDpto"
+                  value={filter.nroDpto}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === "" || /^[0-9]*$/.test(value))
+                      setFilter((prev) => ({ ...prev, nroDpto: value }));
+                  }}
+                  placeholder="Ejemplo: 101"
+                  title="Filtrar por número de departamento"
+                />
+              </div>
+              <div className="flex-1 min-w-[150px]">
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Descripción
+                </label>
+                <Input
+                  type="text"
+                  name="descripcion"
+                  value={filter.descripcion}
+                  onChange={(e) =>
+                    setFilter((prev) => ({
+                      ...prev,
+                      descripcion: e.target.value,
+                    }))
+                  }
+                  placeholder="Ejemplo: Paquete de Amazon"
+                  title="Filtrar por descripción del encargo"
+                />
+              </div>
+              <div className="flex-1 min-w-[150px]">
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Fecha de Recepción
+                </label>
+                <Input
+                  type="date"
+                  name="fechaRecepcion"
+                  value={filter.fechaRecepcion}
+                  onChange={(e) =>
+                    setFilter((prev) => ({
+                      ...prev,
+                      fechaRecepcion: e.target.value,
+                    }))
+                  }
+                  title="Filtrar por fecha de recepción"
+                />
+              </div>
+              <div className="flex-1 min-w-[150px]">
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  Estado
+                </label>
+                <SelectInput
+                  name="estado"
+                  value={filter.estado}
+                  onChange={(e) =>
+                    setFilter((prev) => ({ ...prev, estado: e.target.value }))
+                  }
+                  title="Filtrar por estado del encargo"
+                >
+                  <option value="">Todos los estados</option>
+                  <option value="1">Pendientes</option>
+                  <option value="0">Entregados</option>
+                </SelectInput>
+              </div>
               <div className="flex gap-2">
                 <Button
-                  className="bg-blue-600 text-white hover:bg-blue-700"
-                  onClick={() => document.getElementById("fileInput").click()}
-                  title="Seleccionar foto desde el dispositivo"
+                  className="bg-green-600 text-white hover:bg-green-700"
+                  onClick={exportToCSV}
+                  title="Exportar tabla a CSV"
                 >
                   <FaFileExport className="mr-2" />
-                  Seleccionar Foto
+                  Exportar
                 </Button>
                 <Button
-                  className="bg-blue-600 text-white hover:bg-blue-700"
-                  onClick={isCameraActive ? stopCamera : startCamera}
-                  title={
-                    isCameraActive ? "Cerrar cámara" : "Tomar foto con la cámara"
-                  }
+                  className="bg-gray-600 text-white hover:bg-gray-700"
+                  onClick={clearFilters}
+                  title="Limpiar todos los filtros"
                 >
-                  <FaCamera className="mr-2" />
-                  {isCameraActive ? "Cerrar Cámara" : "Tomar Foto"}
+                  <FaTimes className="mr-2" />
+                  Limpiar
                 </Button>
-                {photoPreview && (
-                  <Button
-                    className="bg-red-600 text-white hover:bg-red-700"
-                    onClick={clearPhoto}
-                    title="Eliminar foto seleccionada"
-                  >
-                    <FaTimes className="mr-2" />
-                    Eliminar Foto
-                  </Button>
-                )}
               </div>
-              <Input
-                id="fileInput"
-                type="file"
-                accept="image/jpeg,image/png"
-                onChange={handlePhotoChange}
-                style={{ display: "none" }}
-              />
-              {isCameraActive && (
-                <CameraModal>
-                  <CameraContainer>
-                    <Video ref={videoRef} autoPlay playsInline />
-                    <CameraButtonContainer>
-                      <Button
-                        className="bg-green-600 text-white hover:bg-green-700"
-                        onClick={capturePhoto}
-                        title="Capturar foto desde la cámara"
+            </FilterContainer>
+            <div className="overflow-x-auto mt-6">
+              <Table>
+                <thead>
+                  <tr>
+                    <TableHeader title="Identificador único del encargo">
+                      ID Encargo
+                    </TableHeader>
+                    <TableHeader title="Fase del edificio">Fase</TableHeader>
+                    <TableHeader title="Número del departamento">
+                      Nº Dpto
+                    </TableHeader>
+                    <TableHeader title="Persona que recibirá el encargo">
+                      Persona Destinatario
+                    </TableHeader>
+                    <TableHeader title="Fecha de recepción del paquete">
+                      Fecha Recepción
+                    </TableHeader>
+                    <TableHeader title="Fecha de entrega del paquete">
+                      Fecha Entrega
+                    </TableHeader>
+                    <TableHeader title="Persona que recibió el paquete">
+                      Recepcionista
+                    </TableHeader>
+                    <TableHeader title="Mostrar detalles del encargo">
+                      Mostrar Datos
+                    </TableHeader>
+                    <TableHeader title="Estado actual del encargo">
+                      Estado
+                    </TableHeader>
+                    <TableHeader title="Acciones disponibles">
+                      Acciones
+                    </TableHeader>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredEncargos.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={10}
+                        className="text-center text-gray-500 py-4"
                       >
-                        <FaCamera className="mr-2" />
-                        Capturar
-                      </Button>
-                      <Button
-                        className="bg-red-600 text-white hover:bg-red-700"
-                        onClick={stopCamera}
-                        title="Cerrar cámara"
-                      >
-                        <FaTimes className="mr-2" />
-                        Cerrar
-                      </Button>
-                    </CameraButtonContainer>
-                  </CameraContainer>
-                </CameraModal>
-              )}
-              <canvas ref={canvasRef} style={{ display: "none" }} />
-              {photoPreview && (
-                <ImagePreview src={photoPreview} alt="Vista previa del paquete" />
-              )}
-            </div>
-            <div className="flex justify-end">
-              <Button
-                className="bg-green-600 text-white hover:bg-green-700"
-                onClick={handleRegister}
-                disabled={isLoading}
-                title="Registrar nuevo encargo"
-              >
-                <FaSave className="mr-2" />
-                {isLoading ? "Registrando..." : "Registrar Encargo"}
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
-      {activeTab === "history" && (
-        <Card>
-          <h2 className="text-lg font-semibold mb-4">Historial de Encargos</h2>
-          <FilterContainer>
-            <div className="flex-1 min-w-[150px]">
-              <label className="block text-sm font-medium text-gray-600 mb-1">
-                Número de Departamento
-              </label>
-              <Input
-                type="text"
-                name="nroDpto"
-                value={filter.nroDpto}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value === "" || /^[0-9]*$/.test(value))
-                    setFilter((prev) => ({ ...prev, nroDpto: value }));
-                }}
-                placeholder="Ejemplo: 101"
-                title="Filtrar por número de departamento"
-              />
-            </div>
-            <div className="flex-1 min-w-[150px]">
-              <label className="block text-sm font-medium text-gray-600 mb-1">
-                Descripción
-              </label>
-              <Input
-                type="text"
-                name="descripcion"
-                value={filter.descripcion}
-                onChange={(e) =>
-                  setFilter((prev) => ({
-                    ...prev,
-                    descripcion: e.target.value,
-                  }))
-                }
-                placeholder="Ejemplo: Paquete de Amazon"
-                title="Filtrar por descripción del encargo"
-              />
-            </div>
-            <div className="flex-1 min-w-[150px]">
-              <label className="block text-sm font-medium text-gray-600 mb-1">
-                Fecha de Recepción
-              </label>
-              <Input
-                type="date"
-                name="fechaRecepcion"
-                value={filter.fechaRecepcion}
-                onChange={(e) =>
-                  setFilter((prev) => ({
-                    ...prev,
-                    fechaRecepcion: e.target.value,
-                  }))
-                }
-                title="Filtrar por fecha de recepción"
-              />
-            </div>
-            <div className="flex-1 min-w-[150px]">
-              <label className="block text-sm font-medium text-gray-600 mb-1">
-                Estado
-              </label>
-              <SelectInput
-                name="estado"
-                value={filter.estado}
-                onChange={(e) =>
-                  setFilter((prev) => ({ ...prev, estado: e.target.value }))
-                }
-                title="Filtrar por estado del encargo"
-              >
-                <option value="">Todos los estados</option>
-                <option value="1">Pendientes</option>
-                <option value="0">Entregados</option>
-              </SelectInput>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                className="bg-green-600 text-white hover:bg-green-700"
-                onClick={exportToCSV}
-                title="Exportar tabla a CSV"
-              >
-                <FaFileExport className="mr-2" />
-                Exportar
-              </Button>
-              <Button
-                className="bg-gray-600 text-white hover:bg-gray-700"
-                onClick={clearFilters}
-                title="Limpiar todos los filtros"
-              >
-                <FaTimes className="mr-2" />
-                Limpiar
-              </Button>
-            </div>
-          </FilterContainer>
-          <div className="overflow-x-auto mt-6">
-            <Table>
-              <thead>
-                <tr>
-                  <TableHeader title="Identificador único del encargo">
-                    ID Encargo
-                  </TableHeader>
-                  <TableHeader title="Fase del edificio">Fase</TableHeader>
-                  <TableHeader title="Número del departamento">
-                    Nº Dpto
-                  </TableHeader>
-                  <TableHeader title="Persona que recibirá el encargo">
-                    Persona Destinatario
-                  </TableHeader>
-                  <TableHeader title="Fecha de recepción del paquete">
-                    Fecha Recepción
-                  </TableHeader>
-                  <TableHeader title="Fecha de entrega del paquete">
-                    Fecha Entrega
-                  </TableHeader>
-                  <TableHeader title="Persona que recibió el paquete">
-                    Recepcionista
-                  </TableHeader>
-                  <TableHeader title="Mostrar detalles del encargo">
-                    Mostrar Datos
-                  </TableHeader>
-                  <TableHeader title="Estado actual del encargo">
-                    Estado
-                  </TableHeader>
-                  <TableHeader title="Acciones disponibles">
-                    Acciones
-                  </TableHeader>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredEncargos.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={10}
-                      className="text-center text-gray-500 py-4"
-                    >
-                      No hay encargos que coincidan con los filtros.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredEncargos.map((encargo, index) => (
-                    <TableRow
-                      key={encargo.ID_ENCARGO}
-                      $estado={encargo.ESTADO}
-                      $delay={index * 0.1}
-                    >
-                      <TableCell>{encargo.ID_ENCARGO}</TableCell>
-                      <TableCell>
-                        {encargo.FASE || "No especificada"}
-                      </TableCell>
-                      <TableCell>{encargo.NRO_DPTO}</TableCell>
-                      <TableCell>
-                        {encargo.PERSONA_DESTINATARIO || "-"}
-                      </TableCell>
-                      <TableCell>
-                        {formatDate(encargo.FECHA_RECEPCION)}
-                      </TableCell>
-                      <TableCell>
-                        {formatDate(encargo.FECHA_ENTREGA)}
-                      </TableCell>
-                      <TableCell>{encargo.RECEPCIONISTA || "-"}</TableCell>
-                      <TableCell>
-                        <Button
-                          className="bg-blue-600 text-white hover:bg-blue-700 text-xs py-1 px-2"
-                          onClick={() => showDetailsModal(encargo)}
-                          title="Ver detalles del encargo"
-                        >
-                          <FaEye className="mr-1" />
-                          Ver
-                        </Button>
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
-                            encargo.ESTADO === 1
-                              ? "bg-blue-100 text-[#2563eb]"
-                              : "bg-green-100 text-green-700"
-                          }`}
-                        >
-                          {encargo.ESTADO === 1 ? "Pendiente" : "Entregado"}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        {encargo.ESTADO === 1 && (
-                          <Button
-                            className="bg-blue-600 text-white hover:bg-blue-700 text-xs py-1 px-2"
-                            onClick={() => handleMarkDelivered(encargo.ID_ENCARGO)}
-                            title="Marcar como entregado"
-                          >
-                            <FaCheck className="mr-1" />
-                            Entregar
-                          </Button>
-                        )}
+                        No hay encargos que coincidan con los filtros.
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </tbody>
-            </Table>
-          </div>
-        </Card>
-      )}
-      {isCameraActive && (
-        <CameraModal>
-          <CameraContainer>
-            <Video ref={videoRef} autoPlay playsInline />
-            <CameraButtonContainer>
-              <Button
-                className="bg-green-600 text-white hover:bg-green-700"
-                onClick={capturePhoto}
-                title="Capturar foto desde la cámara"
-              >
-                <FaCamera className="mr-2" />
-                Capturar
-              </Button>
-              <Button
-                className="bg-red-600 text-white hover:bg-red-700"
-                onClick={stopCamera}
-                title="Cerrar cámara"
-              >
-                <FaTimes className="mr-2" />
-                Cerrar
-              </Button>
-            </CameraButtonContainer>
-          </CameraContainer>
-        </CameraModal>
-      )}
-      <canvas ref={canvasRef} style={{ display: "none" }} />
-      {isDeliveryCameraActive && (
-        <CameraModal>
-          <CameraContainer>
-            <Video ref={deliveryVideoRef} autoPlay playsInline />
-            <CameraButtonContainer>
-              <Button
-                className="bg-green-600 text-white hover:bg-green-700"
-                onClick={captureDeliveryPhoto}
-                title="Capturar foto desde la cámara"
-              >
-                <FaCamera className="mr-2" />
-                Capturar
-              </Button>
-              <Button
-                className="bg-red-600 text-white hover:bg-red-700"
-                onClick={stopDeliveryCamera}
-                title="Cerrar cámara"
-              >
-                <FaTimes className="mr-2" />
-                Cerrar
-              </Button>
-            </CameraButtonContainer>
-          </CameraContainer>
-        </CameraModal>
-      )}
-      <canvas ref={deliveryCanvasRef} style={{ display: "none" }} />
-    </TabContent>
-  </Container>
-);
+                  ) : (
+                    filteredEncargos.map((encargo, index) => (
+                      <TableRow
+                        key={encargo.ID_ENCARGO}
+                        $estado={encargo.ESTADO}
+                        $delay={index * 0.1}
+                      >
+                        <TableCell>{encargo.ID_ENCARGO}</TableCell>
+                        <TableCell>
+                          {encargo.FASE || "No especificada"}
+                        </TableCell>
+                        <TableCell>{encargo.NRO_DPTO}</TableCell>
+                        <TableCell>
+                          {encargo.PERSONA_DESTINATARIO || "-"}
+                        </TableCell>
+                        <TableCell>
+                          {formatDate(encargo.FECHA_RECEPCION)}
+                        </TableCell>
+                        <TableCell>
+                          {formatDate(encargo.FECHA_ENTREGA)}
+                        </TableCell>
+                        <TableCell>{encargo.RECEPCIONISTA || "-"}</TableCell>
+                        <TableCell>
+                          <Button
+                            className="bg-blue-600 text-white hover:bg-blue-700 text-xs py-1 px-2"
+                            onClick={() => showDetailsModal(encargo)}
+                            title="Ver detalles del encargo"
+                          >
+                            <FaEye className="mr-1" />
+                            Ver
+                          </Button>
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
+                              encargo.ESTADO === 1
+                                ? "bg-blue-100 text-[#2563eb]"
+                                : "bg-green-100 text-green-700"
+                            }`}
+                          >
+                            {encargo.ESTADO === 1 ? "Pendiente" : "Entregado"}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {encargo.ESTADO === 1 && (
+                            <Button
+                              className="bg-blue-600 text-white hover:bg-blue-700 text-xs py-1 px-2"
+                              onClick={() =>
+                                handleMarkDelivered(encargo.ID_ENCARGO)
+                              }
+                              title="Marcar como entregado"
+                            >
+                              <FaCheck className="mr-1" />
+                              Entregar
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </tbody>
+              </Table>
+            </div>
+          </Card>
+        )}
+        {isCameraActive && (
+          <CameraModal>
+            <CameraContainer>
+              <Video ref={videoRef} autoPlay playsInline />
+              <CameraButtonContainer>
+                <Button
+                  className="bg-green-600 text-white hover:bg-green-700"
+                  onClick={capturePhoto}
+                  title="Capturar foto desde la cámara"
+                >
+                  <FaCamera className="mr-2" />
+                  Capturar
+                </Button>
+                <Button
+                  className="bg-red-600 text-white hover:bg-red-700"
+                  onClick={stopCamera}
+                  title="Cerrar cámara"
+                >
+                  <FaTimes className="mr-2" />
+                  Cerrar
+                </Button>
+              </CameraButtonContainer>
+            </CameraContainer>
+          </CameraModal>
+        )}
+        <canvas ref={canvasRef} style={{ display: "none" }} />
+        {isDeliveryCameraActive && (
+          <CameraModal $isDelivery={true}>
+            <CameraContainer>
+              <Video ref={deliveryVideoRef} autoPlay playsInline />
+              <CameraButtonContainer>
+                <Button
+                  className="bg-green-600 text-white hover:bg-green-700"
+                  onClick={captureDeliveryPhoto}
+                  title="Capturar foto desde la cámara"
+                >
+                  <FaCamera className="mr-2" />
+                  Capturar
+                </Button>
+                <Button
+                  className="bg-red-600 text-white hover:bg-red-700"
+                  onClick={stopDeliveryCamera}
+                  title="Cerrar cámara"
+                >
+                  <FaTimes className="mr-2" />
+                  Cerrar
+                </Button>
+              </CameraButtonContainer>
+            </CameraContainer>
+          </CameraModal>
+        )}
+        <canvas ref={deliveryCanvasRef} style={{ display: "none" }} />
+      </TabContent>
+    </Container>
+  );
 };
 
 export default RegisterOrder;
