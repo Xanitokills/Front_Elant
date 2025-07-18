@@ -412,7 +412,7 @@ const RegisterOrder = () => {
       });
       if (!response.ok) throw new Error("Error al obtener los encargos");
       const data = await response.json();
-/*       console.log(
+      /*       console.log(
         "Datos de encargos recibidos:",
         JSON.stringify(data, null, 2)
       ); */
@@ -510,115 +510,95 @@ const RegisterOrder = () => {
     }
   };
 
-const fetchPersons = async (query, criteria, phase) => {
-  if (!token) {
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: "No se encontró el token de autenticación",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    navigate("/login");
-    return;
-  }
-
-  setIsLoading(true);
-  try {
-    const url =
-      phase && phase !== "all"
-        ? `${API_URL}?criteria=${criteria}&query=${encodeURIComponent(
-            query
-          )}&phase=${encodeURIComponent(phase)}`
-        : `${API_URL}?criteria=${criteria}&query=${encodeURIComponent(query)}`;
-    console.log("URL de fetchPersons:", url);
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Error al buscar personas");
-    }
-    const data = await response.json();
-    console.log("Respuesta de fetchPersons:", JSON.stringify(data, null, 2));
-    if (data.length === 0) {
+  const fetchPersons = async (query, criteria, phase) => {
+    if (!token) {
       Swal.fire({
-        icon: "info",
-        title: "Sin resultados",
-        text: "No se encontraron personas que coincidan con los criterios de búsqueda.",
+        icon: "error",
+        title: "Error",
+        text: "No se encontró el token de autenticación",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      navigate("/login");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const url =
+        phase && phase !== "all"
+          ? `${API_URL}?criteria=${criteria}&query=${encodeURIComponent(
+              query
+            )}&phase=${encodeURIComponent(phase)}`
+          : `${API_URL}?criteria=${criteria}&query=${encodeURIComponent(
+              query
+            )}`;
+      console.log("URL de fetchPersons:", url);
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al buscar personas");
+      }
+      const data = await response.json();
+      console.log("Respuesta de fetchPersons:", JSON.stringify(data, null, 2));
+      if (data.length === 0) {
+        Swal.fire({
+          icon: "info",
+          title: "Sin resultados",
+          text: "No se encontraron personas que coincidan con los criterios de búsqueda.",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+        setResults([]);
+        setHasSearched(true);
+        return;
+      }
+
+      // Mapear los resultados directamente, usando los datos de la API
+      const resultsWithAssociatedUsers = data.map((person, index) => ({
+        index,
+        ID_PERSONA: person.ID_PERSONA,
+        NOMBRES: person.NOMBRES,
+        APELLIDOS: person.APELLIDOS,
+        DNI: person.DNI,
+        ID_DEPARTAMENTO: person.ID_DEPARTAMENTO,
+        NRO_DPTO: person.NRO_DPTO,
+        FASE: person.FASE,
+        ES_PROPIETARIO: person.ES_PROPIETARIO, // Usar directamente ES_PROPIETARIO
+        USUARIOS_ASOCIADOS:
+          person.USUARIOS_ASOCIADOS.map((user) => ({
+            ID_PERSONA: user.ID_PERSONA,
+            NOMBRES: user.NOMBRES,
+            APELLIDOS: user.APELLIDOS,
+            DNI: user.DNI,
+            ES_PROPIETARIO: user.ID_CLASIFICACION === 1, // Calcular ES_PROPIETARIO para usuarios asociados
+          })) || [], // Mapear USUARIOS_ASOCIADOS y asegurar que sea un array
+      }));
+
+      console.log(
+        "Resultados finales con USUARIOS_ASOCIADOS:",
+        JSON.stringify(resultsWithAssociatedUsers, null, 2)
+      );
+      setResults(resultsWithAssociatedUsers);
+      setShowSearchResults(true);
+      setHasSearched(true);
+    } catch (error) {
+      console.error("Error en fetchPersons:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: error.message || "No se pudo realizar la búsqueda",
         timer: 2000,
         showConfirmButton: false,
       });
       setResults([]);
       setHasSearched(true);
-      return;
+    } finally {
+      setIsLoading(false);
     }
-
-    // Mapear los resultados y obtener personas asociadas
-    const resultsWithAssociatedUsers = await Promise.all(
-      data.map(async (person, index) => {
-        let associatedUsers = [];
-        if (criteria === "department") {
-          console.log(
-            `Llamando fetchAssociatedUsers para NRO_DPTO=${person.NRO_DPTO}, phase=${phase}`
-          );
-          associatedUsers = await fetchAssociatedUsers(person.NRO_DPTO, phase);
-          console.log(
-            `Personas asociadas para NRO_DPTO=${person.NRO_DPTO}:`,
-            JSON.stringify(associatedUsers, null, 2)
-          );
-          // Filtrar para excluir a la persona principal
-          associatedUsers = associatedUsers.filter(
-            (user) => user.ID_PERSONA !== person.ID_PERSONA
-          );
-          console.log(
-            `Personas asociadas después de filtrar para ID_PERSONA=${person.ID_PERSONA}:`,
-            JSON.stringify(associatedUsers, null, 2)
-          );
-          // Mostrar mensaje si no hay personas asociadas
-          if (associatedUsers.length === 0) {
-            console.log(
-              `No se encontraron personas asociadas para NRO_DPTO=${person.NRO_DPTO}, phase=${phase}`
-            );
-          }
-        }
-        return {
-          index,
-          ID_PERSONA: person.ID_PERSONA,
-          NOMBRES: person.NOMBRES,
-          APELLIDOS: person.APELLIDOS,
-          DNI: person.DNI,
-          ID_DEPARTAMENTO: person.ID_DEPARTAMENTO,
-          NRO_DPTO: person.NRO_DPTO,
-          FASE: person.FASE,
-          ES_PROPIETARIO: person.ID_CLASIFICACION === 1,
-          USUARIOS_ASOCIADOS: associatedUsers,
-        };
-      })
-    );
-
-    console.log(
-      "Resultados finales con USUARIOS_ASOCIADOS:",
-      JSON.stringify(resultsWithAssociatedUsers, null, 2)
-    );
-    setResults(resultsWithAssociatedUsers);
-    setShowSearchResults(true);
-    setHasSearched(true);
-  } catch (error) {
-    console.error("Error en fetchPersons:", error);
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: error.message || "No se pudo realizar la búsqueda",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    setResults([]);
-    setHasSearched(true);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   const handleSearch = async () => {
     if (!searchCriteria) {
@@ -926,166 +906,170 @@ const fetchPersons = async (query, criteria, phase) => {
     return result.isConfirmed;
   };
 
-async function handleRegister() {
-  console.log(
-    "Estado de selectedMainResident:",
-    JSON.stringify(selectedMainResident, null, 2)
-  );
-  console.log("Datos antes de registrar el encargo:", {
-    description: description.trim(),
-    personId: selectedMainResident?.ID_PERSONA,
-    department: selectedMainResident?.ID_DEPARTAMENTO,
-    receptionistId: userId || "0",
-    hasPhoto: !!photo,
-  });
-
-  const cleanDescription = description
-    .trim()
-    .replace(
-      /N[úu]mero de Documento: \d+|Departamento: \d+ \(Fase[^)]+\)/gi,
-      ""
-    )
-    .trim();
-
-  if (!cleanDescription || cleanDescription.length < 5) {
-    setError(
-      "La descripción del encargo debe tener al menos 5 caracteres y no puede estar vacía."
+  async function handleRegister() {
+    console.log(
+      "Estado de selectedMainResident:",
+      JSON.stringify(selectedMainResident, null, 2)
     );
-    Swal.fire({
-      icon: "warning",
-      title: "Descripción inválida",
-      text: "Por favor, proporciona una descripción válida para el encargo (mínimo 5 caracteres).",
-      timer: 2000,
-      showConfirmButton: false,
+    console.log("Datos antes de registrar el encargo:", {
+      description: description.trim(),
+      personId: selectedMainResident?.ID_PERSONA,
+      department: selectedMainResident?.ID_DEPARTAMENTO,
+      receptionistId: userId || "0",
+      hasPhoto: !!photo,
     });
-    return;
-  }
 
-  const confirmed = await showConfirmationModal();
-  if (!confirmed) return;
+    const cleanDescription = description
+      .trim()
+      .replace(
+        /N[úu]mero de Documento: \d+|Departamento: \d+ \(Fase[^)]+\)/gi,
+        ""
+      )
+      .trim();
 
-  if (
-    !selectedMainResident?.ID_PERSONA ||
-    !selectedMainResident?.ID_DEPARTAMENTO
-  ) {
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: "Debe seleccionar una persona principal y un departamento válido.",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-
-  setIsLoading(true);
-  try {
-    const formData = new FormData();
-    formData.append("description", cleanDescription);
-    formData.append("personId", selectedMainResident.ID_PERSONA.toString());
-    formData.append("department", selectedMainResident.ID_DEPARTAMENTO.toString());
-    formData.append("receptionistId", userId || "0");
-    if (photo) {
-      formData.append("photo", photo);
-      formData.append("photoFormat", photo.name.split(".").pop().toLowerCase());
+    if (!cleanDescription || cleanDescription.length < 5) {
+      setError(
+        "La descripción del encargo debe tener al menos 5 caracteres y no puede estar vacía."
+      );
+      Swal.fire({
+        icon: "warning",
+        title: "Descripción inválida",
+        text: "Por favor, proporciona una descripción válida para el encargo (mínimo 5 caracteres).",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
     }
 
-    // Depuración: Verificar contenido de FormData
-    for (let [key, value] of formData.entries()) {
-      console.log(`FormData - ${key}:`, value);
+    const confirmed = await showConfirmationModal();
+    if (!confirmed) return;
+
+    if (
+      !selectedMainResident?.ID_PERSONA ||
+      !selectedMainResident?.ID_DEPARTAMENTO
+    ) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Debe seleccionar una persona principal y un departamento válido.",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
     }
 
-    const response = await fetch(`${API_URL}/`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
+    setIsLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("description", cleanDescription);
+      formData.append("personId", selectedMainResident.ID_PERSONA.toString());
+      formData.append(
+        "department",
+        selectedMainResident.ID_DEPARTAMENTO.toString()
+      );
+      formData.append("receptionistId", userId || "0");
+      if (photo) {
+        formData.append("photo", photo);
+        formData.append(
+          "photoFormat",
+          photo.name.split(".").pop().toLowerCase()
+        );
+      }
 
-    const responseData = await response.json();
-    console.log("Respuesta de la API:", responseData);
+      // Depuración: Verificar contenido de FormData
+      for (let [key, value] of formData.entries()) {
+        console.log(`FormData - ${key}:`, value);
+      }
 
-    if (!response.ok) {
-      throw new Error(responseData.message || `Error ${response.status}`);
+      const response = await fetch(`${API_URL}/`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const responseData = await response.json();
+      console.log("Respuesta de la API:", responseData);
+
+      if (!response.ok) {
+        throw new Error(responseData.message || `Error ${response.status}`);
+      }
+
+      Swal.fire({
+        icon: "success",
+        title: "Éxito",
+        text: "Encargo registrado correctamente",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+
+      fetchEncargos();
+      setDescription("");
+      setSelectedMainResident(null);
+      setPhoto(null);
+      setPhotoPreview(null);
+      setError("");
+    } catch (error) {
+      console.error("Error en handleRegister:", error);
+      const errorMessage = error.message.includes("residente activo")
+        ? `No se pudo registrar el encargo: La persona (ID: ${selectedMainResident?.ID_PERSONA}) no está registrada como residente activo en el departamento (ID: ${selectedMainResident?.ID_DEPARTAMENTO}). Verifica los datos.`
+        : error.message || "No se pudo registrar el encargo.";
+      setError(errorMessage);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: errorMessage,
+        timer: 3000,
+        showConfirmButton: false,
+      });
+    } finally {
+      setIsLoading(false);
     }
-
-    Swal.fire({
-      icon: "success",
-      title: "Éxito",
-      text: "Encargo registrado correctamente",
-      timer: 1500,
-      showConfirmButton: false,
-    });
-
-    fetchEncargos();
-    setDescription("");
-    setSelectedMainResident(null);
-    setPhoto(null);
-    setPhotoPreview(null);
-    setError("");
-  } catch (error) {
-    console.error("Error en handleRegister:", error);
-    const errorMessage = error.message.includes("residente activo")
-      ? `No se pudo registrar el encargo: La persona (ID: ${selectedMainResident?.ID_PERSONA}) no está registrada como residente activo en el departamento (ID: ${selectedMainResident?.ID_DEPARTAMENTO}). Verifica los datos.`
-      : error.message || "No se pudo registrar el encargo.";
-    setError(errorMessage);
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: errorMessage,
-      timer: 3000,
-      showConfirmButton: false,
-    });
-  } finally {
-    setIsLoading(false);
   }
-}
 
-const handleMarkDelivered = async (idEncargo) => {
-  const usersResponse = await fetch(
-    `${API_URL}?criteria=department&query=${
-      encargos.find((e) => e.ID_ENCARGO === idEncargo)?.NRO_DPTO
-    }`,
-    {
-      headers: { Authorization: `Bearer ${token}` },
+  const handleMarkDelivered = async (idEncargo) => {
+    const usersResponse = await fetch(
+      `${API_URL}?criteria=department&query=${
+        encargos.find((e) => e.ID_ENCARGO === idEncargo)?.NRO_DPTO
+      }`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    if (!usersResponse.ok) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo obtener la lista de personas",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return;
     }
-  );
-  if (!usersResponse.ok) {
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: "No se pudo obtener la lista de personas",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return;
-  }
-  const deptData = await usersResponse.json();
-  const users = deptData.map((person) => ({
-    ID_PERSONA: person.ID_PERSONA,
-    NOMBRES: person.NOMBRES,
-    APELLIDOS: person.APELLIDOS,
-    DNI: person.DNI,
-    ES_PROPIETARIO: person.ID_CLASIFICACION === 1,
-  }));
+    const deptData = await usersResponse.json();
+    const users = deptData.map((person) => ({
+      ID_PERSONA: person.ID_PERSONA,
+      NOMBRES: person.NOMBRES,
+      APELLIDOS: person.APELLIDOS,
+      DNI: person.DNI,
+      ES_PROPIETARIO: person.ID_CLASIFICACION === 1,
+    }));
 
-  const userOptions = users.map((user) => ({
-    value: user.ID_PERSONA,
-    label: `${user.NOMBRES} ${user.APELLIDOS} (DNI: ${user.DNI})${
-      user.ES_PROPIETARIO ? " (Propietario)" : ""
-    }`,
-  }));
+    const userOptions = users.map((user) => ({
+      value: user.ID_PERSONA,
+      label: `${user.NOMBRES} ${user.APELLIDOS} (DNI: ${user.DNI})${
+        user.ES_PROPIETARIO ? " (Propietario)" : ""
+      }`,
+    }));
 
-  const result = await Swal.fire({
-    title: "Seleccionar persona que retira",
-    html: `
+    const result = await Swal.fire({
+      title: "Seleccionar persona que retira",
+      html: `
       <select id="swal-input1" class="swal2-select">
         <option value="">Selecciona una persona</option>
         ${userOptions
-          .map(
-            (user) => `<option value="${user.value}">${user.label}</option>`
-          )
+          .map((user) => `<option value="${user.value}">${user.label}</option>`)
           .join("")}
       </select>
       <div style="margin-top: 1rem;">
@@ -1093,140 +1077,149 @@ const handleMarkDelivered = async (idEncargo) => {
         <input type="file" id="swal-input2" class="swal2-file" accept="image/jpeg,image/png">
       </div>
     `,
-    focusConfirm: false,
-    showCancelButton: true,
-    confirmButtonText: "Confirmar",
-    cancelButtonText: "Cancelar",
-    confirmButtonColor: "#2563eb",
-    cancelButtonColor: "#d33",
-    preConfirm: () => {
-      const personId = document.getElementById("swal-input1").value;
-      const photoInput = document.getElementById("swal-input2").files[0];
-      if (!personId) {
-        Swal.showValidationMessage("Debes seleccionar una persona");
-        return false;
-      }
-      return { personId, photoFile: photoInput };
-    },
-  });
-
-  if (!result.isConfirmed || !result.value?.personId) return;
-
-  const selectedPersonId = result.value.personId; // Extraer solo personId
-
-  setIsLoading(true);
-  try {
-    const formData = new FormData();
-    formData.append("personId", selectedPersonId.toString()); // Convertir a cadena
-    if (result.value.photoFile) {
-      formData.append("photo", result.value.photoFile);
-    }
-
-    // Depuración: Verificar contenido de FormData
-    for (let [key, value] of formData.entries()) {
-      console.log(`FormData (markDelivered) - ${key}:`, value);
-    }
-
-    const response = await fetch(`${API_URL}/${idEncargo}/deliver`, {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: "Confirmar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#2563eb",
+      cancelButtonColor: "#d33",
+      preConfirm: () => {
+        const personId = document.getElementById("swal-input1").value;
+        const photoInput = document.getElementById("swal-input2").files[0];
+        if (!personId) {
+          Swal.showValidationMessage("Debes seleccionar una persona");
+          return false;
+        }
+        return { personId, photoFile: photoInput };
       },
-      body: formData,
     });
 
-    const responseData = await response.json();
-    console.log("Respuesta de la API (markDelivered):", responseData);
+    if (!result.isConfirmed || !result.value?.personId) return;
 
-    if (!response.ok) {
-      throw new Error(responseData.message || `Error ${response.status}`);
+    const selectedPersonId = result.value.personId; // Extraer solo personId
+
+    setIsLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("personId", selectedPersonId.toString()); // Convertir a cadena
+      if (result.value.photoFile) {
+        formData.append("photo", result.value.photoFile);
+      }
+
+      // Depuración: Verificar contenido de FormData
+      for (let [key, value] of formData.entries()) {
+        console.log(`FormData (markDelivered) - ${key}:`, value);
+      }
+
+      const response = await fetch(`${API_URL}/${idEncargo}/deliver`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const responseData = await response.json();
+      console.log("Respuesta de la API (markDelivered):", responseData);
+
+      if (!response.ok) {
+        throw new Error(responseData.message || `Error ${response.status}`);
+      }
+
+      Swal.fire({
+        icon: "success",
+        title: "Éxito",
+        text: "Encargo marcado como entregado",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+
+      await fetchEncargos();
+    } catch (error) {
+      console.error("Error en handleMarkDelivered:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: error.message || "No se pudo marcar el encargo como entregado",
+        timer: 3000,
+        showConfirmButton: false,
+      });
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    Swal.fire({
-      icon: "success",
-      title: "Éxito",
-      text: "Encargo marcado como entregado",
-      timer: 1500,
-      showConfirmButton: false,
-    });
-
-    await fetchEncargos();
-  } catch (error) {
-    console.error("Error en handleMarkDelivered:", error);
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: error.message || "No se pudo marcar el encargo como entregado",
-      timer: 3000,
-      showConfirmButton: false,
-    });
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-const fetchAssociatedUsers = async (nroDpto, phase) => {
-  try {
-    const url =
-      phase && phase !== "all"
-        ? `${API_URL}?criteria=department&query=${encodeURIComponent(
-            nroDpto
-          )}&phase=${encodeURIComponent(phase)}`
-        : `${API_URL}?criteria=department&query=${encodeURIComponent(nroDpto)}`;
-    console.log("URL de fetchAssociatedUsers:", url); // Log para depurar la URL
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) {
-      throw new Error("Error al obtener personas asociadas");
+  const fetchAssociatedUsers = async (nroDpto, phase) => {
+    try {
+      const url =
+        phase && phase !== "all"
+          ? `${API_URL}?criteria=department&query=${encodeURIComponent(
+              nroDpto
+            )}&phase=${encodeURIComponent(phase)}`
+          : `${API_URL}?criteria=department&query=${encodeURIComponent(
+              nroDpto
+            )}`;
+      console.log("URL de fetchAssociatedUsers:", url); // Log para depurar la URL
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        throw new Error("Error al obtener personas asociadas");
+      }
+      const data = await response.json();
+      console.log(
+        "Datos recibidos en fetchAssociatedUsers:",
+        JSON.stringify(data, null, 2)
+      );
+      return data.map((person) => ({
+        ID_PERSONA: person.ID_PERSONA,
+        NOMBRES: person.NOMBRES,
+        APELLIDOS: person.APELLIDOS,
+        DNI: person.DNI,
+        ES_PROPIETARIO: person.ID_CLASIFICACION === 1,
+        DETALLE_CLASIFICACION:
+          person.ID_CLASIFICACION === 1
+            ? "Propietario"
+            : person.DETALLE_CLASIFICACION || "Residente",
+      }));
+    } catch (error) {
+      console.error("Error en fetchAssociatedUsers:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudieron cargar las personas asociadas",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      return [];
     }
-    const data = await response.json();
-    console.log(
-      "Datos recibidos en fetchAssociatedUsers:",
-      JSON.stringify(data, null, 2)
+  };
+
+  const showDetailsModal = async (encargo) => {
+    const associatedUsers = await fetchAssociatedUsers(encargo.NRO_DPTO);
+    const photoUrl =
+      encargo.TIENE_FOTO > 0
+        ? `${API_URL}/photos/${encargo.ID_ENCARGO}?tipo=PAQUETE`
+        : null;
+    const deliveredPhotoUrl =
+      encargo.TIENE_FOTO_ENTREGA > 0
+        ? `${API_URL}/photos/${encargo.ID_ENCARGO}?tipo=ENTREGA`
+        : null;
+    const token = localStorage.getItem("token");
+
+    // Filter out the main person from associated users
+    const filteredAssociatedUsers = associatedUsers.filter(
+      (user) => user.DNI !== encargo.DNI
     );
-    return data.map((person) => ({
-      ID_PERSONA: person.ID_PERSONA,
-      NOMBRES: person.NOMBRES,
-      APELLIDOS: person.APELLIDOS,
-      DNI: person.DNI,
-      ES_PROPIETARIO: person.ID_CLASIFICACION === 1,
-      DETALLE_CLASIFICACION: person.ID_CLASIFICACION === 1 ? "Propietario" : person.DETALLE_CLASIFICACION || "Residente",
-    }));
-  } catch (error) {
-    console.error("Error en fetchAssociatedUsers:", error);
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: "No se pudieron cargar las personas asociadas",
-      timer: 2000,
-      showConfirmButton: false,
-    });
-    return [];
-  }
-};
 
-const showDetailsModal = async (encargo) => {
-  const associatedUsers = await fetchAssociatedUsers(encargo.NRO_DPTO);
-  const photoUrl = encargo.TIENE_FOTO > 0
-    ? `${API_URL}/photos/${encargo.ID_ENCARGO}?tipo=PAQUETE`
-    : null;
-  const deliveredPhotoUrl = encargo.TIENE_FOTO_ENTREGA > 0
-    ? `${API_URL}/photos/${encargo.ID_ENCARGO}?tipo=ENTREGA`
-    : null;
-  const token = localStorage.getItem("token");
-
-  // Filter out the main person from associated users
-  const filteredAssociatedUsers = associatedUsers.filter(
-    (user) => user.DNI !== encargo.DNI
-  );
-
-  // Define modal content to reuse in both initial and "Atrás" scenarios
-  const getModalContent = () => `
+    // Define modal content to reuse in both initial and "Atrás" scenarios
+    const getModalContent = () => `
     <div class="text-left font-sans p-4">
       <div class="mb-4">
         <span class="inline-block px-3 py-1 rounded-full text-sm font-semibold ${
-          encargo.ESTADO === 1 ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"
+          encargo.ESTADO === 1
+            ? "bg-blue-100 text-blue-700"
+            : "bg-green-100 text-green-700"
         }">
           ${encargo.ESTADO === 1 ? "Pendiente" : "Entregado"}
         </span>
@@ -1239,9 +1232,14 @@ const showDetailsModal = async (encargo) => {
           Persona Principal
         </h3>
         <p class="text-gray-600">
-          ${encargo.PERSONA_DESTINATARIO || "No asignado"} (DNI: ${encargo.DNI || "-"}) 
-          ${encargo.TIPO_RESIDENTE && encargo.TIPO_RESIDENTE !== "-" ? 
-            `<span class="inline-block px-2 py-1 bg-blue-500 text-white text-xs rounded-full ml-2">${encargo.TIPO_RESIDENTE}</span>` : ""}
+          ${encargo.PERSONA_DESTINATARIO || "No asignado"} (DNI: ${
+      encargo.DNI || "-"
+    }) 
+          ${
+            encargo.TIPO_RESIDENTE && encargo.TIPO_RESIDENTE !== "-"
+              ? `<span class="inline-block px-2 py-1 bg-blue-500 text-white text-xs rounded-full ml-2">${encargo.TIPO_RESIDENTE}</span>`
+              : ""
+          }
         </p>
       </div>
       <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
@@ -1258,11 +1256,15 @@ const showDetailsModal = async (encargo) => {
                   .map(
                     (user) => `
                       <div class="bg-gray-50 border border-gray-100 rounded-md p-2 flex justify-between items-center">
-                        <span class="text-gray-600">${user.NOMBRES} ${user.APELLIDOS} (DNI: ${user.DNI})</span>
+                        <span class="text-gray-600">${user.NOMBRES} ${
+                      user.APELLIDOS
+                    } (DNI: ${user.DNI})</span>
                         ${
                           user.ES_PROPIETARIO
                             ? `<span class="inline-block px-2 py-1 bg-blue-500 text-white text-xs rounded-full">Propietario</span>`
-                            : `<span class="inline-block px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded-full">${user.DETALLE_CLASIFICACION || "Residente"}</span>`
+                            : `<span class="inline-block px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded-full">${
+                                user.DETALLE_CLASIFICACION || "Residente"
+                              }</span>`
                         }
                       </div>`
                   )
@@ -1305,7 +1307,9 @@ const showDetailsModal = async (encargo) => {
                 </svg>
                 Persona que Recibió
               </h3>
-              <p class="text-gray-600">${encargo.ENTREGADO_A} (DNI: ${encargo.DNI_ENTREGADO || "-"})</p>
+              <p class="text-gray-600">${encargo.ENTREGADO_A} (DNI: ${
+              encargo.DNI_ENTREGADO || "-"
+            })</p>
             </div>
             <div class="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
               <h3 class="text-lg font-semibold text-gray-700 mb-2 flex items-center">
@@ -1328,92 +1332,98 @@ const showDetailsModal = async (encargo) => {
     </div>
   `;
 
-  // Function to show the main details modal
-  const showMainModal = () => {
-    Swal.fire({
-      title: `Detalles del Encargo #${encargo.ID_ENCARGO}`,
-      html: getModalContent(),
-      showConfirmButton: true,
-      confirmButtonText: "Cerrar",
-      customClass: {
-        popup: 'swal2-popup-custom',
-        confirmButton: 'bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600',
-      },
-      didOpen: () => {
-        const popup = Swal.getPopup();
-        popup.style.maxWidth = '750px';
-        popup.style.width = '90%';
+    // Function to show the main details modal
+    const showMainModal = () => {
+      Swal.fire({
+        title: `Detalles del Encargo #${encargo.ID_ENCARGO}`,
+        html: getModalContent(),
+        showConfirmButton: true,
+        confirmButtonText: "Cerrar",
+        customClass: {
+          popup: "swal2-popup-custom",
+          confirmButton:
+            "bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600",
+        },
+        didOpen: () => {
+          const popup = Swal.getPopup();
+          popup.style.maxWidth = "750px";
+          popup.style.width = "90%";
 
-        // Function to show photo in a new modal
-        const showPhotoInModal = async (url, title) => {
-          try {
-            const response = await fetch(url, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!response.ok) {
-              throw new Error(`Error ${response.status}: ${response.statusText}`);
+          // Function to show photo in a new modal
+          const showPhotoInModal = async (url, title) => {
+            try {
+              const response = await fetch(url, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              if (!response.ok) {
+                throw new Error(
+                  `Error ${response.status}: ${response.statusText}`
+                );
+              }
+              const blob = await response.blob();
+              const imageUrl = URL.createObjectURL(blob);
+              Swal.fire({
+                title,
+                html: `<img src="${imageUrl}" alt="${title}" class="max-w-[80vw] max-h-[80vh] w-auto h-auto rounded-lg shadow-sm object-contain" />`,
+                showConfirmButton: true,
+                confirmButtonText: "Atrás",
+                customClass: {
+                  popup: "swal2-popup-custom",
+                  confirmButton:
+                    "bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600",
+                },
+                didOpen: () => {
+                  const newPopup = Swal.getPopup();
+                  newPopup.style.maxWidth = "90vw";
+                  newPopup.style.maxHeight = "90vh";
+                  newPopup.style.width = "auto";
+                  newPopup.style.padding = "1rem";
+                },
+                willClose: () => {
+                  URL.revokeObjectURL(imageUrl); // Clean up the object URL
+                },
+                preConfirm: () => {
+                  // Reopen the main modal when "Atrás" is clicked
+                  showMainModal();
+                  return false; // Prevent the photo modal from closing until explicitly handled
+                },
+              });
+            } catch (error) {
+              console.error(`Error al cargar la foto: ${error.message}`);
+              Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "No se pudo cargar la foto. Verifica tu conexión o inicia sesión nuevamente.",
+                timer: 3000,
+                showConfirmButton: false,
+              });
             }
-            const blob = await response.blob();
-            const imageUrl = URL.createObjectURL(blob);
-            Swal.fire({
-              title,
-              html: `<img src="${imageUrl}" alt="${title}" class="max-w-[80vw] max-h-[80vh] w-auto h-auto rounded-lg shadow-sm object-contain" />`,
-              showConfirmButton: true,
-              confirmButtonText: "Atrás",
-              customClass: {
-                popup: 'swal2-popup-custom',
-                confirmButton: 'bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600',
-              },
-              didOpen: () => {
-                const newPopup = Swal.getPopup();
-                newPopup.style.maxWidth = '90vw';
-                newPopup.style.maxHeight = '90vh';
-                newPopup.style.width = 'auto';
-                newPopup.style.padding = '1rem';
-              },
-              willClose: () => {
-                URL.revokeObjectURL(imageUrl); // Clean up the object URL
-              },
-              preConfirm: () => {
-                // Reopen the main modal when "Atrás" is clicked
-                showMainModal();
-                return false; // Prevent the photo modal from closing until explicitly handled
-              },
-            });
-          } catch (error) {
-            console.error(`Error al cargar la foto: ${error.message}`);
-            Swal.fire({
-              icon: "error",
-              title: "Error",
-              text: "No se pudo cargar la foto. Verifica tu conexión o inicia sesión nuevamente.",
-              timer: 3000,
-              showConfirmButton: false,
+          };
+
+          // Handle "Ver Foto" button click
+          const showPhotoBtn = document.getElementById("show-photo-btn");
+          if (showPhotoBtn && photoUrl) {
+            showPhotoBtn.addEventListener("click", () => {
+              showPhotoInModal(photoUrl, "Foto del Encargo");
             });
           }
-        };
 
-        // Handle "Ver Foto" button click
-        const showPhotoBtn = document.getElementById('show-photo-btn');
-        if (showPhotoBtn && photoUrl) {
-          showPhotoBtn.addEventListener('click', () => {
-            showPhotoInModal(photoUrl, "Foto del Encargo");
-          });
-        }
+          // Handle "Ver Foto de Entrega" button click
+          const showDeliveredPhotoBtn = document.getElementById(
+            "show-delivered-photo-btn"
+          );
+          if (showDeliveredPhotoBtn && deliveredPhotoUrl) {
+            showDeliveredPhotoBtn.addEventListener("click", () => {
+              showPhotoInModal(deliveredPhotoUrl, "Foto de Entrega");
+            });
+          }
+        },
+      });
+    };
 
-        // Handle "Ver Foto de Entrega" button click
-        const showDeliveredPhotoBtn = document.getElementById('show-delivered-photo-btn');
-        if (showDeliveredPhotoBtn && deliveredPhotoUrl) {
-          showDeliveredPhotoBtn.addEventListener('click', () => {
-            showPhotoInModal(deliveredPhotoUrl, "Foto de Entrega");
-          });
-        }
-      },
-    });
+    // Open the main modal initially
+    showMainModal();
   };
-
-  // Open the main modal initially
-  showMainModal();
-};
   const filteredEncargos = encargos.filter((encargo) => {
     const fechaRecepcion = formatDate(encargo.FECHA_RECEPCION);
     return (
@@ -1731,22 +1741,28 @@ const showDetailsModal = async (encargo) => {
                   </div>
                   {showAssociatedUsers && (
                     <AssociatedUsersContainer>
-                      {selectedMainResident.USUARIOS_ASOCIADOS.map((user) => (
-                        <UserCard key={user.ID_PERSONA}>
-                          <UserInfo>
-                            <FaUser className="text-gray-500" />
-                            <span className="text-gray-700">
-                              {user.NOMBRES} {user.APELLIDOS}
-                            </span>
-                          </UserInfo>
-                          <UserInfo>
-                            <span className="text-gray-600">
-                              Número de Documento: {user.DNI}
-                            </span>
-                            {user.ES_PROPIETARIO && <Badge>Propietario</Badge>}
-                          </UserInfo>
-                        </UserCard>
-                      ))}
+                      {selectedMainResident.USUARIOS_ASOCIADOS.filter(
+                        (user) =>
+                          user.ID_PERSONA !== selectedMainResident.ID_PERSONA
+                      ) // Filtrar la persona principal
+                        .map((user) => (
+                          <UserCard key={user.ID_PERSONA}>
+                            <UserInfo>
+                              <FaUser className="text-gray-500" />
+                              <span className="text-gray-700">
+                                {user.NOMBRES} {user.APELLIDOS}
+                              </span>
+                            </UserInfo>
+                            <UserInfo>
+                              <span className="text-gray-600">
+                                Número de Documento: {user.DNI}
+                              </span>
+                              {user.ES_PROPIETARIO && (
+                                <Badge>Propietario</Badge>
+                              )}
+                            </UserInfo>
+                          </UserCard>
+                        ))}
                     </AssociatedUsersContainer>
                   )}
                 </div>
