@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import Swal from "sweetalert2";
 import { FaFileExport } from "react-icons/fa";
 import axios from "axios";
-import { useAuth } from "../context/AuthContext";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 
@@ -53,16 +52,8 @@ interface Slot {
   HORA_FIN: string;
 }
 
-interface AuthContextType {
-  userId: number | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  userPermissions: string[];
-}
-
 const Reservations = () => {
-  const { userId, isAuthenticated, isLoading, userPermissions } = useAuth() as AuthContextType;
-
+  const [userId] = useState(6); // Updated to 6 to match the database user
   const [areas, setAreas] = useState<Area[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [filter, setFilter] = useState<FilterData>({ campo: "areaName", valor: "" });
@@ -87,7 +78,7 @@ const Reservations = () => {
     capacity: 0,
     status: 1,
     image: null as File | null,
-    documents: [] as { name: string; file: File | null }[], // Commenting out document support for now
+    documents: [] as { name: string; file: File | null }[],
   });
   const [editArea, setEditArea] = useState<Area | null>(null);
   const [selectedArea, setSelectedArea] = useState<Area | null>(null);
@@ -96,15 +87,14 @@ const Reservations = () => {
   const cancelTokenSource = useRef(axios.CancelToken.source());
   const isMounted = useRef(true);
 
-  // Removed hardcoded areaImages since we now get imagePath from the backend
-  const hasCreateReservationPermission = userPermissions.includes("Crear Reservas") || userPermissions.includes("Reservas");
-
   const fetchAreas = async () => {
+    console.log("Fetching areas...");
     try {
       setIsLoadingAreas(true);
       const res = await axios.get<Area[]>(`${API_URL}/reservations/areas`, {
         cancelToken: cancelTokenSource.current.token,
       });
+      console.log("API Response for areas:", res.data);
       const formattedAreas: Area[] = res.data.map((area, index) => ({
         id: area.id || index + 1,
         name: String(area.name),
@@ -112,33 +102,33 @@ const Reservations = () => {
         capacity: area.capacity || 0,
         status: area.status || 1,
         imageName: area.imageName || "",
-        imagePath: area.imagePath || "", // Use the base64 image from the backend
+        imagePath: area.imagePath || "",
       }));
+      console.log("Formatted areas:", formattedAreas);
       setAreas(formattedAreas);
       setErrorMessage("");
     } catch (err) {
-      if (axios.isCancel(err)) return;
+      if (axios.isCancel(err)) {
+        console.log("Fetch areas cancelled");
+        return;
+      }
+      console.error("Error fetching areas:", err);
       setErrorMessage("No se pudieron cargar las áreas.");
       Swal.fire("Error", "No se pudieron cargar las áreas", "error");
     } finally {
+      console.log("Fetch areas completed, isLoadingAreas:", isLoadingAreas);
       setIsLoadingAreas(false);
     }
   };
 
   const fetchUserReservations = async () => {
-    if (!userId) {
-      console.log("No userId disponible para fetchUserReservations");
-      return;
-    }
-
+    console.log("Fetching user reservations...", { userId });
     try {
-      const token = localStorage.getItem("token");
       const res = await axios.get<any[]>(`${API_URL}/reservations/user/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
         cancelToken: cancelTokenSource.current.token,
       });
 
-      console.log("Reservas recibidas del backend:", res.data);
+      console.log("Raw reservations data from backend:", res.data);
 
       const validReservations: Reservation[] = res.data
         .filter((reservation) => reservation != null && typeof reservation === "object")
@@ -154,66 +144,82 @@ const Reservations = () => {
         }))
         .filter((reservation) => reservation.id !== 0 && reservation.areaId && reservation.areaName && reservation.date && reservation.startTime && reservation.endTime);
 
+      console.log("Validated reservations:", validReservations);
       if (validReservations.length === 0 && res.data.length > 0) {
-        console.log("No se encontraron reservas válidas después de la validación");
+        console.log("No valid reservations after validation");
         setErrorMessage("No se encontraron reservas válidas.");
       } else if (validReservations.length === 0) {
-        console.log("No se encontraron reservas para el usuario");
+        console.log("No reservations found for user");
         setErrorMessage("No se encontraron reservas.");
       } else {
-        console.log("Reservas válidas después de la validación:", validReservations);
+        console.log("Reservations set successfully");
         setErrorMessage("");
       }
 
       setReservations(validReservations);
     } catch (err) {
-      if (axios.isCancel(err)) return;
-      console.error("Error al obtener reservas:", err);
+      if (axios.isCancel(err)) {
+        console.log("Fetch user reservations cancelled");
+        return;
+      }
+      console.error("Error fetching reservations:", err);
       setReservations([]);
       setErrorMessage("Error al cargar las reservas.");
     }
   };
 
   const fetchOccupiedSlots = async () => {
-    if (!newReservation.area || !newReservation.date || !isAuthenticated || !userId) return;
+    console.log("Fetching occupied slots...", { areaId: newReservation.area, date: newReservation.date });
+    if (!newReservation.area || !newReservation.date) {
+      console.log("Missing required data for fetchOccupiedSlots");
+      return;
+    }
     setIsLoadingSlots(true);
     setNoSlotsMessage("");
     try {
-      const token = localStorage.getItem("token");
       const res = await axios.get<Slot[]>(`${API_URL}/reservations/slots/occupied`, {
         params: { areaId: newReservation.area, date: newReservation.date },
-        headers: { Authorization: `Bearer ${token}` },
         cancelToken: cancelTokenSource.current.token,
       });
+      console.log("Occupied slots response:", res.data);
       const validSlots = res.data.filter(
         (slot) => slot.HORA_INICIO != null && slot.HORA_FIN != null && typeof slot.HORA_INICIO === "string" && typeof slot.HORA_FIN === "string"
       );
+      console.log("Validated occupied slots:", validSlots);
       if (validSlots.length === 0) {
         setNoSlotsMessage("No hay horarios ocupados para esta fecha y área.");
       }
       setOccupiedSlots(validSlots);
     } catch (err: any) {
-      if (axios.isCancel(err)) return;
+      if (axios.isCancel(err)) {
+        console.log("Fetch occupied slots cancelled");
+        return;
+      }
+      console.error("Error fetching occupied slots:", err);
       setOccupiedSlots([]);
       setNoSlotsMessage("No se pudieron cargar los horarios ocupados.");
       if (err.response?.status !== 404) {
         Swal.fire("Error", err.response?.data?.message || "No se pudieron cargar los horarios ocupados", "error");
       }
     } finally {
+      console.log("Fetch occupied slots completed, isLoadingSlots:", isLoadingSlots);
       setIsLoadingSlots(false);
     }
   };
 
   const fetchAreaDetails = async (areaId: string) => {
+    console.log("Fetching area details for areaId:", areaId);
     try {
       const area = areas.find((a) => a.id === parseInt(areaId));
       if (area) {
+        console.log("Found area details:", area);
         setSelectedArea(area);
         setAreaDocuments([]); // Documents not supported yet
       } else {
         throw new Error("Área no encontrada");
       }
     } catch (err) {
+      console.error("Error fetching area details:", err);
       Swal.fire("Error", "No se pudieron cargar los detalles del área", "error");
       setSelectedArea(null);
       setAreaDocuments([]);
@@ -221,6 +227,7 @@ const Reservations = () => {
   };
 
   const handleCreateArea = async () => {
+    console.log("Creating area with data:", newArea);
     if (!newArea.name || !newArea.status || !newArea.image) {
       return Swal.fire("Advertencia", "Por favor, completa los campos requeridos para el área", "warning");
     }
@@ -233,30 +240,17 @@ const Reservations = () => {
     if (newArea.image) {
       formData.append("image", newArea.image);
     }
-
-    // Document upload is not supported yet by the backend
-    // If you want to support documents, you'll need to create a separate table and endpoint
-    // for (let i = 0; i < newArea.documents.length; i++) {
-    //   if (newArea.documents[i].file) {
-    //     formData.append(`documents[${i}]`, newArea.documents[i].file);
-    //   }
-    // }
+    formData.append("userId", userId.toString());
 
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        Swal.fire("Error", "No se encontró un token de autenticación", "error");
-        return;
-      }
-
       const response = await axios.post(`${API_URL}/reservations/areas`, formData, {
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
         cancelToken: cancelTokenSource.current.token,
       });
 
+      console.log("Area created successfully:", response.data);
       Swal.fire("¡Creado!", "Área creada con éxito", "success");
       setNewArea({
         name: "",
@@ -266,37 +260,19 @@ const Reservations = () => {
         image: null,
         documents: [],
       });
-      fetchAreas(); // Refresh the areas list
+      fetchAreas();
     } catch (err: any) {
-      if (axios.isCancel(err)) return;
-      console.error("Error al crear área:", err.response?.data || err.message);
+      if (axios.isCancel(err)) {
+        console.log("Create area cancelled");
+        return;
+      }
+      console.error("Error creating area:", err.response?.data || err.message);
       Swal.fire("Error", err.response?.data?.message || "No se pudo crear el área", "error");
     }
   };
 
-  const handleAddDocument = () => {
-    setNewArea({
-      ...newArea,
-      documents: [...newArea.documents, { name: "", file: null }],
-    });
-  };
-
-  const handleDocumentChange = (index: number, field: "name" | "file", value: string | File | null) => {
-    const updatedDocs = [...newArea.documents];
-    if (field === "name") {
-      updatedDocs[index].name = value as string;
-    } else {
-      updatedDocs[index].file = value as File | null;
-    }
-    setNewArea({ ...newArea, documents: updatedDocs });
-  };
-
-  const handleRemoveDocument = (index: number) => {
-    const updatedDocs = newArea.documents.filter((_, i) => i !== index);
-    setNewArea({ ...newArea, documents: updatedDocs });
-  };
-
   const handleEditArea = async () => {
+    console.log("Editing area with data:", editArea);
     if (!editArea || !editArea.name || !editArea.status) {
       return Swal.fire("Advertencia", "Por favor, completa todos los campos requeridos", "warning");
     }
@@ -306,37 +282,35 @@ const Reservations = () => {
     formData.append("description", editArea.description);
     formData.append("capacity", editArea.capacity.toString());
     formData.append("status", editArea.status.toString());
-    // Only append image if a new file is selected (editArea.imagePath might be a File or a string)
     if (editArea.imagePath instanceof File) {
       formData.append("image", editArea.imagePath);
     }
+    formData.append("userId", userId.toString());
 
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        Swal.fire("Error", "No se encontró un token de autenticación", "error");
-        return;
-      }
-
       const response = await axios.put(`${API_URL}/reservations/areas/${editArea.id}`, formData, {
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
         cancelToken: cancelTokenSource.current.token,
       });
 
+      console.log("Area updated successfully:", response.data);
       Swal.fire("¡Actualizado!", "Área actualizada con éxito", "success");
       setEditArea(null);
-      fetchAreas(); // Refresh the areas list
+      fetchAreas();
     } catch (err: any) {
-      if (axios.isCancel(err)) return;
-      console.error("Error al editar área:", err.response?.data || err.message);
+      if (axios.isCancel(err)) {
+        console.log("Edit area cancelled");
+        return;
+      }
+      console.error("Error editing area:", err.response?.data || err.message);
       Swal.fire("Error", err.response?.data?.message || "No se pudo actualizar el área", "error");
     }
   };
 
   const handleDeleteArea = async (areaId: number) => {
+    console.log("Attempting to delete area with id:", areaId);
     const result = await Swal.fire({
       title: "¿Estás seguro?",
       text: "No podrás revertir esta acción. ¿Deseas eliminar el área?",
@@ -350,52 +324,49 @@ const Reservations = () => {
 
     if (result.isConfirmed) {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          Swal.fire("Error", "No se encontró un token de autenticación", "error");
-          return;
-        }
-
         await axios.delete(`${API_URL}/reservations/areas/${areaId}`, {
-          headers: { Authorization: `Bearer ${token}` },
+          data: { userId },
           cancelToken: cancelTokenSource.current.token,
         });
 
+        console.log("Area deleted successfully");
         Swal.fire("¡Eliminado!", "El área ha sido eliminada con éxito", "success");
         fetchAreas();
       } catch (err: any) {
-        if (axios.isCancel(err)) return;
-        console.error("Error al eliminar área:", err.response?.data || err.message);
+        if (axios.isCancel(err)) {
+          console.log("Delete area cancelled");
+          return;
+        }
+        console.error("Error deleting area:", err.response?.data || err.message);
         Swal.fire("Error", err.response?.data?.message || "No se pudo eliminar el área", "error");
       }
     }
   };
 
   const handleToggleAreaStatus = async (areaId: number, currentStatus: number) => {
+    console.log("Toggling area status for id:", areaId, "currentStatus:", currentStatus);
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        Swal.fire("Error", "No se encontró un token de autenticación", "error");
-        return;
-      }
-
       const newStatus = currentStatus === 1 ? 0 : 1;
       const formData = new FormData();
       formData.append("status", newStatus.toString());
+      formData.append("userId", userId.toString());
 
       const response = await axios.put(`${API_URL}/reservations/areas/${areaId}`, formData, {
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
         cancelToken: cancelTokenSource.current.token,
       });
 
+      console.log("Area status toggled successfully:", response.data);
       Swal.fire("¡Actualizado!", `Área ${newStatus === 1 ? "activada" : "desactivada"} con éxito`, "success");
-      fetchAreas(); // Refresh the areas list
+      fetchAreas();
     } catch (err: any) {
-      if (axios.isCancel(err)) return;
-      console.error("Error al cambiar estado del área:", err.response?.data || err.message);
+      if (axios.isCancel(err)) {
+        console.log("Toggle area status cancelled");
+        return;
+      }
+      console.error("Error toggling area status:", err.response?.data || err.message);
       Swal.fire("Error", err.response?.data?.message || "No se pudo cambiar el estado del área", "error");
     }
   };
@@ -403,28 +374,21 @@ const Reservations = () => {
   useEffect(() => {
     isMounted.current = true;
     fetchAreas();
-    let interval: NodeJS.Timeout | null = null;
-    if (isAuthenticated && !isLoading && userId) {
-      fetchUserReservations();
-      interval = setInterval(() => {
-        if (isMounted.current) {
-          fetchUserReservations();
-        }
-      }, 5000);
-    }
     return () => {
+      console.log("Component unmounted");
       isMounted.current = false;
-      if (interval) clearInterval(interval);
       cancelTokenSource.current.cancel("Component unmounted");
       cancelTokenSource.current = axios.CancelToken.source();
     };
-  }, [isAuthenticated, isLoading, userId]);
+  }, []);
 
   useEffect(() => {
+    console.log("Effect triggered for occupied slots:", { area: newReservation.area, date: newReservation.date });
     fetchOccupiedSlots();
-  }, [newReservation.area, newReservation.date, isAuthenticated, userId]);
+  }, [newReservation.area, newReservation.date]);
 
   useEffect(() => {
+    console.log("Effect triggered for area details:", { areaId: newReservation.area });
     if (newReservation.area) {
       fetchAreaDetails(newReservation.area.toString());
     } else {
@@ -433,7 +397,12 @@ const Reservations = () => {
     }
   }, [newReservation.area]);
 
+  useEffect(() => {
+    fetchUserReservations();
+  }, [userId]);
+
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    console.log("Filter changed:", e.target.name, e.target.value);
     const { name, value } = e.target;
     setFilter((prev) => ({ ...prev, [name]: value }));
   };
@@ -452,6 +421,7 @@ const Reservations = () => {
   });
 
   const exportToCSV = () => {
+    console.log("Exporting reservations to CSV:", filteredReservations);
     const headers = "ID,Área,Fecha,Hora Inicio,Hora Fin,Número de Departamento,Estado\n";
     const rows = filteredReservations
       .map((res) => {
@@ -473,11 +443,7 @@ const Reservations = () => {
   };
 
   const handleCreateReservation = async () => {
-    if (!hasCreateReservationPermission) {
-      Swal.fire("Error", "No tienes permiso para crear reservas", "error");
-      return;
-    }
-
+    console.log("Attempting to create reservation with:", newReservation);
     const deptNum = parseInt(newReservation.departmentNumber.toString());
     if (
       !newReservation.area ||
@@ -487,11 +453,8 @@ const Reservations = () => {
       isNaN(deptNum) ||
       deptNum <= 0
     ) {
+      console.log("Invalid reservation data:", newReservation);
       Swal.fire("Advertencia", "Por favor, completa todos los campos correctamente", "warning");
-      return;
-    }
-    if (!isAuthenticated || !userId || typeof userId !== "number") {
-      Swal.fire("Advertencia", "Debes estar autenticado con un ID de usuario válido para crear una reserva", "warning");
       return;
     }
 
@@ -500,6 +463,7 @@ const Reservations = () => {
       return time.length === 5 ? `${time}:00` : time;
     };
 
+ 
     const payload = {
       userId,
       areaId: newReservation.area,
@@ -509,20 +473,14 @@ const Reservations = () => {
       departmentNumber: deptNum,
     };
 
-    console.log("Enviando payload al backend:", payload);
+    console.log("Payload sent to backend:", payload);
 
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        Swal.fire("Error", "No se encontró un token de autenticación", "error");
-        return;
-      }
-
       const response = await axios.post(`${API_URL}/reservations`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
         cancelToken: cancelTokenSource.current.token,
       });
 
+      console.log("Reservation created successfully:", response.data);
       Swal.fire("¡Registrado!", "Reserva creada con éxito", "success");
       setNewReservation({
         area: 0,
@@ -535,22 +493,28 @@ const Reservations = () => {
       fetchUserReservations();
       fetchOccupiedSlots();
     } catch (err: any) {
-      if (axios.isCancel(err)) return;
-      console.error("Error al crear reserva:", err.response?.data || err.message);
+      if (axios.isCancel(err)) {
+        console.log("Create reservation cancelled");
+        return;
+      }
+      console.error("Error creating reservation:", err.response?.data || err.message);
       Swal.fire("Error", err.response?.data?.message || "No se pudo crear la reserva", "error");
     }
   };
 
   const generateTimeSlots = () => {
+    console.log("Generating time slots...");
     const slots = [];
     for (let hour = 8; hour <= 23; hour++) {
       const time = `${hour.toString().padStart(2, "0")}:00:00`;
       slots.push(time);
     }
+    console.log("Generated time slots:", slots);
     return slots;
   };
 
   const timeToMinutes = (time: string | undefined): number => {
+    console.log("Converting time to minutes:", time);
     if (!time || typeof time !== "string") return -1;
     const [hours, minutes] = time.split(":").map(Number);
     if (isNaN(hours) || isNaN(minutes)) return -1;
@@ -558,6 +522,7 @@ const Reservations = () => {
   };
 
   const isSlotOccupied = (startTime: string) => {
+    console.log("Checking if slot is occupied:", startTime);
     const startMinutes = timeToMinutes(startTime);
     if (startMinutes === -1) return false;
     return occupiedSlots.some((slot) => {
@@ -569,21 +534,25 @@ const Reservations = () => {
   };
 
   const formatDate = (date?: string): string => {
+    console.log("Formatting date:", date);
     if (!date || typeof date !== "string") return "N/A";
     return date;
   };
 
   const formatTime = (time?: string): string => {
+    console.log("Formatting time:", time);
     if (!time || typeof time !== "string") return "N/A";
     return time.slice(0, 5);
   };
 
   const formatTimeForInput = (time: string): string => {
+    console.log("Formatting time for input:", time);
     if (!time || typeof time !== "string") return "";
     return time.slice(0, 5);
   };
 
   const handleDateChange = (date: Date) => {
+    console.log("Date changed to:", date);
     setSelectedDate(date);
     setNewReservation({
       ...newReservation,
@@ -592,6 +561,7 @@ const Reservations = () => {
   };
 
   const handleTimeSlotSelect = (startTime: string) => {
+    console.log("Time slot selected:", startTime);
     if (isSlotOccupied(startTime)) {
       Swal.fire("Advertencia", "Este horario no está disponible", "warning");
       return;
@@ -610,10 +580,12 @@ const Reservations = () => {
   };
 
   const handleViewDocument = (documentId: number) => {
+    console.log("Attempting to view document with id:", documentId);
     Swal.fire("Advertencia", "La visualización de documentos no está soportada por el backend", "warning");
   };
 
   const handleTabChange = (tab: "myReservations" | "createReservation" | "manageAreas") => {
+    console.log("Switching to tab:", tab);
     setActiveTab(tab);
     setErrorMessage("");
     if (tab !== "createReservation") {
@@ -627,13 +599,14 @@ const Reservations = () => {
     }
   };
 
-  if (isLoading) {
-    return <div className="p-4">Cargando...</div>;
-  }
-
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <h1 className="text-2xl font-bold mb-6">Control de Reservas</h1>
+
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700">ID de Usuario</label>
+        <p className="p-2 border rounded-lg">{userId}</p>
+      </div>
 
       <div className="mb-6">
         <div className="flex space-x-4 border-b">
@@ -645,16 +618,14 @@ const Reservations = () => {
           >
             Mis Reservas
           </button>
-          {hasCreateReservationPermission && (
-            <button
-              onClick={() => handleTabChange("createReservation")}
-              className={`py-2 px-4 font-semibold ${
-                activeTab === "createReservation" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"
-              }`}
-            >
-              Crear Reserva
-            </button>
-          )}
+          <button
+            onClick={() => handleTabChange("createReservation")}
+            className={`py-2 px-4 font-semibold ${
+              activeTab === "createReservation" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600"
+            }`}
+          >
+            Crear Reserva
+          </button>
           <button
             onClick={() => handleTabChange("manageAreas")}
             className={`py-2 px-4 font-semibold ${
@@ -666,7 +637,7 @@ const Reservations = () => {
         </div>
       </div>
 
-      {activeTab === "myReservations" && isAuthenticated && (
+      {activeTab === "myReservations" && (
         <div className="bg-white p-6 rounded-lg shadow-md">
           {errorMessage && (
             <div className="p-3 text-center text-red-500">
@@ -750,7 +721,7 @@ const Reservations = () => {
         </div>
       )}
 
-      {activeTab === "createReservation" && hasCreateReservationPermission && (
+      {activeTab === "createReservation" && (
         <div>
           {isLoadingAreas ? (
             <div className="p-3 text-center text-gray-500">Cargando áreas...</div>
@@ -1001,47 +972,6 @@ const Reservations = () => {
                 />
               </div>
             </div>
-            {/* Commenting out document upload UI since the backend doesn't support it yet */}
-            {/* <div className="mt-6">
-              <h3 className="text-md font-semibold mb-2">Subir Documentos (Opcional)</h3>
-              {newArea.documents.map((doc, index) => (
-                <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Nombre del Documento</label>
-                    <input
-                      type="text"
-                      value={doc.name}
-                      onChange={(e) => handleDocumentChange(index, "name", e.target.value)}
-                      className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="Ejemplo: Reglamento"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Archivo PDF</label>
-                    <input
-                      type="file"
-                      accept="application/pdf"
-                      onChange={(e) => handleDocumentChange(index, "file", e.target.files?.[0] || null)}
-                      className="w-full p-2 border rounded-lg"
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <button
-                      onClick={() => handleRemoveDocument(index)}
-                      className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition duration-300"
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                </div>
-              ))}
-              <button
-                onClick={handleAddDocument}
-                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition duration-300 mb-4"
-              >
-                Agregar Documento
-              </button>
-            </div> */}
             <button
               onClick={handleCreateArea}
               className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300"

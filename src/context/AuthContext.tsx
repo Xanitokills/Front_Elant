@@ -114,7 +114,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return [];
     }
   };
-
+console.log(userPermissions); // Para depurar
   const refreshSidebar = async () => {
     const token = localStorage.getItem("token");
     if (userId && token) {
