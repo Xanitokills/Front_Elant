@@ -53,7 +53,7 @@ interface Slot {
 }
 
 const Reservations = () => {
-  const [userId] = useState(6); // Updated to 6 to match the database user
+  const [userId] = useState(6);
   const [areas, setAreas] = useState<Area[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [filter, setFilter] = useState<FilterData>({ campo: "areaName", valor: "" });
@@ -64,6 +64,7 @@ const Reservations = () => {
     endTime: "",
     departmentNumber: 0,
   });
+  const [departments, setDepartments] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState<"myReservations" | "createReservation" | "manageAreas">("myReservations");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [occupiedSlots, setOccupiedSlots] = useState<Slot[]>([]);
@@ -71,6 +72,7 @@ const Reservations = () => {
   const [isLoadingAreas, setIsLoadingAreas] = useState(true);
   const [noSlotsMessage, setNoSlotsMessage] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [departmentError, setDepartmentError] = useState<string>(""); // New state for department-specific errors
 
   const [newArea, setNewArea] = useState({
     name: "",
@@ -88,14 +90,15 @@ const Reservations = () => {
   const isMounted = useRef(true);
 
   const fetchAreas = async () => {
-    console.log("Fetching areas...");
+    console.log("fetchAreas - Starting to fetch areas...");
     try {
       setIsLoadingAreas(true);
+      console.log("fetchAreas - Sending GET request to:", `${API_URL}/reservations/areas`);
       const res = await axios.get<Area[]>(`${API_URL}/reservations/areas`, {
         cancelToken: cancelTokenSource.current.token,
       });
-      console.log("API Response for areas:", res.data);
-      const formattedAreas: Area[] = res.data.map((area, index) => ({
+      console.log("fetchAreas - Response received:", res.data);
+      const formattedAreas = res.data.map((area, index) => ({
         id: area.id || index + 1,
         name: String(area.name),
         description: area.description || "",
@@ -104,122 +107,179 @@ const Reservations = () => {
         imageName: area.imageName || "",
         imagePath: area.imagePath || "",
       }));
-      console.log("Formatted areas:", formattedAreas);
+      console.log("fetchAreas - Formatted areas:", formattedAreas);
       setAreas(formattedAreas);
       setErrorMessage("");
     } catch (err) {
       if (axios.isCancel(err)) {
-        console.log("Fetch areas cancelled");
+        console.log("fetchAreas - Request cancelled");
         return;
       }
-      console.error("Error fetching areas:", err);
+      console.error("fetchAreas - Error fetching areas:", err);
       setErrorMessage("No se pudieron cargar las áreas.");
       Swal.fire("Error", "No se pudieron cargar las áreas", "error");
     } finally {
-      console.log("Fetch areas completed, isLoadingAreas:", isLoadingAreas);
+      console.log("fetchAreas - Completed, isLoadingAreas:", isLoadingAreas);
       setIsLoadingAreas(false);
     }
   };
 
   const fetchUserReservations = async () => {
-    console.log("Fetching user reservations...", { userId });
+    console.log("fetchUserReservations - Starting to fetch reservations for userId:", userId);
     try {
+      console.log("fetchUserReservations - Sending GET request to:", `${API_URL}/reservations/user/${userId}`);
       const res = await axios.get<any[]>(`${API_URL}/reservations/user/${userId}`, {
         cancelToken: cancelTokenSource.current.token,
       });
-
-      console.log("Raw reservations data from backend:", res.data);
-
-      const validReservations: Reservation[] = res.data
+      console.log("fetchUserReservations - Raw data received:", res.data);
+      const validReservations = res.data
         .filter((reservation) => reservation != null && typeof reservation === "object")
         .map((reservation) => ({
           id: typeof reservation.id === "number" ? reservation.id : 0,
           areaId: String(reservation.areaId || reservation.areaName || ""),
           areaName: String(reservation.areaName || ""),
           date: typeof reservation.date === "string" ? reservation.date.split("T")[0] : "",
-          startTime: typeof reservation.startTime === "string" ? (reservation.startTime.includes("T") ? reservation.startTime.split("T")[1]?.slice(0, 5) : reservation.startTime.slice(0, 5)) || reservation.startTime : "",
-          endTime: typeof reservation.endTime === "string" ? (reservation.endTime.includes("T") ? reservation.endTime.split("T")[1]?.slice(0, 5) : reservation.endTime.slice(0, 5)) || reservation.endTime : "",
+          startTime:
+            typeof reservation.startTime === "string"
+              ? reservation.startTime.includes("T")
+                ? reservation.startTime.split("T")[1]?.slice(0, 5)
+                : reservation.startTime.slice(0, 5) || reservation.startTime
+              : "",
+          endTime:
+            typeof reservation.endTime === "string"
+              ? reservation.endTime.includes("T")
+                ? reservation.endTime.split("T")[1]?.slice(0, 5)
+                : reservation.endTime.slice(0, 5) || reservation.endTime
+              : "",
           status: typeof reservation.status === "boolean" ? (reservation.status ? 1 : 0) : typeof reservation.status === "number" ? reservation.status : 0,
           departmentNumber: typeof reservation.departmentNumber === "number" ? reservation.departmentNumber : 0,
         }))
         .filter((reservation) => reservation.id !== 0 && reservation.areaId && reservation.areaName && reservation.date && reservation.startTime && reservation.endTime);
-
-      console.log("Validated reservations:", validReservations);
+      console.log("fetchUserReservations - Validated reservations:", validReservations);
       if (validReservations.length === 0 && res.data.length > 0) {
-        console.log("No valid reservations after validation");
+        console.log("fetchUserReservations - No valid reservations after validation");
         setErrorMessage("No se encontraron reservas válidas.");
       } else if (validReservations.length === 0) {
-        console.log("No reservations found for user");
+        console.log("fetchUserReservations - No reservations found for user");
         setErrorMessage("No se encontraron reservas.");
       } else {
-        console.log("Reservations set successfully");
+        console.log("fetchUserReservations - Reservations set successfully");
         setErrorMessage("");
       }
-
       setReservations(validReservations);
     } catch (err) {
       if (axios.isCancel(err)) {
-        console.log("Fetch user reservations cancelled");
+        console.log("fetchUserReservations - Request cancelled");
         return;
       }
-      console.error("Error fetching reservations:", err);
+      console.error("fetchUserReservations - Error fetching reservations:", err);
       setReservations([]);
       setErrorMessage("Error al cargar las reservas.");
     }
   };
 
   const fetchOccupiedSlots = async () => {
-    console.log("Fetching occupied slots...", { areaId: newReservation.area, date: newReservation.date });
+    console.log("fetchOccupiedSlots - Starting to fetch occupied slots, area:", newReservation.area, "date:", newReservation.date);
     if (!newReservation.area || !newReservation.date) {
-      console.log("Missing required data for fetchOccupiedSlots");
+      console.log("fetchOccupiedSlots - Missing required data for fetchOccupiedSlots");
       return;
     }
     setIsLoadingSlots(true);
     setNoSlotsMessage("");
     try {
+      console.log("fetchOccupiedSlots - Sending GET request to:", `${API_URL}/reservations/slots/occupied`, "with params:", {
+        areaId: newReservation.area,
+        date: newReservation.date,
+      });
       const res = await axios.get<Slot[]>(`${API_URL}/reservations/slots/occupied`, {
         params: { areaId: newReservation.area, date: newReservation.date },
         cancelToken: cancelTokenSource.current.token,
       });
-      console.log("Occupied slots response:", res.data);
+      console.log("fetchOccupiedSlots - Response received:", res.data);
       const validSlots = res.data.filter(
         (slot) => slot.HORA_INICIO != null && slot.HORA_FIN != null && typeof slot.HORA_INICIO === "string" && typeof slot.HORA_FIN === "string"
       );
-      console.log("Validated occupied slots:", validSlots);
+      console.log("fetchOccupiedSlots - Validated slots:", validSlots);
       if (validSlots.length === 0) {
         setNoSlotsMessage("No hay horarios ocupados para esta fecha y área.");
       }
       setOccupiedSlots(validSlots);
     } catch (err: any) {
       if (axios.isCancel(err)) {
-        console.log("Fetch occupied slots cancelled");
+        console.log("fetchOccupiedSlots - Request cancelled");
         return;
       }
-      console.error("Error fetching occupied slots:", err);
+      console.error("fetchOccupiedSlots - Error fetching occupied slots:", err);
       setOccupiedSlots([]);
       setNoSlotsMessage("No se pudieron cargar los horarios ocupados.");
       if (err.response?.status !== 404) {
         Swal.fire("Error", err.response?.data?.message || "No se pudieron cargar los horarios ocupados", "error");
       }
     } finally {
-      console.log("Fetch occupied slots completed, isLoadingSlots:", isLoadingSlots);
+      console.log("fetchOccupiedSlots - Completed, isLoadingSlots:", isLoadingSlots);
       setIsLoadingSlots(false);
     }
   };
 
+  const fetchDepartments = async () => {
+    console.log("fetchDepartments - Initiating department fetch for userId:", userId, "area:", newReservation.area, "date:", newReservation.date);
+    if (!userId || !newReservation.area || !newReservation.date) {
+      console.log("fetchDepartments - Skipping fetch: userId, area, or date is missing or invalid");
+      setDepartments([]);
+      setNewReservation((prev) => ({ ...prev, departmentNumber: 0 }));
+      setDepartmentError("Error: Faltan datos requeridos para cargar los departamentos.");
+      return;
+    }
+    setDepartmentError(""); // Clear previous errors
+    try {
+      console.log("fetchDepartments - Sending GET request to:", `${API_URL}/reservations/departments/${userId}`);
+      const response = await axios.get(`${API_URL}/reservations/departments/${userId}`, {
+        cancelToken: cancelTokenSource.current.token,
+      });
+      console.log("fetchDepartments - API response received:", response.data);
+      const deptList = Array.isArray(response.data.departments) ? response.data.departments : [];
+      console.log("fetchDepartments - Extracted department list:", deptList);
+      if (deptList.length === 0) {
+        console.log("fetchDepartments - Warning: No departments returned from API");
+        setDepartmentError("Error: No se encontraron departamentos para este usuario.");
+      }
+      setDepartments(deptList);
+      if (deptList.length === 1) {
+        console.log("fetchDepartments - Single department found, setting departmentNumber to:", deptList[0]);
+        setNewReservation((prev) => ({ ...prev, departmentNumber: deptList[0] }));
+      } else if (deptList.length > 1) {
+        console.log("fetchDepartments - Multiple departments found, resetting departmentNumber to 0");
+        setNewReservation((prev) => ({ ...prev, departmentNumber: 0 }));
+      } else {
+        console.log("fetchDepartments - No departments found, resetting departmentNumber to 0");
+        setNewReservation((prev) => ({ ...prev, departmentNumber: 0 }));
+      }
+      console.log("fetchDepartments - Current departments state:", deptList, "departmentNumber state:", newReservation.departmentNumber);
+    } catch (err: any) {
+      if (axios.isCancel(err)) {
+        console.log("fetchDepartments - Request cancelled");
+        return;
+      }
+      console.error("fetchDepartments - Error fetching departments:", err.response?.data || err.message);
+      setDepartments([]);
+      setNewReservation((prev) => ({ ...prev, departmentNumber: 0 }));
+      setDepartmentError("Error: No se pudieron cargar los departamentos. Verifica la conexión o el servidor.");
+    }
+  };
+
   const fetchAreaDetails = async (areaId: string) => {
-    console.log("Fetching area details for areaId:", areaId);
+    console.log("fetchAreaDetails - Starting to fetch details for areaId:", areaId);
     try {
       const area = areas.find((a) => a.id === parseInt(areaId));
       if (area) {
-        console.log("Found area details:", area);
+        console.log("fetchAreaDetails - Found area:", area);
         setSelectedArea(area);
         setAreaDocuments([]); // Documents not supported yet
       } else {
         throw new Error("Área no encontrada");
       }
     } catch (err) {
-      console.error("Error fetching area details:", err);
+      console.error("fetchAreaDetails - Error fetching area details:", err);
       Swal.fire("Error", "No se pudieron cargar los detalles del área", "error");
       setSelectedArea(null);
       setAreaDocuments([]);
@@ -227,8 +287,9 @@ const Reservations = () => {
   };
 
   const handleCreateArea = async () => {
-    console.log("Creating area with data:", newArea);
+    console.log("handleCreateArea - Starting to create area with data:", newArea);
     if (!newArea.name || !newArea.status || !newArea.image) {
+      console.log("handleCreateArea - Missing required fields");
       return Swal.fire("Advertencia", "Por favor, completa los campos requeridos para el área", "warning");
     }
 
@@ -243,14 +304,14 @@ const Reservations = () => {
     formData.append("userId", userId.toString());
 
     try {
+      console.log("handleCreateArea - Sending POST request to:", `${API_URL}/reservations/areas`, "with data:", formData);
       const response = await axios.post(`${API_URL}/reservations/areas`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
         cancelToken: cancelTokenSource.current.token,
       });
-
-      console.log("Area created successfully:", response.data);
+      console.log("handleCreateArea - Response received:", response.data);
       Swal.fire("¡Creado!", "Área creada con éxito", "success");
       setNewArea({
         name: "",
@@ -263,17 +324,18 @@ const Reservations = () => {
       fetchAreas();
     } catch (err: any) {
       if (axios.isCancel(err)) {
-        console.log("Create area cancelled");
+        console.log("handleCreateArea - Request cancelled");
         return;
       }
-      console.error("Error creating area:", err.response?.data || err.message);
+      console.error("handleCreateArea - Error creating area:", err.response?.data || err.message);
       Swal.fire("Error", err.response?.data?.message || "No se pudo crear el área", "error");
     }
   };
 
   const handleEditArea = async () => {
-    console.log("Editing area with data:", editArea);
+    console.log("handleEditArea - Starting to edit area with data:", editArea);
     if (!editArea || !editArea.name || !editArea.status) {
+      console.log("handleEditArea - Missing required fields");
       return Swal.fire("Advertencia", "Por favor, completa todos los campos requeridos", "warning");
     }
 
@@ -288,29 +350,29 @@ const Reservations = () => {
     formData.append("userId", userId.toString());
 
     try {
+      console.log("handleEditArea - Sending PUT request to:", `${API_URL}/reservations/areas/${editArea.id}`, "with data:", formData);
       const response = await axios.put(`${API_URL}/reservations/areas/${editArea.id}`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
         cancelToken: cancelTokenSource.current.token,
       });
-
-      console.log("Area updated successfully:", response.data);
+      console.log("handleEditArea - Response received:", response.data);
       Swal.fire("¡Actualizado!", "Área actualizada con éxito", "success");
       setEditArea(null);
       fetchAreas();
     } catch (err: any) {
       if (axios.isCancel(err)) {
-        console.log("Edit area cancelled");
+        console.log("handleEditArea - Request cancelled");
         return;
       }
-      console.error("Error editing area:", err.response?.data || err.message);
+      console.error("handleEditArea - Error editing area:", err.response?.data || err.message);
       Swal.fire("Error", err.response?.data?.message || "No se pudo actualizar el área", "error");
     }
   };
 
   const handleDeleteArea = async (areaId: number) => {
-    console.log("Attempting to delete area with id:", areaId);
+    console.log("handleDeleteArea - Attempting to delete area with id:", areaId);
     const result = await Swal.fire({
       title: "¿Estás seguro?",
       text: "No podrás revertir esta acción. ¿Deseas eliminar el área?",
@@ -324,136 +386,63 @@ const Reservations = () => {
 
     if (result.isConfirmed) {
       try {
+        console.log("handleDeleteArea - Sending DELETE request to:", `${API_URL}/reservations/areas/${areaId}`);
         await axios.delete(`${API_URL}/reservations/areas/${areaId}`, {
           data: { userId },
           cancelToken: cancelTokenSource.current.token,
         });
-
-        console.log("Area deleted successfully");
+        console.log("handleDeleteArea - Area deleted successfully");
         Swal.fire("¡Eliminado!", "El área ha sido eliminada con éxito", "success");
         fetchAreas();
       } catch (err: any) {
         if (axios.isCancel(err)) {
-          console.log("Delete area cancelled");
+          console.log("handleDeleteArea - Request cancelled");
           return;
         }
-        console.error("Error deleting area:", err.response?.data || err.message);
+        console.error("handleDeleteArea - Error deleting area:", err.response?.data || err.message);
         Swal.fire("Error", err.response?.data?.message || "No se pudo eliminar el área", "error");
       }
     }
   };
 
   const handleToggleAreaStatus = async (areaId: number, currentStatus: number) => {
-    console.log("Toggling area status for id:", areaId, "currentStatus:", currentStatus);
+    console.log("handleToggleAreaStatus - Toggling status for areaId:", areaId, "currentStatus:", currentStatus);
     try {
       const newStatus = currentStatus === 1 ? 0 : 1;
       const formData = new FormData();
       formData.append("status", newStatus.toString());
       formData.append("userId", userId.toString());
 
+      console.log("handleToggleAreaStatus - Sending PUT request to:", `${API_URL}/reservations/areas/${areaId}`);
       const response = await axios.put(`${API_URL}/reservations/areas/${areaId}`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
         cancelToken: cancelTokenSource.current.token,
       });
-
-      console.log("Area status toggled successfully:", response.data);
+      console.log("handleToggleAreaStatus - Response received:", response.data);
       Swal.fire("¡Actualizado!", `Área ${newStatus === 1 ? "activada" : "desactivada"} con éxito`, "success");
       fetchAreas();
     } catch (err: any) {
       if (axios.isCancel(err)) {
-        console.log("Toggle area status cancelled");
+        console.log("handleToggleAreaStatus - Request cancelled");
         return;
       }
-      console.error("Error toggling area status:", err.response?.data || err.message);
+      console.error("handleToggleAreaStatus - Error toggling area status:", err.response?.data || err.message);
       Swal.fire("Error", err.response?.data?.message || "No se pudo cambiar el estado del área", "error");
     }
   };
 
-  useEffect(() => {
-    isMounted.current = true;
-    fetchAreas();
-    return () => {
-      console.log("Component unmounted");
-      isMounted.current = false;
-      cancelTokenSource.current.cancel("Component unmounted");
-      cancelTokenSource.current = axios.CancelToken.source();
-    };
-  }, []);
-
-  useEffect(() => {
-    console.log("Effect triggered for occupied slots:", { area: newReservation.area, date: newReservation.date });
-    fetchOccupiedSlots();
-  }, [newReservation.area, newReservation.date]);
-
-  useEffect(() => {
-    console.log("Effect triggered for area details:", { areaId: newReservation.area });
-    if (newReservation.area) {
-      fetchAreaDetails(newReservation.area.toString());
-    } else {
-      setSelectedArea(null);
-      setAreaDocuments([]);
-    }
-  }, [newReservation.area]);
-
-  useEffect(() => {
-    fetchUserReservations();
-  }, [userId]);
-
-  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    console.log("Filter changed:", e.target.name, e.target.value);
-    const { name, value } = e.target;
-    setFilter((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const filteredReservations = reservations.filter((res) => {
-    const texto = filter.valor.toLowerCase();
-    let coincide = true;
-    if (filter.campo === "areaName") {
-      coincide = res.areaName.toLowerCase().includes(texto);
-    } else if (filter.campo === "date") {
-      coincide = res.date.includes(texto);
-    } else if (filter.campo === "departmentNumber") {
-      coincide = res.departmentNumber.toString().includes(texto);
-    }
-    return coincide;
-  });
-
-  const exportToCSV = () => {
-    console.log("Exporting reservations to CSV:", filteredReservations);
-    const headers = "ID,Área,Fecha,Hora Inicio,Hora Fin,Número de Departamento,Estado\n";
-    const rows = filteredReservations
-      .map((res) => {
-        const formattedDate = formatDate(res.date);
-        const formattedTime = `${formatTime(res.startTime)} - ${formatTime(res.endTime)}`;
-        return `${res.id},${res.areaName},${formattedDate},${formattedTime},${res.departmentNumber},${
-          res.status === 1 ? "Activa" : "Cancelada"
-        }`;
-      })
-      .join("\n");
-    const csv = headers + rows;
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "reservas.csv";
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
-
   const handleCreateReservation = async () => {
-    console.log("Attempting to create reservation with:", newReservation);
-    const deptNum = parseInt(newReservation.departmentNumber.toString());
+    console.log("handleCreateReservation - Starting to create reservation with:", newReservation);
     if (
       !newReservation.area ||
       !newReservation.date ||
       !newReservation.startTime ||
       !newReservation.endTime ||
-      isNaN(deptNum) ||
-      deptNum <= 0
+      (departments.length > 1 && (!newReservation.departmentNumber || newReservation.departmentNumber === 0))
     ) {
-      console.log("Invalid reservation data:", newReservation);
+      console.log("handleCreateReservation - Invalid reservation data, missing fields");
       Swal.fire("Advertencia", "Por favor, completa todos los campos correctamente", "warning");
       return;
     }
@@ -463,58 +452,61 @@ const Reservations = () => {
       return time.length === 5 ? `${time}:00` : time;
     };
 
- 
     const payload = {
       userId,
       areaId: newReservation.area,
       date: newReservation.date,
       startTime: formatTimeForBackend(newReservation.startTime),
       endTime: formatTimeForBackend(newReservation.endTime),
-      departmentNumber: deptNum,
+      departmentNumber: departments.length > 1 ? newReservation.departmentNumber : undefined,
     };
 
-    console.log("Payload sent to backend:", payload);
+    console.log("handleCreateReservation - Payload to send:", payload);
 
     try {
+      console.log("handleCreateReservation - Sending POST request to:", `${API_URL}/reservations`);
       const response = await axios.post(`${API_URL}/reservations`, payload, {
         cancelToken: cancelTokenSource.current.token,
       });
-
-      console.log("Reservation created successfully:", response.data);
+      console.log("handleCreateReservation - Response received:", response.data);
       Swal.fire("¡Registrado!", "Reserva creada con éxito", "success");
+
+      // Update newReservation with the departmentNumber from the response
+      const assignedDepartmentNumber = response.data.departmentNumber;
       setNewReservation({
         area: 0,
         date: new Date().toISOString().slice(0, 10),
         startTime: "",
         endTime: "",
-        departmentNumber: 0,
+        departmentNumber: assignedDepartmentNumber || 0,
       });
+      setDepartments([]);
       setActiveTab("myReservations");
       fetchUserReservations();
       fetchOccupiedSlots();
     } catch (err: any) {
       if (axios.isCancel(err)) {
-        console.log("Create reservation cancelled");
+        console.log("handleCreateReservation - Request cancelled");
         return;
       }
-      console.error("Error creating reservation:", err.response?.data || err.message);
+      console.error("handleCreateReservation - Error creating reservation:", err.response?.data || err.message);
       Swal.fire("Error", err.response?.data?.message || "No se pudo crear la reserva", "error");
     }
   };
 
   const generateTimeSlots = () => {
-    console.log("Generating time slots...");
+    console.log("generateTimeSlots - Generating time slots...");
     const slots = [];
     for (let hour = 8; hour <= 23; hour++) {
       const time = `${hour.toString().padStart(2, "0")}:00:00`;
       slots.push(time);
     }
-    console.log("Generated time slots:", slots);
+    console.log("generateTimeSlots - Generated slots:", slots);
     return slots;
   };
 
   const timeToMinutes = (time: string | undefined): number => {
-    console.log("Converting time to minutes:", time);
+    console.log("timeToMinutes - Converting time:", time);
     if (!time || typeof time !== "string") return -1;
     const [hours, minutes] = time.split(":").map(Number);
     if (isNaN(hours) || isNaN(minutes)) return -1;
@@ -522,7 +514,7 @@ const Reservations = () => {
   };
 
   const isSlotOccupied = (startTime: string) => {
-    console.log("Checking if slot is occupied:", startTime);
+    console.log("isSlotOccupied - Checking slot:", startTime);
     const startMinutes = timeToMinutes(startTime);
     if (startMinutes === -1) return false;
     return occupiedSlots.some((slot) => {
@@ -534,25 +526,25 @@ const Reservations = () => {
   };
 
   const formatDate = (date?: string): string => {
-    console.log("Formatting date:", date);
+    console.log("formatDate - Formatting date:", date);
     if (!date || typeof date !== "string") return "N/A";
     return date;
   };
 
   const formatTime = (time?: string): string => {
-    console.log("Formatting time:", time);
+    console.log("formatTime - Formatting time:", time);
     if (!time || typeof time !== "string") return "N/A";
     return time.slice(0, 5);
   };
 
   const formatTimeForInput = (time: string): string => {
-    console.log("Formatting time for input:", time);
+    console.log("formatTimeForInput - Formatting time for input:", time);
     if (!time || typeof time !== "string") return "";
     return time.slice(0, 5);
   };
 
   const handleDateChange = (date: Date) => {
-    console.log("Date changed to:", date);
+    console.log("handleDateChange - Date changed to:", date);
     setSelectedDate(date);
     setNewReservation({
       ...newReservation,
@@ -561,7 +553,7 @@ const Reservations = () => {
   };
 
   const handleTimeSlotSelect = (startTime: string) => {
-    console.log("Time slot selected:", startTime);
+    console.log("handleTimeSlotSelect - Time slot selected:", startTime);
     if (isSlotOccupied(startTime)) {
       Swal.fire("Advertencia", "Este horario no está disponible", "warning");
       return;
@@ -580,12 +572,12 @@ const Reservations = () => {
   };
 
   const handleViewDocument = (documentId: number) => {
-    console.log("Attempting to view document with id:", documentId);
+    console.log("handleViewDocument - Attempting to view document with id:", documentId);
     Swal.fire("Advertencia", "La visualización de documentos no está soportada por el backend", "warning");
   };
 
   const handleTabChange = (tab: "myReservations" | "createReservation" | "manageAreas") => {
-    console.log("Switching to tab:", tab);
+    console.log("handleTabChange - Switching to tab:", tab);
     setActiveTab(tab);
     setErrorMessage("");
     if (tab !== "createReservation") {
@@ -596,7 +588,91 @@ const Reservations = () => {
         endTime: "",
         departmentNumber: 0,
       });
+      setDepartments([]);
     }
+  };
+
+  useEffect(() => {
+    console.log("useEffect - Component mounted, starting initial fetch...");
+    isMounted.current = true;
+    fetchAreas();
+    return () => {
+      console.log("useEffect - Component unmounted");
+      isMounted.current = false;
+      cancelTokenSource.current.cancel("Component unmounted");
+      cancelTokenSource.current = axios.CancelToken.source();
+    };
+  }, []);
+
+  useEffect(() => {
+    console.log("useEffect - Triggered for occupied slots and departments, area:", newReservation.area, "date:", newReservation.date);
+    fetchOccupiedSlots();
+    if (newReservation.area && newReservation.date) {
+      console.log("useEffect - Conditions met, calling fetchDepartments for userId:", userId);
+      fetchDepartments();
+    } else {
+      console.log("useEffect - Skipping fetchDepartments due to missing area or date");
+      setDepartments([]);
+      setNewReservation((prev) => ({ ...prev, departmentNumber: 0 }));
+      setDepartmentError("Error: Selecciona un área y una fecha para cargar los departamentos.");
+    }
+  }, [newReservation.area, newReservation.date]);
+
+  useEffect(() => {
+    console.log("useEffect - Triggered for area details, areaId:", newReservation.area);
+    if (newReservation.area) {
+      fetchAreaDetails(newReservation.area.toString());
+    } else {
+      setSelectedArea(null);
+      setAreaDocuments([]);
+    }
+  }, [newReservation.area]);
+
+  useEffect(() => {
+    console.log("useEffect - Triggered for user reservations, userId:", userId);
+    fetchUserReservations();
+  }, [userId]);
+
+  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    console.log("handleFilterChange - Filter changed, name:", e.target.name, "value:", e.target.value);
+    const { name, value } = e.target;
+    setFilter((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const filteredReservations = reservations.filter((res) => {
+    const texto = filter.valor.toLowerCase();
+    let coincide = true;
+    if (filter.campo === "areaName") {
+      coincide = res.areaName.toLowerCase().includes(texto);
+    } else if (filter.campo === "date") {
+      coincide = res.date.includes(texto);
+    } else if (filter.campo === "departmentNumber") {
+      coincide = res.departmentNumber.toString().includes(texto);
+    }
+    return coincide;
+  });
+
+  const exportToCSV = () => {
+    console.log("exportToCSV - Starting export, reservations:", filteredReservations);
+    const headers = "ID,Área,Fecha,Hora Inicio,Hora Fin,Número de Departamento,Estado\n";
+    const rows = filteredReservations
+      .map((res) => {
+        const formattedDate = formatDate(res.date);
+        const formattedTime = `${formatTime(res.startTime)} - ${formatTime(res.endTime)}`;
+        return `${res.id},${res.areaName},${formattedDate},${formattedTime},${res.departmentNumber},${
+          res.status === 1 ? "Activa" : "Cancelada"
+        }`;
+      })
+      .join("\n");
+    const csv = headers + rows;
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "reservas.csv";
+    a.click();
+    window.URL.revokeObjectURL(url);
+    console.log("exportToCSV - Export completed");
   };
 
   return (
@@ -644,6 +720,7 @@ const Reservations = () => {
               {errorMessage}
               <button
                 onClick={() => {
+                  console.log("handleRetry - Retrying fetchUserReservations");
                   setErrorMessage("");
                   fetchUserReservations();
                 }}
@@ -730,6 +807,7 @@ const Reservations = () => {
               {errorMessage}
               <button
                 onClick={() => {
+                  console.log("handleRetry - Retrying fetchAreas");
                   setErrorMessage("");
                   fetchAreas();
                 }}
@@ -748,7 +826,10 @@ const Reservations = () => {
                   className={`bg-white rounded-lg shadow-md overflow-hidden cursor-pointer ${
                     newReservation.area === area.id ? "ring-2 ring-blue-500" : ""
                   }`}
-                  onClick={() => setNewReservation({ ...newReservation, area: area.id })}
+                  onClick={() => {
+                    console.log("handleAreaSelect - Selecting area:", area.id);
+                    setNewReservation({ ...newReservation, area: area.id });
+                  }}
                 >
                   <img
                     src={area.imagePath || "https://via.placeholder.com/300x200?text=Default+Area"}
@@ -887,19 +968,54 @@ const Reservations = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Número de Departamento</label>
-                    <input
-                      type="number"
-                      value={newReservation.departmentNumber === 0 ? "" : newReservation.departmentNumber}
-                      onChange={(e) =>
-                        setNewReservation({
-                          ...newReservation,
-                          departmentNumber: parseInt(e.target.value) || 0,
-                        })
-                      }
-                      placeholder="Ejemplo: 101"
-                      className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
+                    {departmentError ? (
+                      <div className="p-2 text-red-500 border rounded-lg">
+                        {departmentError}
+                        <button
+                          onClick={() => {
+                            console.log("handleRetryDepartment - Retrying fetchDepartments");
+                            setDepartmentError("");
+                            fetchDepartments();
+                          }}
+                          className="ml-2 text-blue-500 underline"
+                        >
+                          Reintentar
+                        </button>
+                      </div>
+                    ) : departments.length === 0 ? (
+                      <input
+                        type="number"
+                        value={newReservation.departmentNumber || ""}
+                        readOnly
+                        className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-100"
+                        placeholder="Cargando departamentos..."
+                      />
+                    ) : departments.length === 1 ? (
+                      <input
+                        type="number"
+                        value={newReservation.departmentNumber || ""}
+                        readOnly
+                        className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-gray-100"
+                        placeholder="Asignado automáticamente"
+                      />
+                    ) : (
+                      <select
+                        value={newReservation.departmentNumber || 0}
+                        onChange={(e) =>
+                          setNewReservation({ ...newReservation, departmentNumber: parseInt(e.target.value) })
+                        }
+                        className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value={0} disabled>
+                          Selecciona un departamento
+                        </option>
+                        {departments.map((dept) => (
+                          <option key={dept} value={dept}>
+                            {dept}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                   <div className="flex items-end">
                     <button
@@ -1083,6 +1199,7 @@ const Reservations = () => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            console.log("handleEditAreaClick - Selecting area for edit:", area.id);
                             setEditArea(area);
                           }}
                           className="bg-yellow-500 text-white px-3 py-1 rounded-lg hover:bg-yellow-600 transition duration-300"
@@ -1092,6 +1209,7 @@ const Reservations = () => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            console.log("handleDeleteAreaClick - Attempting to delete area:", area.id);
                             handleDeleteArea(area.id);
                           }}
                           className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition duration-300"
@@ -1101,6 +1219,7 @@ const Reservations = () => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            console.log("handleToggleAreaStatusClick - Toggling status for area:", area.id);
                             handleToggleAreaStatus(area.id, area.status);
                           }}
                           className={`${
